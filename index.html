@@ -1304,6 +1304,7 @@ else start();
   });
   function start(){
     try{ localStorage.setItem('w2w.sleep',JSON.stringify(sel)); }catch(e){}
+    var tm=(location.hash||'').match(/sleepmin=(\d+)/); if(tm) sel.t=+tm[1];
     var sc=SCENES[sel.s], mu=MUSIC[sel.m], spotify=mu[1]&&mu[1]!=='mute', muted=(mu[1]!=='');
     var bridge=window.TV&&TV.openThenReturn;
     // Scene with its own sound: play it ad-free in SmartTube; the TV app runs the timer and fades picture + sound on top of it.
