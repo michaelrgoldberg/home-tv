@@ -398,14 +398,14 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
   function mtLoad(){
     var teams=(CFG.teams||[]); if(!teams.length) return;
     Promise.all(teams.map(function(t){ var path=t[0], ab=t[1];
-      return Promise.all([mtFetch(path+'/teams/'+ab), mtFetch(path+'/teams/'+ab+'/schedule')]).then(function(r){
-        var tm=(r[0]||{}).team||{}, ev=(r[1]||{}).events||[];
+      return Promise.all([Promise.resolve({}), mtFetch(path+'/teams/'+ab+'/schedule')]).then(function(r){
+        var tm=(r[1]||{}).team||{}, ev=(r[1]||{}).events||[];
         var post=ev.filter(function(e){var s=(((e.competitions||[])[0]||{}).status||{}).type||{}; return s.state==='post';});
         var p=post.length?Promise.resolve(post):Promise.all([mtFetch(path+'/teams/'+ab+'/schedule?seasontype=2'),mtFetch(path+'/teams/'+ab+'/schedule?seasontype=3')]).then(function(rr){return ((rr[0].events||[]).concat(rr[1].events||[])).filter(function(e){return ((((e.competitions||[])[0]||{}).status||{}).type||{}).state==='post';}).sort(function(a,b){return new Date(a.date)-new Date(b.date);});});
         return p.then(function(posts){ var abbr=tm.abbreviation||ab.toUpperCase();
           var up=ev.filter(function(e){var s=(((e.competitions||[])[0]||{}).status||{}).type||{}; return s.state!=='post';}).sort(function(a,b){return new Date(a.date)-new Date(b.date);}); var next=up[0]||(tm.nextEvent||[])[0]; var ng=mtGame(next,abbr); if(ng&&ng.state==='post') ng=null;
           var lg=mtGame(posts[posts.length-1],abbr);
-          return {name:tm.shortDisplayName||tm.name||ab, logo:((tm.logos||[])[0]||{}).href||tm.logo, rec:((tm.record||{}).items||[{}])[0].summary||'', last:lg, next:ng}; });
+          return {name:tm.name||tm.displayName||ab, logo:tm.logo||'', rec:tm.recordSummary||'', stand:tm.standingSummary||'', last:lg, next:ng}; });
       }); })).then(function(rows){ MT=rows.filter(function(x){return x&&x.name;}); mtRender(); });
   }
   function mtLogo(t){var l=(t.logos||[])[0]; return (l&&l.href)||t.logo||'';}
@@ -420,7 +420,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
       } else {
         v0= L ? (ns?'<span class="d">Last</span><img src="'+mtLogo(L.opTeam)+'"><span>'+(L.home?'vs ':'@ ')+(L.opTeam.abbreviation||'')+'</span><span class="d">· Final · '+mtShort(L.date)+'</span>'
                  :'<span class="'+(L.win?'w':'l')+'">'+(L.win?'W':'L')+'</span><span class="s">'+L.my+'–'+L.op+'</span><span class="d">'+(L.home?'vs':'@')+'</span><img src="'+mtLogo(L.opTeam)+'"><span>'+(L.opTeam.abbreviation||'')+'</span><span class="d">· '+mtShort(L.date)+'</span>') : '<span class="d">No recent games</span>';
-        v1= N ? '<span class="d">Next</span><span>'+mtShort(N.date)+'</span><span class="d">'+(N.home?'vs':'@')+'</span><img src="'+mtLogo(N.opTeam)+'"><span>'+(N.opTeam.abbreviation||'')+'</span>'+(N.nets[0]?'<span class="d">· '+N.nets[0]+'</span>':'') : '<span class="d">Off-season</span>';
+        v1= !N&&t.stand ? '<span class="d">Off-season · '+t.stand+'</span>' : N ? '<span class="d">Next</span><span>'+mtShort(N.date)+'</span><span class="d">'+(N.home?'vs':'@')+'</span><img src="'+mtLogo(N.opTeam)+'"><span>'+(N.opTeam.abbreviation||'')+'</span>'+(N.nets[0]?'<span class="d">· '+N.nets[0]+'</span>':'') : '<span class="d">Off-season</span>';
       }
       return '<div class="tr"><div class="lg"><img src="'+t.logo+'"></div><div class="body"><div class="nm"><b>'+t.name+'</b>'+t.rec+'</div><div class="slot"><div class="v'+(mtView?' off':'')+'">'+v0+'</div><div class="v'+(mtView?'':' off')+'">'+v1+'</div></div></div></div>';
     }).join('');
