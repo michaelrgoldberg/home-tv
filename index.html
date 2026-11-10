@@ -1224,10 +1224,12 @@ else start();
 #sp .nets{display:flex;flex-wrap:wrap;gap:.3vw;margin-top:.5vw}
 #sp .net{font-size:.78vw;padding:.12vw .5vw;border-radius:.3vw;background:#24304f;color:#c9d1ea}
 #sp .net.ok{background:#ffcc00;color:#111;font-weight:600}
+#sp .net.free{background:#2ec47a;color:#06240f;font-weight:600}
+#sp .g.freeok{opacity:1}
 #sp .empty{color:#9aa3c0;font-size:1.2vw;padding:2vw 0}
 </style>
 <div id="sp"><h1>🏟️ Live Sports <button class="chipb focusable" id="spHome" style="font-size:1.1vw;vertical-align:middle;margin-left:1.5vw">🏠 Home</button></h1>
-<div class="sub">Games on your apps. Yellow tags show where to watch. Select a game to go straight to it (YouTube TV opens the game; other apps open to their home). Back returns.</div>
+<div class="sub">Yellow = on your apps (select to open it). <span style="color:#2ec47a;font-weight:600">Green = free with a TV antenna</span>, no subscription. Back returns.</div>
 <div class="bar" id="spDays"></div>
 <div class="bar" id="spLg"></div>
 <div id="spBody"><div class="empty">Loading games…</div></div>
@@ -1249,6 +1251,9 @@ else start();
     if(/mlb\.tv|mlb tv/.test(s)) r.push('mlb');
     if(/league pass/.test(s)) r.push('nba');
     return r; }
+  // Over-the-air broadcast networks = free with a TV antenna, no subscription.
+  var OTA=/^(abc|cbs|nbc|fox|the cw|cw|telemundo|univision|unimas|unim[aá]s|ion|mynetworktv|pbs)$/;
+  function isOTA(nets){ return (nets||[]).some(function(n){ return OTA.test(String(n).toLowerCase().trim()); }); }
   var dayMode='today', lgOn={}, games=[], timer=null, allOn=true, noSpoil=false;
   try{ noSpoil=localStorage.getItem('w2w.sp.nospoil')==='1'; var sv=JSON.parse(localStorage.getItem('w2w.sp.lg')||'null'); if(sv&&sv.length){ allOn=false; sv.forEach(function(k){lgOn[k]=true;}); } }catch(e){}
   function saveLg(){ try{ localStorage.setItem('w2w.sp.lg',JSON.stringify(allOn?[]:Object.keys(lgOn).filter(function(k){return lgOn[k];}))); localStorage.setItem('w2w.sp.nospoil',noSpoil?'1':'0'); }catch(e){} }
@@ -1288,26 +1293,31 @@ else start();
   }
   function $s(id){return document.getElementById(id);}
   function card(g){
-    var ok=g.apps.length>0, st='';
+    var free=isOTA(g.nets); var ok=g.apps.length>0||free, st='';
     if(g.state==='in') st='<div class="st live">● LIVE'+(noSpoil?'':' · '+esc(g.detail))+'</div>';
     else if(g.state==='post') st='<div class="st">Final'+(noSpoil?' · score hidden':(g.detail&&g.detail!=='Final'?' · '+esc(g.detail):''))+'</div>';
     else { var d=g.date, t=(d.getHours()%12||12)+':'+('0'+d.getMinutes()).slice(-2)+(d.getHours()<12?' am':' pm');
       var sameDay=d.toDateString()===new Date().toDateString(); st='<div class="st">'+(sameDay?'':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]+' '+(d.getMonth()+1)+'/'+d.getDate()+' · ')+t+'</div>'; }
     var tm=g.tms.map(function(c){var t=c.team||{}, sc=(!noSpoil&&g.state!=='pre'&&c.score!=null)?'<span class="sc">'+(c.raw?c.score:esc(c.score))+'</span>':'';
       return '<div class="tm">'+(t.logo?'<img src="'+esc(t.logo)+'">':'')+'<span>'+esc(t.shortDisplayName||t.displayName||t.name)+(c.serve?' <span style="color:#d7ff3e;font-size:.8em" title="serving">●</span>':'')+'</span>'+sc+'</div>';}).join('');
+    var freeTag=free?'<span class="net free">📡 Free · antenna</span>':'';
     var nets=g.nets.map(function(n){return '<span class="net'+(appsFor(n).length?' ok':'')+'">'+esc(n)+'</span>';}).join('');
-    if(g.tennis) nets='<span class="net ok">▶ Find on YouTube TV</span><span class="net">Tennis Channel / ESPN</span>'; else if(g.apps.length) nets='<span class="net ok">▶ '+g.apps.map(function(a){return APPS[a][0];}).join(' / ')+'</span>'+nets;
+    if(g.tennis) nets='<span class="net ok">▶ Find on YouTube TV</span><span class="net">Tennis Channel / ESPN</span>'; else if(g.apps.length) nets='<span class="net ok">▶ '+g.apps.map(function(a){return APPS[a][0];}).join(' / ')+'</span>'+freeTag+nets;
+    else if(free) nets=freeTag+nets;
     else nets='<span class="net">Not on your apps</span>'+nets;
     return '<div class="g focusable'+(ok?'':' off')+'" tabindex="0" data-g="'+g.id+'">'+st+tm+(g.note?'<div class="st" style="margin-top:.2vw">'+esc(g.note)+'</div>':'')+'<div class="nets">'+nets+'</div></div>';
   }
   function render(){
     bars();
     var list=games.filter(function(g){return shown(g.lg[0]) && (dayMode!=='live'||g.state==='in');});
-    var mine=list.filter(function(g){return g.apps.length;}), other=list.filter(function(g){return !g.apps.length;});
+    var mine=list.filter(function(g){return g.apps.length;});
+    var freeOnly=list.filter(function(g){return !g.apps.length && isOTA(g.nets);});
+    var other=list.filter(function(g){return !g.apps.length && !isOTA(g.nets);});
     var ord={'in':0,'pre':1,'post':2}; var sortf=function(a,b){return (ord[a.state]-ord[b.state])||(a.date-b.date);};
     var live=mine.filter(function(g){return g.state==='in';}).sort(sortf), out='';
     if(live.length) out+='<h2>🔴 Live now</h2><div class="grid">'+live.map(card).join('')+'</div>';
     LG.forEach(function(l){ var gs=mine.filter(function(g){return g.lg[0]===l[0]&&g.state!=='in';}).sort(sortf); if(gs.length) out+='<h2>'+l[1]+'</h2><div class="grid">'+gs.map(card).join('')+'</div>'; });
+    if(freeOnly.length) out+='<h2 style="color:#2ec47a">📡 Free with an antenna</h2><div class="grid">'+freeOnly.sort(sortf).map(card).join('')+'</div>';
     if(other.length && !noSpoil) out+='<h2 style="color:#9aa3c0">Not on your apps</h2><div class="grid">'+other.sort(sortf).map(card).join('')+'</div>';
     $s('spBody').innerHTML=out||'<div class="empty">'+(dayMode==='live'?'No games on right now. Try Today or Upcoming.':'No games found. Try Upcoming (7 days) or All sports.')+'</div>';
   }
@@ -1315,6 +1325,7 @@ else start();
     if(a==='yttv'&&g){ var q=g.tennis?g.q:g.tms.map(function(c){return (c.team||{}).displayName||'';}).join(' vs ');
       location.href='intent://tv.youtube.com/search?q='+encodeURIComponent(q)+'#Intent;scheme=https;package='+p[1]+';launchFlags=0x10008000;end'; return; }
     location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package='+p[1]+';launchFlags=0x10008000;end'; }
+  function spToast(html){ var t=document.getElementById('spToast'); if(!t){ t=document.createElement('div'); t.id='spToast'; t.style.cssText='position:fixed;left:50%;bottom:4vw;transform:translateX(-50%);background:rgba(8,12,30,.97);border:.12vw solid #2ec47a;color:#eaf2ff;padding:1vw 1.7vw;border-radius:1vw;font-size:1.2vw;line-height:1.5;z-index:99;max-width:58vw;text-align:center;box-shadow:0 .6vw 2vw rgba(0,0,0,.55)'; $s('sp').appendChild(t); } t.innerHTML=html; t.style.display='block'; clearTimeout(t._t); t._t=setTimeout(function(){t.style.display='none';},6000); }
   $s('sp').addEventListener('click',function(e){ e.stopPropagation();
     if(e.target.closest('#spHome')){ history.back(); setTimeout(function(){ if(window.W2W_GOHOME) W2W_GOHOME(); },120); return; }
     if(e.target.closest('[data-ns]')){ noSpoil=!noSpoil; saveLg(); render(); var n=document.querySelector('[data-ns]'); if(n) n.focus(); return; }
@@ -1324,7 +1335,9 @@ else start();
       else if(allOn){ allOn=false; lgOn={}; lgOn[k]=true; }
       else { lgOn[k]=!lgOn[k]; if(!Object.keys(lgOn).some(function(x){return lgOn[x];})) allOn=true; }
       saveLg(); render(); var f=document.querySelector('[data-lg="'+k+'"]'); if(f) f.focus(); return; }
-    var g=e.target.closest('[data-g]'); if(g){ var gm=games.filter(function(x){return x.id===g.dataset.g;})[0]; if(gm&&gm.apps.length) launchApp(gm.apps[0],gm); }
+    var g=e.target.closest('[data-g]'); if(g){ var gm=games.filter(function(x){return x.id===g.dataset.g;})[0];
+      if(gm&&gm.apps.length) launchApp(gm.apps[0],gm);
+      else if(gm&&isOTA(gm.nets)){ var onet=(gm.nets||[]).filter(function(n){return OTA.test(String(n).toLowerCase().trim());})[0]||'a local channel'; spToast('📡 This game is free over the air on <b>'+esc(onet)+'</b> — watch it with a TV antenna, no subscription. (Also on YouTube TV if you have it.)'); } }
   });
   window.W2W_SP={
     open:function(){ $s('sp').classList.add('show'); try{history.pushState({s:1},'');}catch(e){} $s('sp').scrollTop=0;
