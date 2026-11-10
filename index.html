@@ -55,7 +55,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #home .bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity 1.2s ease;will-change:opacity}
 #home .bg.on{opacity:1}
 #home .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.45) 0%,rgba(0,0,0,.05) 30%,rgba(0,0,0,.05) 45%,rgba(0,0,0,.6) 100%)}
-#home .credit{position:absolute;right:1.4vw;bottom:.9vw;font-size:.8vw;opacity:.75;text-align:right;text-shadow:0 0 .4vw #000;max-width:40vw}
+#home .credit{position:absolute;right:1.6vw;top:.55vw;font-size:.9vw;opacity:.8;text-align:right;text-shadow:0 0 .4vw #000;z-index:2}
 #home .top{display:flex;justify-content:space-between;align-items:flex-start;position:relative}
 #home .greet{font-size:3.6vw;font-weight:300;letter-spacing:-.01em;line-height:1.1;text-shadow:0 .2vw 1.4vw rgba(0,0,0,.5)}
 #home .greet b{font-weight:700}
@@ -159,7 +159,8 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 <body>
 <div id="home">
   <div class="bg" id="bgA"></div><div class="bg" id="bgB"></div><div class="shade"></div>
-  <div id="tk"><span class="lab">SCORES</span><div class="win"><div class="run" id="tkRun"></div></div><span class="cr" id="bgCredit"></span></div>
+  <div id="tk"><span class="lab">SCORES</span><div class="win"><div class="run" id="tkRun"></div></div></div>
+  <div class="credit" id="bgCredit"></div>
   <div class="top">
     <div><div class="greet" id="greet"></div><div class="date" id="hdate"></div><div class="hdate" id="hheb"></div><div class="today" id="htoday"></div></div>
     <div><div class="clock" id="hclock"></div><div id="mt"><div class="hd"><span>🏆 My teams</span><span class="dots"><i class="on"></i><i></i></span></div><div id="mtRows"></div></div></div>
@@ -187,7 +188,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
 <script>
 (function(){
   var NAMES='', CFG={};
-  var BG={"morning": [{"f": "bg/morning-1.jpg", "c": "Early light on New Brighton Beach, New Zealand", "a": "Michal Klajban", "l": "CC BY-SA 4.0"}, {"f": "bg/morning-2.jpg", "c": "Sunrise over a sea of clouds, Vang Vieng, Laos", "a": "Basile Morin", "l": "CC BY-SA 4.0"}, {"f": "bg/morning-3.jpg", "c": "Sunrise at The Pinnacle, Grampians National Park, Australia", "a": "Joshua Tagicakibau", "l": "CC BY-SA 4.0"}, {"f": "bg/morning-4.jpg", "c": "Sunrise over the Bieszczady Mountains, Poland", "a": "Pudelek", "l": "CC BY-SA 4.0"}, {"f": "bg/morning-5.jpg", "c": "Geese flying at sunrise, Westphalia, Germany", "a": "Dietmar Rabich", "l": "CC BY-SA 4.0"}], "day": [{"f": "bg/day-1.jpg", "c": "Turquoise lagoon, Havelock Island, Andaman Islands", "a": "Vyacheslav Argenberg", "l": "CC BY 4.0"}, {"f": "bg/day-2.jpg", "c": "Palm beach of Preveli, Crete, Greece", "a": "Uoaei1", "l": "CC BY-SA 4.0"}, {"f": "bg/day-3.jpg", "c": "Ocean Beach & Seal Rocks, San Francisco", "a": "Radomianin", "l": "CC BY-SA 4.0"}], "sunset": [{"f": "bg/sunset-1.jpg", "c": "Sunset over the Atlantic at Porto Covo, Portugal", "a": "Alvesgaspar", "l": "CC BY-SA 3.0"}, {"f": "bg/sunset-2.jpg", "c": "Sunset on the cliffs of Olkhon Island, Lake Baikal", "a": "Vyacheslav Argenberg", "l": "CC BY 4.0"}, {"f": "bg/sunset-3.jpg", "c": "Sunset over the harbor, Le Grau-du-Roi, France", "a": "Benjamin Smith", "l": "CC BY-SA 4.0"}], "night": [{"f": "bg/night-1.jpg", "c": "Milky Way over Bontecou Lake, Dutchess County, New York", "a": "Juliancolton", "l": "CC BY-SA 4.0"}, {"f": "bg/night-2.jpg", "c": "Milky Way over the western coast of Estonia", "a": "Kristian Pikner", "l": "CC BY-SA 4.0"}, {"f": "bg/night-3.jpg", "c": "Aurora & stars over New Harbour Beach, Tasmania", "a": "Jamen Percy", "l": "CC BY-SA 4.0"}, {"f": "bg/night-4.jpg", "c": "Milky Way arch over Llyn Ogwen, Wales", "a": "John Badham", "l": "CC BY-SA 4.0"}]};
+  var BG={"morning": [{"f": "bg/morning-1.jpg", "c": "New Brighton Beach, New Zealand", "a": "Michal Klajban", "l": "CC BY-SA 4.0"}, {"f": "bg/morning-2.jpg", "c": "Vang Vieng, Laos", "a": "Basile Morin", "l": "CC BY-SA 4.0"}, {"f": "bg/morning-3.jpg", "c": "The Pinnacle · Grampians, Australia", "a": "Joshua Tagicakibau", "l": "CC BY-SA 4.0"}, {"f": "bg/morning-4.jpg", "c": "Bieszczady Mountains, Poland", "a": "Pudelek", "l": "CC BY-SA 4.0"}, {"f": "bg/morning-5.jpg", "c": "Westphalia, Germany", "a": "Dietmar Rabich", "l": "CC BY-SA 4.0"}], "day": [{"f": "bg/day-1.jpg", "c": "Havelock Island, India", "a": "Vyacheslav Argenberg", "l": "CC BY 4.0"}, {"f": "bg/day-2.jpg", "c": "Preveli Beach · Crete, Greece", "a": "Uoaei1", "l": "CC BY-SA 4.0"}, {"f": "bg/day-3.jpg", "c": "Ocean Beach · San Francisco, USA", "a": "Radomianin", "l": "CC BY-SA 4.0"}], "sunset": [{"f": "bg/sunset-1.jpg", "c": "Porto Covo, Portugal", "a": "Alvesgaspar", "l": "CC BY-SA 3.0"}, {"f": "bg/sunset-2.jpg", "c": "Olkhon Island · Lake Baikal, Russia", "a": "Vyacheslav Argenberg", "l": "CC BY 4.0"}, {"f": "bg/sunset-3.jpg", "c": "Le Grau-du-Roi, France", "a": "Benjamin Smith", "l": "CC BY-SA 4.0"}], "night": [{"f": "bg/night-1.jpg", "c": "Bontecou Lake · New York, USA", "a": "Juliancolton", "l": "CC BY-SA 4.0"}, {"f": "bg/night-2.jpg", "c": "West coast, Estonia", "a": "Kristian Pikner", "l": "CC BY-SA 4.0"}, {"f": "bg/night-3.jpg", "c": "New Harbour Beach · Tasmania, Australia", "a": "Jamen Percy", "l": "CC BY-SA 4.0"}, {"f": "bg/night-4.jpg", "c": "Llyn Ogwen · Wales, UK", "a": "John Badham", "l": "CC BY-SA 4.0"}]};
   var DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   var ICON={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',56:'🌧️',57:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',66:'🌧️',67:'🌧️',71:'🌨️',73:'🌨️',75:'❄️',77:'🌨️',80:'🌦️',81:'🌧️',82:'⛈️',85:'🌨️',86:'❄️',95:'⛈️',96:'⛈️',99:'⛈️'};
@@ -217,7 +218,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
     var pick=list[doy%list.length]; if(pick.f===curBg) return; curBg=pick.f;
     var a=document.getElementById(flip?'bgA':'bgB'), b=document.getElementById(flip?'bgB':'bgA'); flip=!flip;
     var img=new Image(); img.onload=function(){a.style.backgroundImage='url('+pick.f+')'; a.classList.add('on'); b.classList.remove('on');}; img.src=pick.f;
-    document.getElementById('bgCredit').innerHTML='📍 '+pick.c+' <span style="opacity:.75">· Photo: '+pick.a+', '+pick.l+'</span>';
+    document.getElementById('bgCredit').textContent='📍 '+pick.c;
   }
 
   // ---------- greeting ----------
@@ -1153,7 +1154,7 @@ else start();
       rs.forEach(function(x){ if(x.l[2].indexOf('tennis/')!==0) return; (x.j.events||[]).forEach(function(e){ (e.groupings||[]).forEach(function(gr){ if(!/Singles/i.test((gr.grouping||{}).displayName||'')) return;
         (gr.competitions||[]).forEach(function(c){ var d=new Date(c.date); if(!dset[ymd(d)]||seen['t'+c.id]) return; seen['t'+c.id]=1; var st=(c.status||{}).type||{};
           if(/Qualifying/i.test((c.round||{}).displayName||'')) return;
-          var tms=(c.competitors||[]).map(function(p){ var a=p.athlete||{}; return {team:{shortDisplayName:(p.curatedRank&&p.curatedRank.current&&p.curatedRank.current<100?'('+p.curatedRank.current+') ':'')+(a.shortName||a.displayName||'TBD'),logo:(a.flag||{}).href}, score:(p.linescores||[]).map(function(l){return l.value;}).join(' '), winner:p.winner}; });
+          var tms=(c.competitors||[]).map(function(p){ var a=p.athlete||{}; return {team:{shortDisplayName:(p.curatedRank&&p.curatedRank.current&&p.curatedRank.current<100?'('+p.curatedRank.current+') ':'')+(a.shortName||a.displayName||'TBD'),logo:(a.flag||{}).href}, score:(p.linescores||[]).map(function(l){return l.value+(l.tiebreak!=null?'<sup style="font-size:.6em">'+l.tiebreak+'</sup>':'');}).join(' '), raw:1, winner:p.winner, serve:(st.state==='in'&&p.possession)}; });
           if(tms.length<2) return;
           games.push({id:'t'+c.id,lg:x.l,date:d,name:e.name,tms:tms,state:st.state,detail:(st.shortDetail||st.detail||''),nets:[],apps:['yttv'],note:(e.shortName||e.name)+' · '+((c.round||{}).displayName||''),tennis:1,q:(e.shortName||e.name)}); }); }); }); });
       rs.forEach(function(x){ if(x.l[2].indexOf('tennis/')===0) return; (x.j.events||[]).forEach(function(e){ if(seen[e.id]) return; seen[e.id]=1;
@@ -1182,8 +1183,8 @@ else start();
     else if(g.state==='post') st='<div class="st">Final'+(noSpoil?' · score hidden':(g.detail&&g.detail!=='Final'?' · '+esc(g.detail):''))+'</div>';
     else { var d=g.date, t=(d.getHours()%12||12)+':'+('0'+d.getMinutes()).slice(-2)+(d.getHours()<12?' am':' pm');
       var sameDay=d.toDateString()===new Date().toDateString(); st='<div class="st">'+(sameDay?'':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]+' '+(d.getMonth()+1)+'/'+d.getDate()+' · ')+t+'</div>'; }
-    var tm=g.tms.map(function(c){var t=c.team||{}, sc=(!noSpoil&&g.state!=='pre'&&c.score!=null)?'<span class="sc">'+esc(c.score)+'</span>':'';
-      return '<div class="tm">'+(t.logo?'<img src="'+esc(t.logo)+'">':'')+'<span>'+esc(t.shortDisplayName||t.displayName||t.name)+'</span>'+sc+'</div>';}).join('');
+    var tm=g.tms.map(function(c){var t=c.team||{}, sc=(!noSpoil&&g.state!=='pre'&&c.score!=null)?'<span class="sc">'+(c.raw?c.score:esc(c.score))+'</span>':'';
+      return '<div class="tm">'+(t.logo?'<img src="'+esc(t.logo)+'">':'')+'<span>'+esc(t.shortDisplayName||t.displayName||t.name)+(c.serve?' <span style="color:#d7ff3e;font-size:.8em" title="serving">●</span>':'')+'</span>'+sc+'</div>';}).join('');
     var nets=g.nets.map(function(n){return '<span class="net'+(appsFor(n).length?' ok':'')+'">'+esc(n)+'</span>';}).join('');
     if(g.tennis) nets='<span class="net ok">▶ Find on YouTube TV</span><span class="net">Tennis Channel / ESPN</span>'; else if(g.apps.length) nets='<span class="net ok">▶ '+g.apps.map(function(a){return APPS[a][0];}).join(' / ')+'</span>'+nets;
     else nets='<span class="net">Not on your apps</span>'+nets;
