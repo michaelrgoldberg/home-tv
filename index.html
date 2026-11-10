@@ -91,6 +91,10 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #tk .it .lv{color:#ff5a5a;font-weight:700;font-size:1vw}
 #tk .lgt{color:#ffcc00;font-weight:700;font-size:1vw;letter-spacing:.1em;margin-right:.9vw}
 #tk .cr{flex:none;padding:0 1vw;font-size:.78vw;opacity:.7;max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#tk:focus{outline:none;box-shadow:inset 0 0 0 .22vw #ffcc00}
+#tk.hold .run{animation-play-state:paused}
+#tk.hold .lab{color:#fff;background:#ffcc00;border-radius:0 .5vw .5vw 0}
+#tk .lab{transition:background .2s}
 #mt .w{color:#7dff9a;font-weight:700}#mt .l{color:#ff8a8a;font-weight:700}
 #mt .s{font-weight:700}
 #mt .d{opacity:.6;font-size:.88vw}
@@ -159,7 +163,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 <body>
 <div id="home">
   <div class="bg" id="bgA"></div><div class="bg" id="bgB"></div><div class="shade"></div>
-  <div id="tk"><span class="lab">SCORES</span><div class="win"><div class="run" id="tkRun"></div></div></div>
+  <div id="tk" tabindex="0"><span class="lab">SCORES</span><div class="win"><div class="run" id="tkRun"></div></div></div>
   <div class="credit" id="bgCredit"></div>
   <div class="top">
     <div><div class="greet" id="greet"></div><div class="date" id="hdate"></div><div class="hdate" id="hheb"></div><div class="today" id="htoday"></div></div>
@@ -580,6 +584,24 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
   // when the TV wakes and this page comes back into view, show the welcome screen again
   document.addEventListener('visibilitychange',function(){ if(!document.hidden){ home.classList.remove('hide'); tick(); weather(); } });
   tick(); chips(); setInterval(tick,15000); setInterval(chips,3600000);
+  (function tickerNav(){
+    var tk=document.getElementById('tk'), run=document.getElementById('tkRun'); if(!tk||!run) return;
+    var off=0;
+    function half(){ return run.scrollWidth/2 || run.clientWidth; }
+    tk.addEventListener('focus',function(){
+      var st=getComputedStyle(run).transform, cur=0;
+      if(st&&st!=='none'){ var m=st.match(/matrix[^(]*\(([^)]+)\)/); if(m){ var p=m[1].split(','); cur=parseFloat(p[4])||0; } }
+      off=cur; run.style.animation='none'; run.style.transform='translateX('+off+'px)'; tk.classList.add('hold');
+    });
+    tk.addEventListener('blur',function(){ tk.classList.remove('hold'); run.style.animation=''; run.style.transform=''; });
+    tk.addEventListener('keydown',function(e){
+      var k=e.keyCode||e.which, step=tk.clientWidth*0.55;
+      if(k===39){ off-=step; var h=half(); if(off<-h) off=-h; }
+      else if(k===37){ if(off>=0) return; off+=step; if(off>0) off=0; }
+      else return;
+      run.style.transform='translateX('+off+'px)'; e.preventDefault();
+    });
+  })();
   W2W_CFG.then(function(c){ CFG=c||{}; NAMES=esc2(CFG.names||''); BDAYS=CFG.bdays||[]; PICK=CFG.pick||{}; NOPICK=CFG.nopick||[];
     tick(); chips(); weather(); shabbat(); mtLoad(); tkLoad(); });
   setInterval(weather,15*60*1000); setInterval(shabbat,6*60*60*1000);
@@ -716,8 +738,13 @@ var SORTS = [
   {k:'imdb_desc', label:'IMDb: highest first'},
   {k:'imdb_asc',  label:'IMDb: lowest first'},
   {k:'new',       label:'Newest first'},
-  {k:'votes',     label:'Most rated on IMDb'}
+  {k:'votes',     label:'Most rated on IMDb'},
+  {k:'old',       label:'Oldest first'},
+  {k:'rated_asc', label:'Age rating: family first'},
+  {k:'rated_desc',label:'Age rating: mature first'}
 ];
+var AGE_RANK={'G':1,'TV-Y':1,'TV-Y7':1.3,'TV-G':1.5,'APPROVED':1.5,'PG':2,'TV-PG':2.3,'PG-13':3,'TV-14':3.5,'R':4,'TV-MA':4.5,'NC-17':5};
+function ageRank(rt){ var k=String(rt||'').trim().toUpperCase(); return AGE_RANK[k]!=null?AGE_RANK[k]:90; }
 
 // ---------- genre categories & subgenres ----------
 // g: TMDB movie genre ids, tg: TV genre ids, kw: keyword names (looked up on TMDB), kind: limit to movie/tv
@@ -949,12 +976,15 @@ function visible(){
     var r = im && im.r!=null ? im.r : null;
     if(r!=null){ if(r<state.rmin-1e-9 || r>state.rmax+1e-9) continue; }
     else { var est=t.tmdb||0; if(est<state.rmin-0.6 || est>state.rmax+0.6) continue; }
-    out.push({t:t,r:r,v:im?im.v:0});
+    out.push({t:t,r:r,v:im?im.v:0,rated:im?im.rated:null});
   }
   var s=state.sort;
   out.sort(function(a,b){
     if(s==='new') return (b.t.date||'').localeCompare(a.t.date||'');
+    if(s==='old') return (a.t.date||'zzzz').localeCompare(b.t.date||'zzzz');
     if(s==='votes') return (b.v||0)-(a.v||0);
+    if(s==='rated_asc') return (ageRank(a.rated)-ageRank(b.rated)) || ((b.r||0)-(a.r||0));
+    if(s==='rated_desc') return (ageRank(b.rated)-ageRank(a.rated)) || ((b.r||0)-(a.r||0));
     var ar=a.r!=null?a.r:(a.t.tmdb||0)-0.6, br=b.r!=null?b.r:(b.t.tmdb||0)-0.6;
     return s==='imdb_asc' ? ar-br : br-ar;
   });
@@ -972,7 +1002,7 @@ function render(keepFocus){
     var img = t.poster ? '<img loading="lazy" src="'+IMG+'w342'+t.poster+'" alt="">' : t.pimg ? '<img loading="lazy" src="'+t.pimg+'" alt="">' : '<div class="noimg">'+esc(t.title)+'</div>';
     html.push('<div class="card focusable" tabindex="0" data-i="'+i+'" data-k="'+t.k+'">'+img+badge+
       '<div class="kind">'+(t.kind==='tv'?'SHOW':'MOVIE')+'</div>'+
-      '<div class="meta"><div class="t">'+esc(t.title)+'</div><div class="s">'+(t.date||'').slice(0,4)+' · '+t.svc.filter(function(s){return !state.off[s];}).map(svcName).join(', ')+'</div></div></div>');
+      '<div class="meta"><div class="t">'+esc(t.title)+'</div><div class="s">'+((o.rated&&o.rated!=='N/A'&&o.rated!=='Not Rated'&&o.rated!=='Unrated')?esc(o.rated)+' · ':'')+(t.date||'').slice(0,4)+' · '+t.svc.filter(function(s){return !state.off[s];}).map(svcName).join(', ')+'</div></div></div>');
   });
   g.innerHTML=html.join('');
   $('msg').style.display = shown.length? 'none':'block';
