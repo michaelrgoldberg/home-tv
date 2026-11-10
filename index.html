@@ -732,7 +732,8 @@ var SERVICES = [
   {key:'prime',   name:'Prime Video', re:/^amazon prime video( with ads)?$/i, pkg:'com.amazon.firebat'},
   {key:'yttv',    name:'YouTube TV', re:/^youtube tv$/i, pkg:'com.amazon.firetv.youtube.tv'},
   {key:'youtube', name:'YouTube', re:/^youtube( free)?$/i, pkg:'org.smarttube.stable'},
-  {key:'tubi',    name:'Tubi', re:/^tubi( tv)?$/i, pkg:'com.tubitv.ott'}
+  {key:'tubi',    name:'Tubi', re:/^tubi( tv)?$/i, pkg:'com.tubitv.ott'},
+  {key:'peacock', name:'Peacock', re:/^peacock( premium( plus)?)?$/i, pkg:'com.peacocktv.peacockandroid'}
 ];
 var SORTS = [
   {k:'imdb_desc', label:'IMDb: highest first'},
@@ -1270,11 +1271,12 @@ else start();
     ['wnba','🏀 WNBA','basketball/wnba'],['mlb','⚾ MLB','baseball/mlb'],['nhl','🏒 NHL','hockey/nhl'],['epl','⚽ Premier League','soccer/eng.1'],['ucl','⚽ Champions League','soccer/uefa.champions'],
     ['uel','⚽ Europa League','soccer/uefa.europa'],['seriea','⚽ Serie A','soccer/ita.1'],['laliga','⚽ La Liga','soccer/esp.1'],['bund','⚽ Bundesliga','soccer/ger.1'],['mls','⚽ MLS','soccer/usa.1'],['wc','⚽ World Cup / Intl','soccer/fifa.world'],['atp','🎾 ATP Tennis','tennis/atp'],['wta','🎾 WTA Tennis','tennis/wta']];
   // Which of the family's apps carries each network
-  var APPS={yttv:['YouTube TV','com.amazon.firetv.youtube.tv'],prime:['Prime Video','com.amazon.firebat'],netflix:['Netflix','com.netflix.ninja'],
+  var APPS={yttv:['YouTube TV','com.amazon.firetv.youtube.tv'],prime:['Prime Video','com.amazon.firebat'],netflix:['Netflix','com.netflix.ninja'],peacock:['Peacock','com.peacocktv.peacockandroid'],
     mlb:['MLB','com.bamnetworks.mobile.android.gameday.atbat'],nba:['NBA','com.nbaimd.gametime.nba2011.amazon'],espn:['ESPN app','com.espn.gtv'],fox:['FOX Sports','com.fox.fts.android']};
   function appsFor(n){ var s=n.toLowerCase().trim(), r=[];
     if(/netflix/.test(s)) r.push('netflix');
     if(/prime video|amazon/.test(s)) r.push('prime');
+    if(/peacock/.test(s)) r.push('peacock');
     if(/^cbs$/.test(s)) r.push('yttv');
     else if(/^(abc|nbc|fox|espn|espn2|espnu|espnews|secn|sec network|acc network|accn|btn|big ten network|cbssn|cbs sports network|fs1|fs2|tnt|tbs|trutv|usa net(work)?|usa|nfl net(work)?|nfl network|nba tv|mlb net(work)?|mlb network|nhl net(work)?|nhl network|golf|golf channel|nbcsn|telemundo|univision|unimas|tudn|fox deportes|espn deportes|cw|the cw|ion|universo|cnbc)$/.test(s)) r.push('yttv');
     if(/mlb\.tv|mlb tv/.test(s)) r.push('mlb');
