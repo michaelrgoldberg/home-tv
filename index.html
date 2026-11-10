@@ -188,12 +188,30 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
 <script>
 (function(){
   var NAMES='', CFG={};
+  var PROJECTOR=/[?&]p=projector/.test(location.search);
+  // Projector night pool: dark, low-light nature so it never washes out a dark room/yard.
+  var STARBG=[
+    {f:"bg/star-1.jpg",c:"The Milky Way · Atacama Desert, Chile",a:"ESO",l:"CC BY 4.0"},
+    {f:"bg/star-2.jpg",c:"Milky Way over La Silla, Chile",a:"ESO",l:"CC BY 4.0"},
+    {f:"bg/star-4.jpg",c:"Star trails over Paranal, Chile",a:"ESO",l:"CC BY 4.0"},
+    {f:"bg/star-5.jpg",c:"Milky Way over the VLT · Paranal, Chile",a:"ESO/B. Tafreshi",l:"CC BY 4.0"},
+    {f:"bg/fire-1.jpg",c:"Campfire under the stars",a:"Wikimedia Commons",l:"CC BY-SA"},
+    {f:"bg/night-2.jpg",c:"Moonlit coast · Estonia",a:"Kristian Pikner",l:"CC BY-SA 4.0"},
+    {f:"bg/night-3.jpg",c:"Night beach · Tasmania, Australia",a:"Jamen Percy",l:"CC BY-SA 4.0"},
+    {f:"bg/star-3.jpg",c:"Milky Way over La Silla Observatory, Chile",a:"ESO",l:"CC BY 4.0"}
+  ];
   var BG={"morning": [{"f": "bg/morning-1.jpg", "c": "New Brighton Beach, New Zealand", "a": "Michal Klajban", "l": "CC BY-SA 4.0"}, {"f": "bg/morning-2.jpg", "c": "Vang Vieng, Laos", "a": "Basile Morin", "l": "CC BY-SA 4.0"}, {"f": "bg/morning-3.jpg", "c": "The Pinnacle · Grampians, Australia", "a": "Joshua Tagicakibau", "l": "CC BY-SA 4.0"}, {"f": "bg/morning-4.jpg", "c": "Bieszczady Mountains, Poland", "a": "Pudelek", "l": "CC BY-SA 4.0"}, {"f": "bg/morning-5.jpg", "c": "Westphalia, Germany", "a": "Dietmar Rabich", "l": "CC BY-SA 4.0"}], "day": [{"f": "bg/day-1.jpg", "c": "Havelock Island, India", "a": "Vyacheslav Argenberg", "l": "CC BY 4.0"}, {"f": "bg/day-2.jpg", "c": "Preveli Beach · Crete, Greece", "a": "Uoaei1", "l": "CC BY-SA 4.0"}, {"f": "bg/day-3.jpg", "c": "Ocean Beach · San Francisco, USA", "a": "Radomianin", "l": "CC BY-SA 4.0"}], "sunset": [{"f": "bg/sunset-1.jpg", "c": "Porto Covo, Portugal", "a": "Alvesgaspar", "l": "CC BY-SA 3.0"}, {"f": "bg/sunset-2.jpg", "c": "Olkhon Island · Lake Baikal, Russia", "a": "Vyacheslav Argenberg", "l": "CC BY 4.0"}, {"f": "bg/sunset-3.jpg", "c": "Le Grau-du-Roi, France", "a": "Benjamin Smith", "l": "CC BY-SA 4.0"}], "night": [{"f": "bg/night-1.jpg", "c": "Bontecou Lake · New York, USA", "a": "Juliancolton", "l": "CC BY-SA 4.0"}, {"f": "bg/night-2.jpg", "c": "West coast, Estonia", "a": "Kristian Pikner", "l": "CC BY-SA 4.0"}, {"f": "bg/night-3.jpg", "c": "New Harbour Beach · Tasmania, Australia", "a": "Jamen Percy", "l": "CC BY-SA 4.0"}, {"f": "bg/night-4.jpg", "c": "Llyn Ogwen · Wales, UK", "a": "John Badham", "l": "CC BY-SA 4.0"}]};
   var DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   var ICON={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',56:'🌧️',57:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',66:'🌧️',67:'🌧️',71:'🌨️',73:'🌨️',75:'❄️',77:'🌨️',80:'🌦️',81:'🌧️',82:'⛈️',85:'🌨️',86:'❄️',95:'⛈️',96:'⛈️',99:'⛈️'};
   var WORD={0:'Clear',1:'Mostly clear',2:'Partly cloudy',3:'Cloudy',45:'Fog',48:'Fog',51:'Drizzle',53:'Drizzle',55:'Drizzle',56:'Freezing drizzle',57:'Freezing drizzle',61:'Light rain',63:'Rain',65:'Heavy rain',66:'Freezing rain',67:'Freezing rain',71:'Light snow',73:'Snow',75:'Heavy snow',77:'Snow',80:'Showers',81:'Showers',82:'Heavy showers',85:'Snow showers',86:'Snow showers',95:'Thunderstorms',96:'Thunderstorms',99:'Thunderstorms'};
   var home=document.getElementById('home');
+  if(PROJECTOR){
+    document.title='Goldberg Family Projector';
+    var _ch=document.getElementById('cHouse'); if(_ch) _ch.style.display='none';
+    var _co=document.getElementById('cOffice'); if(_co) _co.style.display='none';
+    var _cards=document.querySelector('#home .cards'); if(_cards) _cards.style.gridTemplateColumns='1.5fr 1.1fr';
+  }
   var hebDate='', todayEv=[], usHol=[], jHol=[], candles=null, sunTimes=null, privateData=null;
   function pad(n){return ('0'+n).slice(-2);}
   function iso(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
@@ -213,7 +231,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
     return h>=5&&h<9?'morning':h<16?'day':h<18?'sunset':'night';
   }
   function setBg(){
-    var p=period(), list=BG[p]||[]; if(!list.length) return;
+    var p=period(), list=(PROJECTOR&&p==='night')?STARBG:(BG[p]||[]); if(!list.length) return;
     var doy=Math.floor((new Date()-new Date(new Date().getFullYear(),0,0))/864e5);
     var pick=list[doy%list.length]; if(pick.f===curBg) return; curBg=pick.f;
     var a=document.getElementById(flip?'bgA':'bgB'), b=document.getElementById(flip?'bgB':'bgA'); flip=!flip;
@@ -253,7 +271,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
   var BDAYS=[];
   function chips(){
     var now=new Date(), out=[];
-    todayEv.forEach(function(e){out.push('<div class="chip">✡️ '+e+'</div>');});
+    if(!PROJECTOR) todayEv.forEach(function(e){out.push('<div class="chip">✡️ '+e+'</div>');});
     // next Jewish holiday (within 60 days, skip today's)
     var nj=jHol.filter(function(h){var n=daysTo(new Date(h.date.slice(0,10)+'T12:00'));return n>0&&n<=60&&!/^Erev |Rosh Chodesh|Shabbat /.test(h.title)&&h.subcat!=='fast'&&h.subcat!=='modern'||(n>0&&n<=60&&/Chanukah: 1 Candle/.test(h.title));})[0];
     if(nj){var d=new Date(nj.date.slice(0,10)+'T12:00'),n=daysTo(d); out.push('<div class="chip">🕎 '+nj.title.replace(': 1 Candle',' begins')+' · '+when(n,d)+(n>1?' ('+n+' days)':'')+'</div>');}
@@ -262,7 +280,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
     var best=null;
     BDAYS.forEach(function(b){var d=new Date(now.getFullYear(),b[1]-1,b[2]); if(sod(d)<sod(now)) d.setFullYear(now.getFullYear()+1); var n=daysTo(d); if(!best||n<best.n) best={name:b[0],d:d,n:n};});
     if(best) out.push('<div class="chip">🎂 '+(best.n===0?'Happy birthday, '+best.name+'!':best.name+'’s birthday · '+MONTHS[best.d.getMonth()].slice(0,3)+' '+best.d.getDate()+' ('+best.n+' days)')+'</div>');
-    if(privateData&&privateData.events){
+    if(!PROJECTOR && privateData&&privateData.events){
       var trips=privateData.events.filter(function(e){var n=daysTo(evDate(e)); return n>=0&&n<=45&&(e.icon==='✈️'||e.icon==='🧳');}).slice(0,2);
       var fun=privateData.events.filter(function(e){var n=daysTo(evDate(e)); return n>=1&&n<=14&&(e.icon==='🎉'||e.icon==='🎂');}).slice(0,1);
       trips.concat(fun).forEach(function(e){var d=evDate(e),n=daysTo(d); out.push('<div class="chip">'+e.icon+' '+esc2(e.title)+' · '+when(n,d)+(n>1?' ('+n+' days)':'')+'</div>');});
@@ -297,6 +315,18 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
     .then(function(r){return r.json();}).then(function(j){
       var c=j.current, D=j.daily, H=j.hourly, M=j.minutely_15||{}, now=new Date();
       sunTimes={rise:new Date(D.sunrise[0]),set:new Date(D.sunset[0])}; setBg();
+      if(PROJECTOR){ // outside viewing: just the next 5 hours, big and glanceable
+        var ni=H.time.indexOf(iso(now)+'T'+pad(now.getHours())+':00'); if(ni<0) ni=0;
+        var hrs=[];
+        for(var q=1;q<=5;q++){ var idx=ni+q; if(idx>=H.time.length) break;
+          var hd=new Date(H.time[idx]), hr=hd.getHours(), pp=H.precipitation_probability[idx];
+          hrs.push('<div><span>'+((hr%12||12)+(hr<12?'am':'pm'))+'</span>'+Math.round(H.temperature_2m[idx])+'° '+(ICON[H.weather_code[idx]]||'')+(pp>=20?' <small style="color:#9fd4ff">'+pp+'%</small>':'')+'</div>');
+        }
+        document.getElementById('cWx').innerHTML='<h3>Weather'+(CFG.town?' · '+CFG.town:'')+' &middot; Next 5 hours</h3>'+
+          '<div style="display:flex;align-items:center;gap:1vw">'+anim(c.weather_code,c.is_day)+'<div class="big">'+Math.round(c.temperature_2m)+'°</div><div style="font-size:1.35vw">'+(WORD[c.weather_code]||'')+'<br><span style="opacity:.75;font-size:.95vw">Feels '+Math.round(c.apparent_temperature)+'°'+(c.is_day?' · Sunset '+fmtT(sunTimes.set):'')+'</span></div></div>'+
+          '<div class="row" style="margin-top:1.1vw;font-size:1.35vw">'+hrs.join('')+'</div>';
+        return;
+      }
       // next-2-hours precipitation (like MinuteCast)
       var mp=(M.precipitation||[]).slice(0,8), mt=(M.time||[]).slice(0,8), mc='', msg='';
       if(mp.length){
