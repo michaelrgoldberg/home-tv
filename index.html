@@ -943,6 +943,13 @@ function closeOverlays(){
   return was;
 }
 window.addEventListener('popstate',function(){closeOverlays();});
+window.W2W_BACK=function(){
+  if(window.W2W_SP&&W2W_SP.isOpen()){ W2W_SP.close(); var s=document.getElementById('goSp'); if(s) s.focus(); return true; }
+  if(window.W2W_AMB&&W2W_AMB.isOpen()){ W2W_AMB.close(); var m=document.getElementById('goAmb'); if(m&&W2W_HOME_OPEN()) m.focus(); return true; }
+  if(window.W2W_HOME_OPEN&&W2W_HOME_OPEN()) return false;
+  if(closeOverlays()) return true;
+  W2W_GOHOME(); return true;
+};
 var lastCard=null;
 function launch(svc){
   var s=SERVICES.filter(function(x){return x.key===svc;})[0]; if(!s) return;
