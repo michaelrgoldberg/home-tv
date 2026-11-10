@@ -57,14 +57,35 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #home .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.45) 0%,rgba(0,0,0,.05) 30%,rgba(0,0,0,.05) 45%,rgba(0,0,0,.6) 100%)}
 #home .credit{position:absolute;right:1.4vw;bottom:.9vw;font-size:.8vw;opacity:.75;text-align:right;text-shadow:0 0 .4vw #000;max-width:40vw}
 #home .top{display:flex;justify-content:space-between;align-items:flex-start;position:relative}
-#home .greet{font-size:4vw;font-weight:300;letter-spacing:-.01em;line-height:1.1;text-shadow:0 .2vw 1.4vw rgba(0,0,0,.5)}
+#home .greet{font-size:3.6vw;font-weight:300;letter-spacing:-.01em;line-height:1.1;text-shadow:0 .2vw 1.4vw rgba(0,0,0,.5)}
 #home .greet b{font-weight:700}
 #home .date{font-size:2.3vw;font-weight:500;margin-top:.8vw;text-shadow:0 .1vw .8vw rgba(0,0,0,.6)}
 #home .hdate{font-size:1.3vw;opacity:.85;margin-top:.2vw;text-shadow:0 .1vw .8vw rgba(0,0,0,.6)}
-#home .clock{font-size:7vw;font-weight:200;line-height:.9;text-align:right;text-shadow:0 .2vw 1.4vw rgba(0,0,0,.5)}
+#home .clock{font-size:6vw;font-weight:200;line-height:.9;text-align:right;text-shadow:0 .2vw 1.4vw rgba(0,0,0,.5)}
 #home .clock small{font-size:2vw;font-weight:400;margin-left:.4vw}
-#home .today{margin-top:1.4vw;display:flex;flex-wrap:wrap;gap:.8vw;position:relative;max-width:66vw}
-#home .chip{background:rgba(8,12,30,.5);backdrop-filter:blur(.5vw);-webkit-backdrop-filter:blur(.5vw);border:.1vw solid rgba(255,255,255,.22);border-radius:3vw;padding:.5vw 1.2vw;font-size:1.2vw}
+#home .today{margin-top:1.1vw;display:flex;flex-wrap:wrap;gap:.5vw;position:relative;max-width:58vw}
+#home .chip{background:rgba(8,12,30,.5);backdrop-filter:blur(.5vw);-webkit-backdrop-filter:blur(.5vw);border:.1vw solid rgba(255,255,255,.22);border-radius:3vw;padding:.32vw .9vw;font-size:.98vw}
+#mt{margin-top:.7vw;width:29vw;background:rgba(8,12,30,.55);backdrop-filter:blur(.7vw);-webkit-backdrop-filter:blur(.7vw);border:.1vw solid rgba(255,255,255,.16);border-radius:1.2vw;padding:.55vw 1vw .35vw;display:none}
+#mt .hd{display:flex;justify-content:space-between;align-items:center;font-size:.85vw;letter-spacing:.14em;text-transform:uppercase;opacity:.75;margin-bottom:.15vw}
+#mt .dots i{display:inline-block;width:.45vw;height:.45vw;border-radius:50%;background:#fff;opacity:.3;margin-left:.3vw}
+#mt .dots i.on{opacity:1}
+#mt .tr{display:flex;align-items:center;gap:.8vw;padding:.28vw 0;border-top:.08vw solid rgba(255,255,255,.1)}
+#mt .tr:first-of-type{border-top:0}
+#mt .lg{width:2.7vw;height:2.7vw;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;background:radial-gradient(circle,rgba(255,255,255,.95) 0 58%,rgba(255,255,255,0) 60%)}
+#mt .lg img{width:2.1vw;height:2.1vw;object-fit:contain}
+#mt .nm{font-size:.8vw;opacity:.65;letter-spacing:.04em}
+#mt .nm b{opacity:1;color:#fff;font-weight:600;font-size:.95vw;letter-spacing:0;margin-right:.3vw}
+#mt .body{flex:1;min-width:0}
+#mt .slot{position:relative;height:1.7vw}
+#mt .v{position:absolute;inset:0;display:flex;align-items:center;gap:.45vw;font-size:1.12vw;white-space:nowrap;transition:opacity .6s ease, transform .6s ease}
+#mt .v.off{opacity:0;transform:translateY(.5vw)}
+#mt .v img{width:1.45vw;height:1.45vw;object-fit:contain}
+#mt .w{color:#7dff9a;font-weight:700}#mt .l{color:#ff8a8a;font-weight:700}
+#mt .s{font-weight:700}
+#mt .d{opacity:.6;font-size:.88vw}
+#mt .live{color:#ff5050;font-weight:800;font-size:.85vw;letter-spacing:.06em}
+#mt .live:before{content:"";display:inline-block;width:.5vw;height:.5vw;border-radius:50%;background:#ff3b3b;margin-right:.35vw;animation:mtp 1.2s infinite}
+@keyframes mtp{50%{opacity:.25}}
 #home .cards{display:grid;grid-template-columns:1.45fr 1fr 1.15fr .95fr;gap:1.4vw;margin-top:auto;position:relative}
 #home .card2{background:rgba(8,12,30,.55);backdrop-filter:blur(.7vw);-webkit-backdrop-filter:blur(.7vw);border:.1vw solid rgba(255,255,255,.16);border-radius:1.2vw;padding:1.3vw 1.5vw;min-height:15vw}
 #home .card2 h3{margin:0 0 .7vw;font-size:1vw;font-weight:600;letter-spacing:.14em;text-transform:uppercase;opacity:.75}
@@ -129,7 +150,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
   <div class="credit" id="bgCredit"></div>
   <div class="top">
     <div><div class="greet" id="greet"></div><div class="date" id="hdate"></div><div class="hdate" id="hheb"></div><div class="today" id="htoday"></div></div>
-    <div class="clock" id="hclock"></div>
+    <div><div class="clock" id="hclock"></div><div id="mt"><div class="hd"><span>🏆 My teams</span><span class="dots"><i class="on"></i><i></i></span></div><div id="mtRows"></div></div></div>
   </div>
   <div class="cards">
     <div class="card2" id="cWx"><h3>Weather</h3><div class="line dim">Loading forecast…</div></div>
@@ -361,6 +382,53 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
     W2W_DECRYPT('private.json').then(function(d){ privateData=d; chips(); house(); }).catch(function(){});
   }
 
+  // ---------- My teams (favorites from the encrypted config) ----------
+  var MT=[], mtView=0;
+  function mtFetch(u){return fetch('https://site.api.espn.com/apis/site/v2/sports/'+u).then(function(r){return r.ok?r.json():{};}).catch(function(){return {};});}
+  function mtShort(d){var n=new Date(); var dd=sod(d), dn=sod(n), diff=Math.round((dd-dn)/864e5);
+    var t=(d.getHours()%12||12)+(d.getMinutes()?':'+pad(d.getMinutes()):'')+(d.getHours()<12?'a':'p');
+    if(diff===0) return (d.getHours()>=17?'Tonight ':'Today ')+t; if(diff===1) return 'Tmrw '+t; if(diff===-1) return 'Yesterday';
+    if(diff>1&&diff<7) return DAYS[d.getDay()].slice(0,3)+' '+t; return DAYS[d.getDay()].slice(0,3)+' '+(d.getMonth()+1)+'/'+d.getDate();}
+  function mtGame(e,abbr){ if(!e) return null; var c=(e.competitions||[])[0]||{}; var me=null, op=null;
+    (c.competitors||[]).forEach(function(x){ if((x.team||{}).abbreviation===abbr||(x.team||{}).id===abbr) me=x; else op=x; });
+    if(!me){ me=(c.competitors||[])[0]; op=(c.competitors||[])[1]; }
+    var sc=function(x){var s=x&&x.score; return s==null?null:(typeof s==='object'?s.displayValue:s);};
+    var st=(c.status||e.status||{}).type||{}; var nets=[]; (c.broadcasts||[]).forEach(function(b){ var n=(b.media&&b.media.shortName)||(b.names&&b.names[0]); if(n) nets.push(n);});
+    return {date:new Date(e.date), state:st.state, detail:st.shortDetail||st.detail||'', home:me&&me.homeAway==='home', my:sc(me), op:sc(op), opTeam:(op||{}).team||{}, win:me&&me.winner, nets:nets}; }
+  function mtLoad(){
+    var teams=(CFG.teams||[]); if(!teams.length) return;
+    Promise.all(teams.map(function(t){ var path=t[0], ab=t[1];
+      return Promise.all([mtFetch(path+'/teams/'+ab), mtFetch(path+'/teams/'+ab+'/schedule')]).then(function(r){
+        var tm=(r[0]||{}).team||{}, ev=(r[1]||{}).events||[];
+        var post=ev.filter(function(e){var s=(((e.competitions||[])[0]||{}).status||{}).type||{}; return s.state==='post';});
+        var p=post.length?Promise.resolve(post):Promise.all([mtFetch(path+'/teams/'+ab+'/schedule?seasontype=2'),mtFetch(path+'/teams/'+ab+'/schedule?seasontype=3')]).then(function(rr){return ((rr[0].events||[]).concat(rr[1].events||[])).filter(function(e){return ((((e.competitions||[])[0]||{}).status||{}).type||{}).state==='post';}).sort(function(a,b){return new Date(a.date)-new Date(b.date);});});
+        return p.then(function(posts){ var abbr=tm.abbreviation||ab.toUpperCase();
+          var up=ev.filter(function(e){var s=(((e.competitions||[])[0]||{}).status||{}).type||{}; return s.state!=='post';}).sort(function(a,b){return new Date(a.date)-new Date(b.date);}); var next=up[0]||(tm.nextEvent||[])[0]; var ng=mtGame(next,abbr); if(ng&&ng.state==='post') ng=null;
+          var lg=mtGame(posts[posts.length-1],abbr);
+          return {name:tm.shortDisplayName||tm.name||ab, logo:((tm.logos||[])[0]||{}).href||tm.logo, rec:((tm.record||{}).items||[{}])[0].summary||'', last:lg, next:ng}; });
+      }); })).then(function(rows){ MT=rows.filter(function(x){return x&&x.name;}); mtRender(); });
+  }
+  function mtLogo(t){var l=(t.logos||[])[0]; return (l&&l.href)||t.logo||'';}
+  function mtRender(){
+    var box=document.getElementById('mt'); if(!MT.length){box.style.display='none';return;} box.style.display='block';
+    var ns=false; try{ns=localStorage.getItem('w2w.sp.nospoil')==='1';}catch(e){}
+    var anyLive=false;
+    document.getElementById('mtRows').innerHTML=MT.map(function(t){
+      var L=t.last, N=t.next, v0='', v1='';
+      if(N&&N.state==='in'){ anyLive=true;
+        v0=v1='<span class="live">LIVE</span>'+(ns?'<span class="d">'+(N.home?'vs ':'@ ')+'</span><img src="'+mtLogo(N.opTeam)+'"><span>'+(N.opTeam.abbreviation||'')+'</span>':'<span class="s">'+N.my+'</span><span class="d">–</span><span class="s">'+N.op+'</span><img src="'+mtLogo(N.opTeam)+'"><span class="d">'+(N.opTeam.abbreviation||'')+' · '+N.detail+'</span>');
+      } else {
+        v0= L ? (ns?'<span class="d">Last</span><img src="'+mtLogo(L.opTeam)+'"><span>'+(L.home?'vs ':'@ ')+(L.opTeam.abbreviation||'')+'</span><span class="d">· Final · '+mtShort(L.date)+'</span>'
+                 :'<span class="'+(L.win?'w':'l')+'">'+(L.win?'W':'L')+'</span><span class="s">'+L.my+'–'+L.op+'</span><span class="d">'+(L.home?'vs':'@')+'</span><img src="'+mtLogo(L.opTeam)+'"><span>'+(L.opTeam.abbreviation||'')+'</span><span class="d">· '+mtShort(L.date)+'</span>') : '<span class="d">No recent games</span>';
+        v1= N ? '<span class="d">Next</span><span>'+mtShort(N.date)+'</span><span class="d">'+(N.home?'vs':'@')+'</span><img src="'+mtLogo(N.opTeam)+'"><span>'+(N.opTeam.abbreviation||'')+'</span>'+(N.nets[0]?'<span class="d">· '+N.nets[0]+'</span>':'') : '<span class="d">Off-season</span>';
+      }
+      return '<div class="tr"><div class="lg"><img src="'+t.logo+'"></div><div class="body"><div class="nm"><b>'+t.name+'</b>'+t.rec+'</div><div class="slot"><div class="v'+(mtView?' off':'')+'">'+v0+'</div><div class="v'+(mtView?'':' off')+'">'+v1+'</div></div></div></div>';
+    }).join('');
+    var dots=document.querySelectorAll('#mt .dots i'); if(dots.length){dots[0].className=mtView?'':'on'; dots[1].className=mtView?'on':'';}
+    clearTimeout(mtLoad._t); mtLoad._t=setTimeout(mtLoad, anyLive?30000:10*60000);
+  }
+  setInterval(function(){ if(!MT.length) return; mtView=1-mtView; document.querySelectorAll('#mt .slot').forEach(function(s){ var v=s.querySelectorAll('.v'); if(v.length<2) return; v[0].classList.toggle('off',mtView===1); v[1].classList.toggle('off',mtView===0); }); var dots=document.querySelectorAll('#mt .dots i'); if(dots.length){dots[0].className=mtView?'':'on'; dots[1].className=mtView?'on':'';} },5000);
+
   // ---------- open / close ----------
   function openWatch(){ home.classList.add('hide'); try{history.pushState({w:1},'');}catch(e){} var f=document.querySelector('#grid .card')||document.querySelector('[data-kind]'); if(f) f.focus(); }
   home.addEventListener('click',function(e){e.stopPropagation(); if(e.target.closest&&e.target.closest('#goGH')){ location.href='https://home.google.com/u/0/home'; return; } if(e.target.closest&&e.target.closest('#goAmb')){ W2W_AMB.open(); return; } if(e.target.closest&&e.target.closest('#goSp')){ W2W_SP.open(); return; } openWatch();});
@@ -371,7 +439,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
   document.addEventListener('visibilitychange',function(){ if(!document.hidden){ home.classList.remove('hide'); tick(); weather(); } });
   tick(); chips(); setInterval(tick,15000); setInterval(chips,3600000);
   W2W_CFG.then(function(c){ CFG=c||{}; NAMES=esc2(CFG.names||''); BDAYS=CFG.bdays||[]; PICK=CFG.pick||{}; NOPICK=CFG.nopick||[];
-    tick(); chips(); weather(); shabbat(); });
+    tick(); chips(); weather(); shabbat(); mtLoad(); });
   setInterval(weather,15*60*1000); setInterval(shabbat,6*60*60*1000);
   holidays(); setInterval(holidays,12*60*60*1000);
   loadPrivate(); setInterval(loadPrivate,60*60*1000);
