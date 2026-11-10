@@ -1273,7 +1273,7 @@ else start();
 <h2>Scene</h2><div class="rowx" id="slpS"></div>
 <h2>Music</h2><div class="rowx" id="slpM"></div>
 <button class="focusable" id="slpGo">▶ Start</button></div>
-<div id="slpRun"><div id="slpFrame"></div><div id="slpDim"></div><div id="slpCap"></div><div id="slpLeft"></div></div>
+<div id="slpRun"><div id="slpFrame"></div><div id="slpCover" style="position:absolute;inset:0;background:#000;display:none;align-items:center;justify-content:center;color:#888;font-size:1.4vw">🌙 Starting your scene…</div><div id="slpDim"></div><div id="slpCap"></div><div id="slpLeft"></div></div>
 <script>
 (function(){
   var TIMES=[15,30,45,60,90];
@@ -1306,7 +1306,11 @@ else start();
     try{ localStorage.setItem('w2w.sleep',JSON.stringify(sel)); }catch(e){}
     var sc=SCENES[sel.s], mu=MUSIC[sel.m], spotify=mu[1]&&mu[1]!=='mute', muted=(mu[1]!=='');
     var bridge=window.TV&&TV.openThenReturn;
-    $i('slpFrame').innerHTML= sc[1] ? '<iframe allow="autoplay" src="https://www.youtube-nocookie.com/embed/'+sc[1]+'?autoplay=1&mute='+(muted?1:0)+'&controls=0&loop=1&playlist='+sc[1]+'&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1"></iframe>' : '';
+    // Scene with its own sound: play it ad-free in SmartTube; the TV app runs the timer and fades picture + sound on top of it.
+    if(sc[1] && !muted && window.TV && TV.sleepTimer){ TV.sleepTimer(sel.t,5); W2W_SLEEP.close();
+      location.href='intent://www.youtube.com/watch?v='+sc[1]+'#Intent;scheme=https;package=org.smarttube.stable;end'; return; }
+    $i('slpCover').style.display= sc[1] ? 'flex' : 'none'; clearTimeout(start._c); start._c=setTimeout(function(){ $i('slpCover').style.display='none'; },75000);
+    $i('slpFrame').innerHTML= sc[1] ? '<iframe id="slpYT" allow="autoplay" src="https://www.youtube.com/embed/'+sc[1]+'?enablejsapi=1&autoplay=1&mute='+(muted?1:0)+'&controls=0&loop=1&playlist='+sc[1]+'&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1"></iframe>' : '';
     $i('slpCap').textContent=(sc[1]?sc[0]:'')+(spotify?(sc[1]?' · ':'')+'♪ '+mu[0]:'');
     $i('slpDim').style.transition='none'; $i('slpDim').style.opacity=0;
     $i('slpRun').classList.add('show'); try{history.pushState({z:1},'');}catch(e){}
@@ -1336,6 +1340,14 @@ else start();
     close:function(){ if($i('slpRun').classList.contains('show')){ finish(false); $i('slpRun').classList.remove('show'); $i('slpGo').focus(); return true; } if($i('slp').classList.contains('show')){ $i('slp').classList.remove('show'); return true; } return false; }
   };
   window.addEventListener('popstate',function(){ W2W_SLEEP.close(); });
+  // hide YouTube ads behind a black cover until the real scene is playing
+  window.addEventListener('message',function(ev){ if(String(ev.origin).indexOf('youtube')<0) return; var d; try{ d=JSON.parse(ev.data); }catch(e){ return; }
+    if(d.event==='onReady'||d.event==='initialDelivery'){ var f=$i('slpYT'); if(f) f.contentWindow.postMessage(JSON.stringify({event:'command',func:'addEventListener',args:['onStateChange']}),'*'); }
+    if(d.event==='infoDelivery'&&d.info&&d.info.playerState===1&&d.info.currentTime>1){ $i('slpCover').style.display='none'; } });
+  setInterval(function(){ var f=$i('slpYT'); if(f&&$i('slpCover').style.display!=='none') f.contentWindow.postMessage(JSON.stringify({event:'listening',id:'slpYT',channel:'widget'}),'*'); },1500);
+  function dark(){ $i('slpFrame').innerHTML=''; $i('slpCover').style.display='none'; $i('slpCap').textContent=''; $i('slpLeft').textContent=''; $i('slpDim').style.transition='none'; $i('slpDim').style.opacity=1; $i('slpRun').classList.add('show'); if(window.TV&&TV.keepOn) TV.keepOn(false); }
+  window.addEventListener('hashchange',function(){ if(/(^|[#&])dark\b/.test(location.hash)){ dark(); try{history.replaceState(null,'',location.pathname+location.search);}catch(e){} } });
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden&&window.TV&&TV.sleepRunning&&TV.sleepRunning()&&!/dark/.test(location.hash)) TV.sleepCancel(); });
   if(/(^|[#&])sleep\b/.test(location.hash)) setTimeout(function(){ W2W_SLEEP.open(); },500);
 })();
 </script>
