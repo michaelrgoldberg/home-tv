@@ -163,7 +163,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
   <div class="credit" id="bgCredit"></div>
   <div class="top">
     <div><div class="greet" id="greet"></div><div class="date" id="hdate"></div><div class="hdate" id="hheb"></div><div class="today" id="htoday"></div></div>
-    <div><div class="clock" id="hclock"></div><div id="mt"><div class="hd"><span>🏆 My teams</span><span class="dots"><i class="on"></i><i></i></span></div><div id="mtRows"></div></div></div>
+    <div><div class="clock" id="hclock"></div><div id="mt"><div class="hd"><span>🏆 My teams</span><span class="dots"><i class="on"></i><i></i></span></div><div id="mtRows"></div></div><div id="alertChip" class="focusable" tabindex="0" style="display:none;margin-top:.5vw;width:29vw;box-sizing:border-box;padding:.5vw .9vw;border-radius:.9vw;background:rgba(8,12,30,.76);border:.12vw solid rgba(255,255,255,.18);font-size:1.05vw;cursor:pointer;outline:none;text-align:center" onfocus="this.style.borderColor='#fff'" onblur="this.style.borderColor='rgba(255,255,255,.18)'"></div></div>
   </div>
   <div class="cards">
     <div class="card2" id="cWx"><h3>Weather</h3><div class="line dim">Loading forecast…</div></div>
@@ -472,6 +472,36 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
       tkLoad._t=setTimeout(tkLoad, live?60000:5*60000);
     });
   }
+
+  // ---------- game-alert mute (pop-ups + scorebug) ----------
+  var MUTE_MS=60*60000;
+  function alertState(){ var u=0; try{u=+localStorage.getItem('w2w.muteUntil')||0;}catch(e){} return u>Date.now()?u:0; }
+  function renderAlert(){
+    var chip=document.getElementById('alertChip'); if(!chip) return;
+    var hasTV=window.TV&&TV.setGameAlerts;
+    if(!hasTV){ chip.style.display='none'; return; }
+    chip.style.display='';
+    var until=alertState();
+    if(until){ var m=Math.max(1,Math.round((until-Date.now())/60000));
+      chip.innerHTML='🔕 <b>Game alerts muted</b> · '+m+'m left <span style="opacity:.6">· Select to turn on</span>';
+      chip.style.background='rgba(60,20,20,.78)'; }
+    else { chip.innerHTML='🔔 Game alerts on <span style="opacity:.6">· Select to mute 1 hr</span>'; chip.style.background='rgba(8,12,30,.76)'; }
+  }
+  function setMute(on){
+    try{ if(window.TV&&TV.setGameAlerts) TV.setGameAlerts(!on); }catch(e){}
+    try{ localStorage.setItem('w2w.muteUntil', on?String(Date.now()+MUTE_MS):'0'); }catch(e){}
+    renderAlert();
+  }
+  (function alertInit(){
+    var chip=document.getElementById('alertChip');
+    if(chip) chip.addEventListener('click',function(e){ e.stopPropagation(); setMute(!alertState()); });
+    renderAlert(); setInterval(function(){
+      var until=alertState();
+      if(!until){ /* make sure alerts are on if nothing is muting */ } 
+      else if(until<=Date.now()){ setMute(false); } // backup restore when app is foreground
+      renderAlert();
+    },20000);
+  })();
 
   // ---------- open / close ----------
   function openWatch(){ home.classList.add('hide'); try{history.pushState({w:1},'');}catch(e){} var f=document.querySelector('#grid .card')||document.querySelector('[data-kind]'); if(f) f.focus(); }

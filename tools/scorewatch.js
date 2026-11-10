@@ -22,6 +22,12 @@ async function tv(pathname, body) { // never throws: TV off = stay quiet
   try { const r = await fetch(LOCAL.tv + pathname, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: c.signal }); return r.ok; }
   catch (e) { return false; } finally { clearTimeout(t); }
 }
+async function alertsOn() { // null = TV unreachable/off
+  try { const base = LOCAL.tv.replace(/\/$/, ''); const c = new AbortController(); const t = setTimeout(() => c.abort(), 4000);
+    const r = await fetch(base + '/', { signal: c.signal }); clearTimeout(t); if (!r.ok) return null; const j = await r.json();
+    const n = (j.result || {}).notifications || {}; return n.displayNotifications !== false; } catch (e) { return null; }
+}
+async function setAlerts(on) { return tv('/set/notifications', { displayNotifications: on, displayFixedNotifications: on }); }
 async function loadConfig() {
   const p = await getJSON(LOCAL.site + 'config.json?' + Date.now());
   const iv = Buffer.from(p.iv, 'base64'), ct = Buffer.from(p.ct, 'base64');
@@ -105,10 +111,17 @@ async function main() {
   }
   log('Scoreboard crew on duty. TV:', LOCAL.tv);
   let cfg = {}, cfgAt = 0;
+  let mutedSince = 0;
   for (;;) {
     let live = false;
     try {
       if (Date.now() - cfgAt > 5 * 60000) { try { cfg = await loadConfig(); cfgAt = Date.now(); } catch (e) { log('settings not reachable, keeping the last ones'); } }
+      // Respect the TV's mute: if someone turned game alerts off on the welcome screen, stay quiet and auto-restore after 1 hour.
+      const on = await alertsOn();
+      if (on === false) { if (!mutedSince) { mutedSince = Date.now(); log('Alerts muted on the TV; holding pop-ups.'); }
+        if (Date.now() - mutedSince > 60 * 60000) { await setAlerts(true); mutedSince = 0; log('1 hour up; game alerts back on.'); }
+        else { await sleep(30000); continue; } }
+      else if (on === true && mutedSince) { mutedSince = 0; } // someone turned them back on
       const teams = (cfg.teams || []).filter(t => t[2] !== 'hide' && t[3] !== 'noalerts');
       const byLg = {};
       for (const t of teams) { const k = t[0] + '|' + t[1];
