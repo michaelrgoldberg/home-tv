@@ -397,7 +397,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
     if(privateData&&privateData.earnings){ var e=privateData.earnings, $$=function(v){return '$'+Math.round(v).toLocaleString();};
       var dayOver = now.getHours()>=18;
       oc.style.display=''; oc.style.position='relative'; oc.style.paddingBottom='2.2vw';
-      oc.innerHTML='<h3>'+esc2(CFG.office||'Office')+'</h3>'+
+      oc.innerHTML='<h3>'+esc2(CFG.office||'Office')+'</h3>'+whereBanner()+
         '<div style="font-size:1.6vw;font-weight:600;line-height:1.2;white-space:nowrap">Today <span class="hl">'+$$(e.today)+'</span>'+(dayOver?'':' <span style="font-size:.9vw;font-weight:400;opacity:.7">so far</span>')+'</div>'+
         '<div style="font-size:.85vw;opacity:.6;margin-top:.1vw">'+e.todayLabel+'</div>'+
         '<div style="font-size:1.05vw;opacity:.85;margin-top:.45vw;white-space:nowrap">Yesterday <span style="opacity:.65;font-size:.85vw">'+e.yesterdayLabel+'</span> <span class="hl">'+$$(e.yesterday)+'</span></div>'+
@@ -406,6 +406,23 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
         (e.lastWeek!=null?'<div class="line" style="margin-top:.4vw">Last week <span class="hl">'+$$(e.lastWeek)+'</span></div><div class="line dim">'+e.lastWeekRange+'</div>':'')+
         '<div class="line" style="margin-top:.4vw">This pay period <span class="hl">'+$$(e.pp)+'</span></div><div class="line dim">'+e.ppRange+'</div>'+updLine(privateData.built);
     }
+  }
+
+  // ---------- where Mike is (Home/Office) from his shared calendar ----------
+  // Before 5pm show today; at/after 5pm show tomorrow (so Adina sees the next morning at a glance).
+  function whereBanner(){
+    var w=privateData&&privateData.where; if(!w) return '';
+    var now=new Date(), tgt=new Date(now); if(now.getHours()>=17) tgt.setDate(tgt.getDate()+1);
+    var key=iso(tgt), loc=w[key]; if(loc!=='home'&&loc!=='office') return '';
+    var tmr=new Date(now.getTime()+864e5);
+    var lab = key===iso(now) ? 'Today' : (key===iso(tmr) ? 'Tomorrow · '+DAYS[tgt.getDay()] : DAYS[tgt.getDay()]);
+    var home=loc==='home';
+    var grad=home?'linear-gradient(90deg,#15331c,#1e4a28)':'linear-gradient(90deg,#132342,#1b376b)';
+    var bd=home?'#55c15a':'#5a8cff', txt=home?'#a6eca6':'#a9c7ff';
+    return '<div style="display:flex;align-items:center;gap:.8vw;margin:.3vw 0 .8vw;padding:.65vw 1vw;border-radius:1vw;background:'+grad+';border:.14vw solid '+bd+'">'+
+      '<span style="font-size:2.3vw;line-height:1">'+(home?'🏠':'🏢')+'</span>'+
+      '<div style="line-height:1.15"><div style="font-size:.82vw;letter-spacing:.14em;text-transform:uppercase;opacity:.75">'+lab+'</div>'+
+      '<div style="font-size:1.55vw;font-weight:800;color:'+txt+'">'+(home?'Home':'Office')+'</div></div></div>';
   }
 
   // ---------- private data (encrypted; key lives only on this TV) ----------

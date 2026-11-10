@@ -2,7 +2,7 @@
 """Builds the encrypted private.json for the TV welcome screen.
 Inputs: earnings history JSON, family calendar events JSON (list_events output),
 and the AES key (base64, 32 bytes). Output is AES-GCM encrypted; only the TV (which holds the key) can read it.
-usage: build_private.py <pn_history.json> <calendar.json> <keyfile> <out.json> [config.json]"""
+usage: build_private.py <pn_history.json> <calendar.json> <keyfile> <out.json> [config.json] [mike_cal.json]"""
 import json, sys, base64, os, re, datetime
 from zoneinfo import ZoneInfo
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -54,6 +54,32 @@ def events(path, now):
     out.sort(key=lambda x: x['start'])
     return out
 
+def whereabouts(path, today):
+    """Map ET date -> 'home'/'office' from BMA-HOME / BMA-OFFICE events on the Mike Goldberg calendar."""
+    out = {}
+    try:
+        t = open(path).read(); i = t.find('{'); j = json.loads(t[i:])
+    except Exception:
+        return out
+    for e in j.get('events', []):
+        if e.get('status') == 'cancelled': continue
+        su = (e.get('summary') or '').upper()
+        loc = 'home' if 'BMA-HOME' in su else ('office' if 'BMA-OFFICE' in su else None)
+        if not loc: continue
+        st = e.get('start', {}); dt = st.get('dateTime') or st.get('date')
+        if not dt: continue
+        if len(dt) == 10:
+            d = dt
+        else:
+            try:
+                x = datetime.datetime.fromisoformat(dt.replace('Z', '+00:00'))
+                if x.tzinfo: x = x.astimezone(TZ)
+                d = x.date().isoformat()
+            except Exception:
+                d = dt[:10]
+        out[d] = loc
+    return out
+
 def main():
     global ROUTINE
     pn, cal, keyf, outp = sys.argv[1:5]
@@ -64,6 +90,8 @@ def main():
         if cfg.get('routine'): ROUTINE = re.compile(cfg['routine'], re.I)
     now = datetime.datetime.now(TZ)
     data = {'built': now.isoformat(timespec='minutes'), 'earnings': earnings(pn, now.date()), 'events': events(cal, now)}
+    if len(sys.argv) > 6 and os.path.exists(sys.argv[6]):
+        data['where'] = whereabouts(sys.argv[6], now.date())
     iv = os.urandom(12)
     ct = AESGCM(key).encrypt(iv, json.dumps(data, separators=(',', ':')).encode(), None)
     json.dump({'v': 1, 'iv': base64.b64encode(iv).decode(), 'ct': base64.b64encode(ct).decode()}, open(outp, 'w'))
