@@ -1348,6 +1348,7 @@ else start();
   setInterval(function(){ var f=$i('slpYT'); if(f&&$i('slpCover').style.display!=='none') f.contentWindow.postMessage(JSON.stringify({event:'listening',id:'slpYT',channel:'widget'}),'*'); },1500);
   function dark(){ $i('slpFrame').innerHTML=''; $i('slpCover').style.display='none'; $i('slpCap').textContent=''; $i('slpLeft').textContent=''; $i('slpDim').style.transition='none'; $i('slpDim').style.opacity=1; $i('slpRun').classList.add('show'); if(window.TV&&TV.keepOn) TV.keepOn(false); }
   window.addEventListener('hashchange',function(){ if(/(^|[#&])dark\b/.test(location.hash)){ dark(); try{history.replaceState(null,'',location.pathname+location.search);}catch(e){} } });
+  if(/(^|[#&])dark\b/.test(location.hash)){ setTimeout(function(){ dark(); try{history.replaceState(null,'',location.pathname+location.search);}catch(e){} },200); }
   document.addEventListener('visibilitychange',function(){ if(!document.hidden&&window.TV&&TV.sleepRunning&&TV.sleepRunning()&&!/dark/.test(location.hash)) TV.sleepCancel(); });
   if(/(^|[#&])sleep\b/.test(location.hash)) setTimeout(function(){ W2W_SLEEP.open(); },500);
 })();
