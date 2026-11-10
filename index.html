@@ -51,7 +51,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #picker .box{background:var(--panel);padding:2vw;border-radius:1vw;display:flex;flex-wrap:wrap;gap:.8vw;max-width:70vw}
 #nl-badge-frame{display:none!important}
 /* ---------- Welcome dashboard ---------- */
-#home{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;padding:3vw 4vw 2.2vw;color:#fff;overflow:hidden;background:#0b1020}
+#home{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;padding:2.6vw 4vw 3.3vw;color:#fff;overflow:hidden;background:#0b1020}
 #home .bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity 2.5s ease}
 #home .bg.on{opacity:1}
 #home .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.45) 0%,rgba(0,0,0,.05) 30%,rgba(0,0,0,.05) 45%,rgba(0,0,0,.6) 100%)}
@@ -71,7 +71,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #mt .dots i.on{opacity:1}
 #mt .tr{display:flex;align-items:center;gap:.8vw;padding:.28vw 0;border-top:.08vw solid rgba(255,255,255,.1)}
 #mt .tr:first-of-type{border-top:0}
-#mt .lg{width:2.7vw;height:2.7vw;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;background:radial-gradient(circle,rgba(255,255,255,.95) 0 58%,rgba(255,255,255,0) 60%)}
+#mt .lg{width:2.7vw;height:2.7vw;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;background:#fff}
 #mt .lg img{width:2.1vw;height:2.1vw;object-fit:contain}
 #mt .nm{font-size:.8vw;opacity:.65;letter-spacing:.04em}
 #mt .nm b{opacity:1;color:#fff;font-weight:600;font-size:.95vw;letter-spacing:0;margin-right:.3vw}
@@ -79,7 +79,18 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #mt .slot{position:relative;height:1.7vw}
 #mt .v{position:absolute;inset:0;display:flex;align-items:center;gap:.45vw;font-size:1.12vw;white-space:nowrap;transition:opacity .6s ease, transform .6s ease}
 #mt .v.off{opacity:0;transform:translateY(.5vw)}
-#mt .v img{width:1.45vw;height:1.45vw;object-fit:contain}
+#mt .v img{width:1.55vw;height:1.55vw;object-fit:contain;background:#fff;border-radius:50%;padding:.14vw;box-sizing:border-box}
+#tk{position:absolute;left:0;right:0;bottom:0;height:2.3vw;background:rgba(5,8,20,.72);display:flex;align-items:center;font-size:1vw;z-index:2}
+#tk .lab{flex:none;padding:0 1vw;font-weight:700;letter-spacing:.12em;font-size:.8vw;color:#ffcc00}
+#tk .win{flex:1;overflow:hidden;white-space:nowrap;-webkit-mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent)}
+#tk .run{display:inline-block;white-space:nowrap;animation:tkm linear infinite}
+@keyframes tkm{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+#tk .it{display:inline-flex;align-items:center;gap:.35vw;margin-right:2.2vw}
+#tk .it img{width:1.4vw;height:1.4vw;object-fit:contain;background:#fff;border-radius:50%;padding:.12vw;box-sizing:border-box}
+#tk .it .d{opacity:.6;font-size:.85vw}
+#tk .it .lv{color:#ff5a5a;font-weight:700;font-size:.8vw}
+#tk .lgt{color:#ffcc00;font-weight:700;font-size:.8vw;letter-spacing:.1em;margin-right:.9vw}
+#tk .cr{flex:none;padding:0 1vw;font-size:.78vw;opacity:.7;max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #mt .w{color:#7dff9a;font-weight:700}#mt .l{color:#ff8a8a;font-weight:700}
 #mt .s{font-weight:700}
 #mt .d{opacity:.6;font-size:.88vw}
@@ -147,7 +158,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 <body>
 <div id="home">
   <div class="bg" id="bgA"></div><div class="bg" id="bgB"></div><div class="shade"></div>
-  <div class="credit" id="bgCredit"></div>
+  <div id="tk"><span class="lab">SCORES</span><div class="win"><div class="run" id="tkRun"></div></div><span class="cr" id="bgCredit"></span></div>
   <div class="top">
     <div><div class="greet" id="greet"></div><div class="date" id="hdate"></div><div class="hdate" id="hheb"></div><div class="today" id="htoday"></div></div>
     <div><div class="clock" id="hclock"></div><div id="mt"><div class="hd"><span>🏆 My teams</span><span class="dots"><i class="on"></i><i></i></span></div><div id="mtRows"></div></div></div>
@@ -159,7 +170,6 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
     <div class="card2" id="cOffice" style="display:none"><h3>Office</h3></div>
   </div>
   <div class="go"><button class="gobtn focusable" id="goWatch">🎬&nbsp; What to Watch</button><button class="gobtn focusable" id="goSp" style="background:#c62828;color:#fff">🏟️&nbsp; Sports</button><button class="gobtn focusable" id="goAmb" style="background:#ff8a3d;color:#2a1200">🌅&nbsp; Ambient</button><button class="gobtn focusable" id="goGH" style="background:#fff;color:#1a3a8f">🏠&nbsp; Google Home</button></div>
-  <div class="hint">Press select for movies &amp; shows · or pick Sports, Ambient or Google Home (Back returns here)</div>
 </div>
 <script>
 // Personal settings (names, location, schedules) are NOT in this public file.
@@ -206,7 +216,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
     var pick=list[doy%list.length]; if(pick.f===curBg) return; curBg=pick.f;
     var a=document.getElementById(flip?'bgA':'bgB'), b=document.getElementById(flip?'bgB':'bgA'); flip=!flip;
     var img=new Image(); img.onload=function(){a.style.backgroundImage='url('+pick.f+')'; a.classList.add('on'); b.classList.remove('on');}; img.src=pick.f;
-    document.getElementById('bgCredit').innerHTML='📍 '+pick.c+'<br><span style="opacity:.8">Photo: '+pick.a+' · '+pick.l+' · Wikimedia Commons</span>';
+    document.getElementById('bgCredit').innerHTML='📍 '+pick.c+' <span style="opacity:.75">· Photo: '+pick.a+', '+pick.l+'</span>';
   }
 
   // ---------- greeting ----------
@@ -406,7 +416,8 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
           var up=ev.filter(function(e){var s=(((e.competitions||[])[0]||{}).status||{}).type||{}; return s.state!=='post';}).sort(function(a,b){return new Date(a.date)-new Date(b.date);}); var next=up[0]||(tm.nextEvent||[])[0]; var ng=mtGame(next,abbr); if(ng&&ng.state==='post') ng=null;
           var lg=mtGame(posts[posts.length-1],abbr);
           return {name:tm.name||tm.displayName||ab, logo:tm.logo||'', rec:tm.recordSummary||'', stand:tm.standingSummary||'', last:lg, next:ng}; });
-      }); })).then(function(rows){ MT=rows.filter(function(x){return x&&x.name;}); mtRender(); });
+      }); })).then(function(rows){ var now=Date.now(); MT=rows.filter(function(x,i){ if(!x||!x.name) return false; var mode=(teams[i]||[])[2]||'auto'; if(mode==='hide') return false; if(mode==='always') return true;
+        var soon=x.next&&(x.next.state==='in'||(x.next.date-now)<21*864e5), recent=x.last&&(now-x.last.date)<10*864e5; return soon||recent; }); mtRender(); });
   }
   function mtLogo(t){var l=(t.logos||[])[0]; return (l&&l.href)||t.logo||'';}
   function mtRender(){
@@ -429,6 +440,26 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
   }
   setInterval(function(){ if(!MT.length) return; mtView=1-mtView; document.querySelectorAll('#mt .slot').forEach(function(s){ var v=s.querySelectorAll('.v'); if(v.length<2) return; v[0].classList.toggle('off',mtView===1); v[1].classList.toggle('off',mtView===0); }); var dots=document.querySelectorAll('#mt .dots i'); if(dots.length){dots[0].className=mtView?'':'on'; dots[1].className=mtView?'on':'';} },5000);
 
+  // ---------- bottom score ticker ----------
+  var TKL=[['NFL','football/nfl'],['NBA','basketball/nba'],['NHL','hockey/nhl'],['MLB','baseball/mlb'],['NCAAF','football/college-football'],['NCAAB','basketball/mens-college-basketball']];
+  function tkLoad(){
+    clearTimeout(tkLoad._t);
+    var d=new Date(), ds=d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate());
+    Promise.all(TKL.map(function(l){return mtFetch(l[1]+'/scoreboard?dates='+ds).then(function(j){return [l[0],j.events||[]];});})).then(function(rs){
+      var ns=false; try{ns=localStorage.getItem('w2w.sp.nospoil')==='1';}catch(e){}
+      var out='', n=0, live=false;
+      rs.forEach(function(r){ if(!r[1].length) return; out+='<span class="lgt">'+r[0]+'</span>';
+        r[1].slice(0,16).forEach(function(e){ var c=(e.competitions||[])[0]||{}, st=(e.status||{}).type||{}, t=(c.competitors||[]).slice().sort(function(a,b){return a.homeAway==='away'?-1:1;}); if(t.length<2) return; n++;
+          var showSc=!ns&&st.state!=='pre'; if(st.state==='in') live=true;
+          var side=function(x){var tm=x.team||{}; return (tm.logo?'<img src="'+tm.logo+'">':'')+'<span>'+(tm.abbreviation||'')+'</span>'+(showSc?'<b>'+x.score+'</b>':'');};
+          var tail= st.state==='pre' ? '<span class="d">'+fmtT(new Date(e.date)).replace(':00','')+'</span>' : st.state==='in' ? '<span class="lv">'+(ns?'LIVE':esc2(st.shortDetail||'LIVE'))+'</span>' : '<span class="d">Final</span>';
+          out+='<span class="it">'+side(t[0])+'<span class="d">'+(st.state==='pre'?'@':'·')+'</span>'+side(t[1])+tail+'</span>'; }); });
+      var run=document.getElementById('tkRun'); if(!n){ run.innerHTML='<span class="it d" style="opacity:.6">No games today</span>'; run.style.animation='none'; }
+      else { run.innerHTML=out+out; run.style.animation=''; run.style.animationDuration=Math.max(40,n*7)+'s'; }
+      tkLoad._t=setTimeout(tkLoad, live?60000:5*60000);
+    });
+  }
+
   // ---------- open / close ----------
   function openWatch(){ home.classList.add('hide'); try{history.pushState({w:1},'');}catch(e){} var f=document.querySelector('#grid .card')||document.querySelector('[data-kind]'); if(f) f.focus(); }
   home.addEventListener('click',function(e){e.stopPropagation(); if(e.target.closest&&e.target.closest('#goGH')){ location.href='https://home.google.com/u/0/home'; return; } if(e.target.closest&&e.target.closest('#goAmb')){ W2W_AMB.open(); return; } if(e.target.closest&&e.target.closest('#goSp')){ W2W_SP.open(); return; } openWatch();});
@@ -439,7 +470,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
   document.addEventListener('visibilitychange',function(){ if(!document.hidden){ home.classList.remove('hide'); tick(); weather(); } });
   tick(); chips(); setInterval(tick,15000); setInterval(chips,3600000);
   W2W_CFG.then(function(c){ CFG=c||{}; NAMES=esc2(CFG.names||''); BDAYS=CFG.bdays||[]; PICK=CFG.pick||{}; NOPICK=CFG.nopick||[];
-    tick(); chips(); weather(); shabbat(); mtLoad(); });
+    tick(); chips(); weather(); shabbat(); mtLoad(); tkLoad(); });
   setInterval(weather,15*60*1000); setInterval(shabbat,6*60*60*1000);
   holidays(); setInterval(holidays,12*60*60*1000);
   loadPrivate(); setInterval(loadPrivate,60*60*1000);
@@ -1065,7 +1096,7 @@ else start();
 #sp .g:focus{border-color:#ffcc00;background:#1a2747}
 #sp .g.off{opacity:.45}
 #sp .tm{display:flex;align-items:center;gap:.6vw;font-size:1.15vw;margin:.25vw 0}
-#sp .tm img{width:1.9vw;height:1.9vw;object-fit:contain}
+#sp .tm img{width:2vw;height:2vw;object-fit:contain;background:#fff;border-radius:50%;padding:.18vw;box-sizing:border-box}
 #sp .tm .sc{margin-left:auto;font-weight:700;font-size:1.3vw}
 #sp .st{font-size:.9vw;color:#9aa3c0;margin-bottom:.3vw}
 #sp .st.live{color:#ff5a5a;font-weight:700}
