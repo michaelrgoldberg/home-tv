@@ -459,7 +459,6 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
   <button class="btn focusable" data-kind="all">Both</button>
   <button class="btn focusable" data-kind="movie">Movies</button>
   <button class="btn focusable" data-kind="tv">Shows</button>
-  <button class="btn focusable" id="goSports" style="background:#c62828;color:#fff">🏟️ Live Sports</button>
   <span class="sep"></span>
   <span class="lbl">IMDb</span>
   <span class="rng"><button class="btn focusable" data-r="min-">&minus;</button><b id="rmin"></b><button class="btn focusable" data-r="min+">+</button></span>
@@ -865,7 +864,6 @@ function pick(options, cur, onPick, title){
 // ---------- clicks ----------
 document.addEventListener('click',function(e){
   var b=e.target.closest('.focusable'); if(!b) return;
-  if(b.id==='goSports'){ W2W_SP.open(); return; }
   if(b.dataset.kind){state.kind=b.dataset.kind; changed(); return;}
   if(b.dataset.r){
     var r=b.dataset.r;
@@ -1009,7 +1007,7 @@ else start();
 #sp .empty{color:#9aa3c0;font-size:1.2vw;padding:2vw 0}
 </style>
 <div id="sp"><h1>🏟️ Live Sports</h1>
-<div class="sub">Games on your apps (YouTube TV, Prime Video, Netflix, Paramount+, MLB, NBA). Yellow tags show where to watch. Select a game to open that app. Back returns.</div>
+<div class="sub">Games on your apps. Yellow tags show where to watch. Select a game to go straight to it (YouTube TV opens the game; other apps open to their home). Back returns.</div>
 <div class="bar" id="spDays"></div>
 <div class="bar" id="spLg"></div>
 <div id="spBody"><div class="empty">Loading games…</div></div>
@@ -1031,8 +1029,10 @@ else start();
     if(/mlb\.tv|mlb tv/.test(s)) r.push('mlb');
     if(/league pass/.test(s)) r.push('nba');
     return r; }
-  var dayMode='today', lgOn={}, games=[], timer=null;
-  LG.forEach(function(l){lgOn[l[0]]=true;});
+  var dayMode='today', lgOn={}, games=[], timer=null, allOn=true, noSpoil=false;
+  try{ noSpoil=localStorage.getItem('w2w.sp.nospoil')==='1'; var sv=JSON.parse(localStorage.getItem('w2w.sp.lg')||'null'); if(sv&&sv.length){ allOn=false; sv.forEach(function(k){lgOn[k]=true;}); } }catch(e){}
+  function saveLg(){ try{ localStorage.setItem('w2w.sp.lg',JSON.stringify(allOn?[]:Object.keys(lgOn).filter(function(k){return lgOn[k];}))); localStorage.setItem('w2w.sp.nospoil',noSpoil?'1':'0'); }catch(e){} }
+  function shown(k){ return allOn || !!lgOn[k]; }
   function ymd(d){return d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2);}
   function days(){var n=new Date(),a=[]; var cnt=dayMode==='week'?7:1, off=dayMode==='tomorrow'?1:0; for(var i=0;i<cnt;i++){var d=new Date(n.getFullYear(),n.getMonth(),n.getDate()+off+i); a.push(ymd(d));} return a;}
   function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
@@ -1054,18 +1054,19 @@ else start();
     });
   }
   function bars(){
-    $s('spDays').innerHTML='<span class="lbl">WHEN</span>'+[['today','Today'],['tomorrow','Tomorrow'],['week','Next 7 days']].map(function(d){return '<button class="chipb focusable'+(dayMode===d[0]?' on':'')+'" data-day="'+d[0]+'">'+d[1]+'</button>';}).join('');
-    var have={}; games.forEach(function(g){have[g.lg[0]]=1;});
-    $s('spLg').innerHTML='<span class="lbl">LEAGUES</span>'+LG.filter(function(l){return have[l[0]];}).map(function(l){return '<button class="chipb focusable'+(lgOn[l[0]]?' on':'')+'" data-lg="'+l[0]+'">'+l[1]+'</button>';}).join('');
+    $s('spDays').innerHTML='<span class="lbl">WHEN</span>'+[['live','🔴 Live now'],['today','Today'],['tomorrow','Tomorrow'],['week','Upcoming (7 days)']].map(function(d){return '<button class="chipb focusable'+(dayMode===d[0]?' on':'')+'" data-day="'+d[0]+'">'+d[1]+'</button>';}).join('')+
+      '<button class="chipb focusable'+(noSpoil?' on':'')+'" data-ns="1" style="margin-left:2vw">🙈 No spoilers'+(noSpoil?': ON':'')+'</button>';
+    var have={}; games.forEach(function(g){ if(g.apps.length) have[g.lg[0]]=(have[g.lg[0]]||0)+1;});
+    $s('spLg').innerHTML='<span class="lbl">SPORTS</span><button class="chipb focusable'+(allOn?' on':'')+'" data-lg="*">All</button>'+LG.map(function(l){var n=have[l[0]]||0; return '<button class="chipb focusable'+(!allOn&&lgOn[l[0]]?' on':'')+'" data-lg="'+l[0]+'"'+(n?'':' style="opacity:.45"')+'>'+l[1]+(n?' <small style="opacity:.7">'+n+'</small>':'')+'</button>';}).join('');
   }
   function $s(id){return document.getElementById(id);}
   function card(g){
     var ok=g.apps.length>0, st='';
-    if(g.state==='in') st='<div class="st live">● LIVE · '+esc(g.detail)+'</div>';
-    else if(g.state==='post') st='<div class="st">Final'+(g.detail&&g.detail!=='Final'?' · '+esc(g.detail):'')+'</div>';
+    if(g.state==='in') st='<div class="st live">● LIVE'+(noSpoil?'':' · '+esc(g.detail))+'</div>';
+    else if(g.state==='post') st='<div class="st">Final'+(noSpoil?' · score hidden':(g.detail&&g.detail!=='Final'?' · '+esc(g.detail):''))+'</div>';
     else { var d=g.date, t=(d.getHours()%12||12)+':'+('0'+d.getMinutes()).slice(-2)+(d.getHours()<12?' am':' pm');
       var sameDay=d.toDateString()===new Date().toDateString(); st='<div class="st">'+(sameDay?'':['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getDay()]+' '+(d.getMonth()+1)+'/'+d.getDate()+' · ')+t+'</div>'; }
-    var tm=g.tms.map(function(c){var t=c.team||{}, sc=(g.state!=='pre'&&c.score!=null)?'<span class="sc">'+esc(c.score)+'</span>':'';
+    var tm=g.tms.map(function(c){var t=c.team||{}, sc=(!noSpoil&&g.state!=='pre'&&c.score!=null)?'<span class="sc">'+esc(c.score)+'</span>':'';
       return '<div class="tm">'+(t.logo?'<img src="'+esc(t.logo)+'">':'')+'<span>'+esc(t.shortDisplayName||t.displayName||t.name)+'</span>'+sc+'</div>';}).join('');
     var nets=g.nets.map(function(n){return '<span class="net'+(appsFor(n).length?' ok':'')+'">'+esc(n)+'</span>';}).join('');
     if(g.apps.length) nets='<span class="net ok">▶ '+g.apps.map(function(a){return APPS[a][0];}).join(' / ')+'</span>'+nets;
@@ -1074,20 +1075,28 @@ else start();
   }
   function render(){
     bars();
-    var list=games.filter(function(g){return lgOn[g.lg[0]];});
+    var list=games.filter(function(g){return shown(g.lg[0]) && (dayMode!=='live'||g.state==='in');});
     var mine=list.filter(function(g){return g.apps.length;}), other=list.filter(function(g){return !g.apps.length;});
     var ord={'in':0,'pre':1,'post':2}; var sortf=function(a,b){return (ord[a.state]-ord[b.state])||(a.date-b.date);};
     var live=mine.filter(function(g){return g.state==='in';}).sort(sortf), out='';
     if(live.length) out+='<h2>🔴 Live now</h2><div class="grid">'+live.map(card).join('')+'</div>';
     LG.forEach(function(l){ var gs=mine.filter(function(g){return g.lg[0]===l[0]&&g.state!=='in';}).sort(sortf); if(gs.length) out+='<h2>'+l[1]+'</h2><div class="grid">'+gs.map(card).join('')+'</div>'; });
-    if(other.length) out+='<h2 style="color:#9aa3c0">Not on your apps</h2><div class="grid">'+other.sort(sortf).map(card).join('')+'</div>';
-    $s('spBody').innerHTML=out||'<div class="empty">No games found for this day. Try "Next 7 days".</div>';
+    if(other.length && !noSpoil) out+='<h2 style="color:#9aa3c0">Not on your apps</h2><div class="grid">'+other.sort(sortf).map(card).join('')+'</div>';
+    $s('spBody').innerHTML=out||'<div class="empty">'+(dayMode==='live'?'No games on right now. Try Today or Upcoming.':'No games found. Try Upcoming (7 days) or All sports.')+'</div>';
   }
-  function launchApp(a){ var p=APPS[a]; if(!p) return; location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package='+p[1]+';end'; }
+  function launchApp(a,g){ var p=APPS[a]; if(!p) return;
+    if(a==='yttv'&&g){ var q=g.tms.map(function(c){return (c.team||{}).displayName||'';}).join(' vs ');
+      location.href='intent://tv.youtube.com/search?q='+encodeURIComponent(q)+'#Intent;scheme=https;package='+p[1]+';launchFlags=0x10008000;end'; return; }
+    location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package='+p[1]+';launchFlags=0x10008000;end'; }
   $s('sp').addEventListener('click',function(e){ e.stopPropagation();
-    var d=e.target.closest('[data-day]'); if(d){ dayMode=d.dataset.day; $s('spBody').innerHTML='<div class="empty">Loading games…</div>'; load().then(function(){var f=document.querySelector('#spDays .on'); if(f) f.focus();}); return; }
-    var l=e.target.closest('[data-lg]'); if(l){ var k=l.dataset.lg; lgOn[k]=!lgOn[k]; render(); var f=document.querySelector('[data-lg="'+k+'"]'); if(f) f.focus(); return; }
-    var g=e.target.closest('[data-g]'); if(g){ var gm=games.filter(function(x){return x.id===g.dataset.g;})[0]; if(gm&&gm.apps.length) launchApp(gm.apps[0]); }
+    if(e.target.closest('[data-ns]')){ noSpoil=!noSpoil; saveLg(); render(); var n=document.querySelector('[data-ns]'); if(n) n.focus(); return; }
+    var d=e.target.closest('[data-day]'); if(d){ var nm=d.dataset.day; if(nm==='live'&&dayMode==='today'){ dayMode='live'; render(); var f0=document.querySelector('#spDays .on'); if(f0) f0.focus(); return; } dayMode=nm; $s('spBody').innerHTML='<div class="empty">Loading games…</div>'; load().then(function(){var f=document.querySelector('#spDays .on'); if(f) f.focus();}); return; }
+    var l=e.target.closest('[data-lg]'); if(l){ var k=l.dataset.lg;
+      if(k==='*'){ allOn=true; lgOn={}; }
+      else if(allOn){ allOn=false; lgOn={}; lgOn[k]=true; }
+      else { lgOn[k]=!lgOn[k]; if(!Object.keys(lgOn).some(function(x){return lgOn[x];})) allOn=true; }
+      saveLg(); render(); var f=document.querySelector('[data-lg="'+k+'"]'); if(f) f.focus(); return; }
+    var g=e.target.closest('[data-g]'); if(g){ var gm=games.filter(function(x){return x.id===g.dataset.g;})[0]; if(gm&&gm.apps.length) launchApp(gm.apps[0],gm); }
   });
   window.W2W_SP={
     open:function(){ $s('sp').classList.add('show'); try{history.pushState({s:1},'');}catch(e){} $s('sp').scrollTop=0;
