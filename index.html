@@ -167,8 +167,8 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
   </div>
   <div class="cards">
     <div class="card2" id="cWx"><h3>Weather</h3><div class="line dim">Loading forecast…</div></div>
-    <div class="card2" id="cShab"><h3>This Shabbat</h3><div class="line dim">Loading…</div></div>
     <div class="card2" id="cHouse"><h3>Today at home</h3></div>
+    <div class="card2" id="cShab"><h3>This Shabbat</h3><div class="line dim">Loading…</div></div>
     <div class="card2" id="cOffice" style="display:none"><h3>Office</h3></div>
   </div>
   <div class="go"><button class="gobtn focusable" id="goWatch">🎬&nbsp; What to Watch</button><button class="gobtn focusable" id="goSp" style="background:#c62828;color:#fff">🏟️&nbsp; Sports</button><button class="gobtn focusable" id="goAmb" style="background:#ff8a3d;color:#2a1200">🌅&nbsp; Ambient</button><button class="gobtn focusable" id="goSleep" style="background:#b9a6ff;color:#16102e">🌙&nbsp; Sleep</button><button class="gobtn focusable" id="goGH" style="background:#fff;color:#1a3a8f">🏠&nbsp; Google Home</button></div>
@@ -330,15 +330,34 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
       hebDate=j.hebrew ? (j.hd+' '+j.hm+' '+j.hy) : ''; todayEv=(j.events||[]).filter(function(e){return !/^Parashat/.test(e);}); tick(); chips();
     }).catch(function(){});
     if(!CFG.zip) return;
-    fetch('https://www.hebcal.com/shabbat?cfg=json&zip='+CFG.zip+'&b='+(CFG.candleMin||18)).then(function(r){return r.json();}).then(function(j){
-      var it=j.items||[], out=[], par='', c=null;
-      it.forEach(function(x){ if(x.category==='parashat') par=x.title.replace('Parashat ','Parshat '); if(x.category==='candles'&&!c) c=new Date(x.date); });
+    var hstart=iso(new Date()), hend=iso(new Date(Date.now()+30*864e5)), cmin=(CFG.candleMin||18);
+    fetch('https://www.hebcal.com/hebcal?v=1&cfg=json&maj=on&min=on&mod=on&nx=on&ss=on&mf=on&c=on&s=on&geo=zip&zip='+CFG.zip+'&b='+cmin+'&start='+hstart+'&end='+hend)
+      .then(function(r){return r.json();}).then(function(j){
+      var it=j.items||[], out=[], HV=(25*60+10)*60000;
+      var cand=it.filter(function(x){return x.category==='candles';}).map(function(x){return new Date(x.date);}).sort(function(a,b){return a-b;});
+      var par=((it.filter(function(x){return x.category==='parashat';})[0]||{}).title||'').replace('Parashat ','Parshat ');
+      // --- upcoming Jewish holiday (candle-lighting yom tov) within ~18 days ---
+      function base(t){ return String(t||'').replace(/\s+(I|II|III|IV)$/,'').replace(/:.*$/,'').replace(/\s+\(.*\)$/,'').trim(); }
+      var yt=it.filter(function(x){return x.category==='holiday'&&x.yomtov;}).map(function(x){return {d:new Date((''+x.date).slice(0,10)+'T12:00'), t:x.title};});
+      var soon=yt.filter(function(x){var n=daysTo(x.d); return n>=0&&n<=18;}).sort(function(a,b){return a.d-b.d});
+      if(soon.length){
+        var bn=base(soon[0].t), blk=soon.filter(function(x){return base(x.t)===bn;});
+        var lo=new Date(blk[0].d.getTime()-36*3600*1000), hi=new Date(blk[blk.length-1].d.getTime()+2*864e5);
+        var bc=cand.filter(function(d){return d>=lo&&d<=hi;});
+        if(bc.length){ var c1=bc[0], cl=bc[bc.length-1], hv=new Date(cl.getTime()+HV);
+          out.push('<div class="line" style="font-size:1.45vw;font-weight:700;color:#ffd76a">🕎 '+esc2(bn)+'</div>');
+          out.push('<div class="line">🕯️ Candle lighting <span class="hl">'+DAYS[c1.getDay()]+' '+fmtT(c1)+'</span></div>');
+          out.push('<div class="line">✨ Havdalah <span class="hl">'+DAYS[hv.getDay()]+' '+fmtT(hv)+'</span></div>');
+          out.push('<div style="border-bottom:1px solid rgba(255,255,255,.15);margin:.55vw 0 .45vw"></div>');
+        }
+      }
+      // --- the coming Shabbat ---
+      var sc=cand.filter(function(d){return d.getDay()===5;})[0];
       if(par) out.push('<div class="line" style="font-size:1.8vw;font-weight:600">'+par+'</div>');
-      if(c){ candles=c; var hv=new Date(c.getTime()+(25*60+10)*60000);
-        out.push('<div class="line">🕯️ Candle lighting <span class="hl">'+DAYS[c.getDay()]+' '+fmtT(c)+'</span></div>');
-        out.push('<div class="line">✨ Havdalah <span class="hl">'+DAYS[hv.getDay()]+' '+fmtT(hv)+'</span></div>'); }
-      it.forEach(function(x){ if(x.category==='holiday'&&!/^Erev/.test(x.title||'')) out.push('<div class="line dim">'+x.title+' · '+DAYS[new Date(x.date).getDay()]+'</div>'); });
-      document.getElementById('cShab').innerHTML='<h3>This Shabbat</h3>'+(out.join('')||'<div class="line dim">No times available</div>');
+      if(sc){ candles=sc; var shv=new Date(sc.getTime()+HV);
+        out.push('<div class="line">🕯️ Candle lighting <span class="hl">'+DAYS[sc.getDay()]+' '+fmtT(sc)+'</span></div>');
+        out.push('<div class="line">✨ Havdalah <span class="hl">'+DAYS[shv.getDay()]+' '+fmtT(shv)+'</span></div>'); }
+      document.getElementById('cShab').innerHTML='<h3>'+(soon.length?'Shabbat &amp; Chag':'This Shabbat')+'</h3>'+(out.join('')||'<div class="line dim">No times available</div>');
       tick();
     }).catch(function(){});
   }
