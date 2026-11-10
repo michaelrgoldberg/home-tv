@@ -108,7 +108,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #home .line.dim{opacity:.72;font-size:1vw}
 #home .hl{color:#ffd76a;font-weight:600}
 #home .go{position:relative;margin:1.6vw auto 0;display:flex;gap:1.2vw}
-#home .gobtn{font-size:1.8vw;font-weight:700;padding:.9vw 3vw;border-radius:4vw;border:.25vw solid transparent;background:#ffcc00;color:#0e2460;cursor:pointer;outline:none;box-shadow:0 .5vw 2vw rgba(0,0,0,.35)}
+#home .gobtn{font-size:1.6vw;font-weight:700;padding:.8vw 2.1vw;border-radius:4vw;border:.25vw solid transparent;background:#ffcc00;color:#0e2460;cursor:pointer;outline:none;box-shadow:0 .5vw 2vw rgba(0,0,0,.35)}
 #home .gobtn:focus{border-color:#fff;transform:scale(1.05)}
 #home .hint{text-align:center;font-size:.95vw;opacity:.7;margin-top:.6vw;position:relative;text-shadow:0 0 .4vw #000}
 #home.hide{display:none}
@@ -171,7 +171,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
     <div class="card2" id="cHouse"><h3>Today at home</h3></div>
     <div class="card2" id="cOffice" style="display:none"><h3>Office</h3></div>
   </div>
-  <div class="go"><button class="gobtn focusable" id="goWatch">🎬&nbsp; What to Watch</button><button class="gobtn focusable" id="goSp" style="background:#c62828;color:#fff">🏟️&nbsp; Sports</button><button class="gobtn focusable" id="goAmb" style="background:#ff8a3d;color:#2a1200">🌅&nbsp; Ambient</button><button class="gobtn focusable" id="goGH" style="background:#fff;color:#1a3a8f">🏠&nbsp; Google Home</button></div>
+  <div class="go"><button class="gobtn focusable" id="goWatch">🎬&nbsp; What to Watch</button><button class="gobtn focusable" id="goSp" style="background:#c62828;color:#fff">🏟️&nbsp; Sports</button><button class="gobtn focusable" id="goAmb" style="background:#ff8a3d;color:#2a1200">🌅&nbsp; Ambient</button><button class="gobtn focusable" id="goSleep" style="background:#b9a6ff;color:#16102e">🌙&nbsp; Sleep</button><button class="gobtn focusable" id="goGH" style="background:#fff;color:#1a3a8f">🏠&nbsp; Google Home</button></div>
 </div>
 <script>
 // Personal settings (names, location, schedules) are NOT in this public file.
@@ -395,7 +395,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
   }
 
   // ---------- My teams (favorites from the encrypted config) ----------
-  var MT=[], mtView=0;
+  var MT=[], mtView=0, RANKS={};
   function mtFetch(u){return fetch('https://site.api.espn.com/apis/site/v2/sports/'+u).then(function(r){return r.ok?r.json():{};}).catch(function(){return {};});}
   function mtShort(d){var n=new Date(); var dd=sod(d), dn=sod(n), diff=Math.round((dd-dn)/864e5);
     var t=(d.getHours()%12||12)+(d.getMinutes()?':'+pad(d.getMinutes()):'')+(d.getHours()<12?'a':'p');
@@ -417,9 +417,20 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
         return p.then(function(posts){ var abbr=tm.abbreviation||ab.toUpperCase();
           var up=ev.filter(function(e){var s=(((e.competitions||[])[0]||{}).status||{}).type||{}; return s.state!=='post';}).sort(function(a,b){return new Date(a.date)-new Date(b.date);}); var next=up[0]||(tm.nextEvent||[])[0]; var ng=mtGame(next,abbr); if(ng&&ng.state==='post') ng=null;
           var lg=mtGame(posts[posts.length-1],abbr);
-          return {name:tm.name||tm.displayName||ab, logo:tm.logo||'', rec:tm.recordSummary||'', stand:tm.standingSummary||'', last:lg, next:ng}; });
+          return {id:String(tm.id||''), lg:path, name:tm.name||tm.displayName||ab, logo:tm.logo||'', rec:tm.recordSummary||'', stand:tm.standingSummary||'', last:lg, next:ng}; });
       }); })).then(function(rows){ var now=Date.now(); MT=rows.filter(function(x,i){ if(!x||!x.name) return false; var mode=(teams[i]||[])[2]||'auto'; if(mode==='hide') return false; if(mode==='always') return true;
-        var soon=x.next&&(x.next.state==='in'||(x.next.date-now)<21*864e5), recent=x.last&&(now-x.last.date)<10*864e5; return soon||recent; }); mtRender(); });
+        var soon=x.next&&(x.next.state==='in'||(x.next.date-now)<21*864e5), recent=x.last&&(now-x.last.date)<10*864e5; return soon||recent; }); mtRender();
+        var lgs={}; MT.forEach(function(t){lgs[t.lg]=1;});
+        Object.keys(lgs).forEach(function(lg){ fetch('https://site.api.espn.com/apis/v2/sports/'+lg+'/standings').then(function(r){return r.json();}).then(function(j){
+          var all=[]; (j.children||[]).forEach(function(ch){ ((ch.standings||{}).entries||[]).forEach(function(e){ var s={}; (e.stats||[]).forEach(function(x){s[x.name]=x;}); all.push({id:String(e.team.id),conf:ch.name,seed:(s.playoffSeed||{}).displayValue,pct:+((s.winPercent||{}).value||0),streak:(s.streak||{}).displayValue}); }); });
+          all.sort(function(a,b){return b.pct-a.pct;});
+          var o=function(n){n=+n; var v=n%100; return n+(v>10&&v<14?'th':['th','st','nd','rd'][Math.min(n%10,4)%4]||'th');};
+          MT.forEach(function(t){ if(t.lg!==lg) return; var i=all.findIndex(function(x){return x.id===t.id;}); if(i<0) return; var a=all[i];
+            var conf=String(a.conf||'').replace(/Eastern Conference/i,'East').replace(/Western Conference/i,'West').replace(/American Football Conference/i,'AFC').replace(/National Football Conference/i,'NFC').replace(/American League/i,'AL').replace(/National League/i,'NL');
+            var lgName=lg.split('/')[1].toUpperCase();
+            RANKS[t.id]=(a.seed?o(a.seed)+' '+conf+' · ':'')+o(i+1)+' '+lgName+(a.streak?' · '+a.streak:''); });
+          mtRender(); }).catch(function(){}); });
+      });
   }
   function mtLogo(t){var l=(t.logos||[])[0]; return (l&&l.href)||t.logo||'';}
   function mtRender(){
@@ -435,7 +446,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
                  :'<span class="'+(L.win?'w':'l')+'">'+(L.win?'W':'L')+'</span><span class="s">'+L.my+'–'+L.op+'</span><span class="d">'+(L.home?'vs':'@')+'</span><img src="'+mtLogo(L.opTeam)+'"><span>'+(L.opTeam.abbreviation||'')+'</span><span class="d">· '+mtShort(L.date)+'</span>') : '<span class="d">No recent games</span>';
         v1= !N&&t.stand ? '<span class="d">Off-season · '+t.stand+'</span>' : N ? '<span class="d">Next</span><span>'+mtShort(N.date)+'</span><span class="d">'+(N.home?'vs':'@')+'</span><img src="'+mtLogo(N.opTeam)+'"><span>'+(N.opTeam.abbreviation||'')+'</span>'+(N.nets[0]?'<span class="d">· '+N.nets[0]+'</span>':'') : '<span class="d">Off-season</span>';
       }
-      return '<div class="tr"><div class="lg"><img src="'+t.logo+'"></div><div class="body"><div class="nm"><b>'+t.name+'</b>'+t.rec+'</div><div class="slot"><div class="v'+(mtView?' off':'')+'">'+v0+'</div><div class="v'+(mtView?'':' off')+'">'+v1+'</div></div></div></div>';
+      return '<div class="tr"><div class="lg"><img src="'+t.logo+'"></div><div class="body"><div class="nm"><b>'+t.name+'</b>'+t.rec+(RANKS[t.id]?' · '+RANKS[t.id]:(t.stand?' · '+t.stand:''))+'</div><div class="slot"><div class="v'+(mtView?' off':'')+'">'+v0+'</div><div class="v'+(mtView?'':' off')+'">'+v1+'</div></div></div></div>';
     }).join('');
     var dots=document.querySelectorAll('#mt .dots i'); if(dots.length){dots[0].className=mtView?'':'on'; dots[1].className=mtView?'on':'';}
     clearTimeout(mtLoad._t); mtLoad._t=setTimeout(mtLoad, anyLive?30000:10*60000);
@@ -464,7 +475,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
 
   // ---------- open / close ----------
   function openWatch(){ home.classList.add('hide'); try{history.pushState({w:1},'');}catch(e){} var f=document.querySelector('#grid .card')||document.querySelector('[data-kind]'); if(f) f.focus(); }
-  home.addEventListener('click',function(e){e.stopPropagation(); if(e.target.closest&&e.target.closest('#goGH')){ location.href='https://home.google.com/u/0/home'; return; } if(e.target.closest&&e.target.closest('#goAmb')){ W2W_AMB.open(); return; } if(e.target.closest&&e.target.closest('#goSp')){ W2W_SP.open(); return; } openWatch();});
+  home.addEventListener('click',function(e){e.stopPropagation(); if(e.target.closest&&e.target.closest('#goGH')){ location.href='https://home.google.com/u/0/home'; return; } if(e.target.closest&&e.target.closest('#goAmb')){ W2W_AMB.open(); return; } if(e.target.closest&&e.target.closest('#goSp')){ W2W_SP.open(); return; } if(e.target.closest&&e.target.closest('#goSleep')){ W2W_SLEEP.open(); return; } openWatch();});
   window.addEventListener('popstate',function(ev){ if(ev.state&&ev.state.w) return; if(!document.getElementById('detail').classList.contains('show') && !document.getElementById('picker').classList.contains('show')) home.classList.remove('hide'); });
   window.W2W_HOME_OPEN=function(){return !home.classList.contains('hide');};
   window.W2W_GOHOME=function(){ home.classList.remove('hide'); tick(); var b=document.getElementById('goWatch'); if(b) b.focus(); };
@@ -937,6 +948,7 @@ function playTrailer(key){
 }
 function closeOverlays(){
   var was=false;
+  if(window.W2W_SLEEP&&W2W_SLEEP.isOpen()){ history.back(); return true; }
   if(window.W2W_SP&&W2W_SP.isOpen()){ history.back(); return true; }
   var tr=document.getElementById('trailer'); if(tr){ tr.remove(); var tb=$('trailerBtn'); if(tb) tb.focus(); return true; }
   ['detail','picker'].forEach(function(id){if($(id).classList.contains('show')){$(id).classList.remove('show');was=true;}});
@@ -945,6 +957,7 @@ function closeOverlays(){
 }
 window.addEventListener('popstate',function(){closeOverlays();});
 window.W2W_BACK=function(){
+  if(window.W2W_SLEEP&&W2W_SLEEP.isOpen()){ var wasRun=W2W_SLEEP.running(); W2W_SLEEP.close(); if(!wasRun){ var z=document.getElementById('goSleep'); if(z) z.focus(); } return true; }
   if(window.W2W_SP&&W2W_SP.isOpen()){ W2W_SP.close(); var s=document.getElementById('goSp'); if(s) s.focus(); return true; }
   if(window.W2W_AMB&&W2W_AMB.isOpen()){ W2W_AMB.close(); var m=document.getElementById('goAmb'); if(m&&W2W_HOME_OPEN()) m.focus(); return true; }
   if(window.W2W_HOME_OPEN&&W2W_HOME_OPEN()) return false;
@@ -1007,9 +1020,9 @@ function changed(){save(); limit=LIMIT; drawBars(); render(false);}
 
 // ---------- remote (D-pad) navigation ----------
 function candidates(){
-  var layer = (window.W2W_SP&&W2W_SP.isOpen()) ? $('sp') : (window.W2W_AMB&&W2W_AMB.isOpen()) ? $('amb') : (window.W2W_HOME_OPEN&&W2W_HOME_OPEN()) ? $('home') : $('detail').classList.contains('show') ? $('detail') : $('picker').classList.contains('show') ? $('picker') : document;
+  var layer = (window.W2W_SLEEP&&W2W_SLEEP.running()) ? $('slpRun') : (window.W2W_SLEEP&&W2W_SLEEP.isOpen()) ? $('slp') : (window.W2W_SP&&W2W_SP.isOpen()) ? $('sp') : (window.W2W_AMB&&W2W_AMB.isOpen()) ? $('amb') : (window.W2W_HOME_OPEN&&W2W_HOME_OPEN()) ? $('home') : $('detail').classList.contains('show') ? $('detail') : $('picker').classList.contains('show') ? $('picker') : document;
   return Array.prototype.slice.call(layer.querySelectorAll('.focusable')).filter(function(el){
-    if(layer===document && (el.closest('#detail')||el.closest('#picker')||el.closest('#home')||el.closest('#amb')||el.closest('#sp'))) return false;
+    if(layer===document && (el.closest('#detail')||el.closest('#picker')||el.closest('#home')||el.closest('#amb')||el.closest('#sp')||el.closest('#slp'))) return false;
     return el.offsetParent!==null;
   });
 }
@@ -1225,6 +1238,105 @@ else start();
   };
   window.addEventListener('popstate',function(){ W2W_SP.close(); });
   if(/(^|[#&])sports\b/.test(location.hash)) setTimeout(function(){ W2W_SP.open(); },500);
+})();
+</script>
+
+<style>
+#slp{position:fixed;inset:0;z-index:64;background:#05070f;color:#fff;display:none;padding:2vw 3vw;overflow-y:auto}
+#slp.show{display:block}
+#slp h1{font-size:2.6vw;font-weight:300;margin:0 0 .2vw}
+#slp .sub{color:#9aa3c0;font-size:1.05vw;margin-bottom:1vw}
+#slp h2{font-size:1.1vw;letter-spacing:.14em;text-transform:uppercase;color:#b9a6ff;margin:1.2vw 0 .6vw;font-weight:600}
+#slp .rowx{display:flex;flex-wrap:wrap;gap:.7vw}
+#slp .o{font-size:1.15vw;padding:.55vw 1.2vw;border-radius:2vw;background:#151b33;color:#fff;border:.2vw solid transparent;outline:none;cursor:pointer}
+#slp .o.on{background:#b9a6ff;color:#16102e;font-weight:700}
+#slp .o:focus{border-color:#fff}
+#slp .sc{width:13.6vw;aspect-ratio:16/9;border-radius:.8vw;overflow:hidden;position:relative;background:#151b33 center/cover;border:.25vw solid transparent;outline:none;cursor:pointer}
+#slp .sc span{position:absolute;left:0;right:0;bottom:0;padding:1.2vw .6vw .4vw;background:linear-gradient(transparent,rgba(0,0,0,.85));font-size:.95vw;font-weight:600}
+#slp .sc.on{border-color:#b9a6ff}
+#slp .sc:focus{border-color:#fff}
+#slp .pl{width:10vw;border-radius:.8vw;overflow:hidden;background:#151b33;border:.25vw solid transparent;outline:none;cursor:pointer;font-size:.85vw;text-align:center;padding-bottom:.4vw}
+#slp .pl i{display:block;width:100%;aspect-ratio:1;background:#222a4d center/cover;margin-bottom:.3vw;font-style:normal;font-size:3vw;line-height:10vw}
+#slp .pl.on{border-color:#b9a6ff;background:#2a2350}
+#slp .pl:focus{border-color:#fff}
+#slpGo{font-size:1.6vw;font-weight:700;padding:.8vw 3vw;border-radius:3vw;background:#b9a6ff;color:#16102e;border:.25vw solid transparent;outline:none;margin-top:1.4vw;cursor:pointer}
+#slpGo:focus{border-color:#fff;transform:scale(1.04)}
+#slpRun{position:fixed;inset:0;z-index:66;background:#000;display:none}
+#slpRun.show{display:block}
+#slpRun iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
+#slpDim{position:absolute;inset:0;background:#000;opacity:0;transition:opacity 4s linear;pointer-events:none}
+#slpCap{position:absolute;right:1.6vw;top:1vw;font-size:.95vw;color:#fff;opacity:.55;text-shadow:0 0 .4vw #000}
+#slpLeft{position:absolute;left:1.6vw;bottom:1.2vw;font-size:1vw;color:#fff;opacity:.4;text-shadow:0 0 .4vw #000}
+</style>
+<div id="slp"><h1>🌙 Sleep</h1><div class="sub">Pick how long, a scene and music, then Start. The picture and sound fade out over the last 5 minutes, then the screen goes dark. Press Back any time to stop.</div>
+<h2>How long</h2><div class="rowx" id="slpT"></div>
+<h2>Scene</h2><div class="rowx" id="slpS"></div>
+<h2>Music</h2><div class="rowx" id="slpM"></div>
+<button class="focusable" id="slpGo">▶ Start</button></div>
+<div id="slpRun"><div id="slpFrame"></div><div id="slpDim"></div><div id="slpCap"></div><div id="slpLeft"></div></div>
+<script>
+(function(){
+  var TIMES=[15,30,45,60,90];
+  var SCENES=[['Goodnight embers','BLjXwdSp_LE'],['Night waves','7D6A2XlBM0E'],['Rain on a tent','-N9rb2QDqrw'],['Forest rain','SnUBb-FAlCY'],['Moonlight over water','_Al8valACfA'],['Milky Way & stars','kllzzE30NAg'],['Snowfall at the cabin','FslCeCp1GqM'],['Jellyfish','gdJjc6l6iII'],['Classic fireplace','UgHKb_7884o'],['Candles','XrDUTpeGW0A'],['Dark screen','']];
+  var MUSIC=[['Scene sound only','', ''],['No sound','mute',''],
+    ['Sleep Music for Deep Sleeping','5FI8rn340FgsOB7B8Ic0DZ','https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da841011a2539b708c1a7aecfa4f'],
+    ['lofi sleep','37i9dQZF1DX2PQDq3PdrHQ',''],
+    ['quiet reading room','3PLkwnhMRINuQMNbGQk67F','https://image-cdn-ak.spotifycdn.com/image/ab67706c0000da842b9778d597a0f01c7bf53452'],
+    ['Smooth Calm 80s','7z252Rf9jXS2KMTn1xlBoA','https://image-cdn-fa.spotifycdn.com/image/ab67706c0000da84bde0244ba3466c0a31d548ee'],
+    ['Famous songs, dark ambient','0TxgOPqo4CXatUsvJAyQTl','https://image-cdn-fa.spotifycdn.com/image/ab67706c0000d72cb655f3bf177d843f28163ecb'],
+    ['Star Wars Sleep Soundtrack','2qntW5RieNxdfVXgpQdZHs','https://image-cdn-fa.spotifycdn.com/image/ab67706c0000d72cbfadaa451d7a58b1ca69a6ad'],
+    ['Binaural Beats for Sleep','3HxQEgrgsqxFC3hpKobksf','https://image-cdn-fa.spotifycdn.com/image/ab67706c0000d72c4cb3b8c893ff41ad1880ddfa'],
+    ['sad sleep songs','1NH4K164k3Dk5kGxBg5zSH','https://image-cdn-ak.spotifycdn.com/image/ab67706c0000d72cbdb9706c88c868ce800e7bb4']];
+  var sel={t:30,s:0,m:0}, run=null;
+  try{ var sv=JSON.parse(localStorage.getItem('w2w.sleep')||'null'); if(sv) sel=sv; }catch(e){}
+  function $i(id){return document.getElementById(id);}
+  function draw(){
+    $i('slpT').innerHTML=TIMES.map(function(t){return '<button class="o focusable'+(sel.t===t?' on':'')+'" data-t="'+t+'">'+t+' min</button>';}).join('');
+    $i('slpS').innerHTML=SCENES.map(function(s,i){return '<div class="sc focusable'+(sel.s===i?' on':'')+'" tabindex="0" data-s="'+i+'"'+(s[1]?' style="background-image:url(https://i.ytimg.com/vi/'+s[1]+'/mqdefault.jpg)"':'')+'><span>'+s[0]+'</span></div>';}).join('');
+    $i('slpM').innerHTML=MUSIC.map(function(m,i){return '<div class="pl focusable'+(sel.m===i?' on':'')+'" tabindex="0" data-m="'+i+'"><i'+(m[2]?' style="background-image:url('+m[2]+')"':'')+'>'+(m[2]?'':(i===0?'🔊':i===1?'🔇':'🎵'))+'</i>'+m[0]+'</div>';}).join('');
+  }
+  function refocus(q){ var f=document.querySelector(q); if(f) f.focus(); }
+  $i('slp').addEventListener('click',function(e){ e.stopPropagation();
+    var x=e.target.closest('[data-t]'); if(x){ sel.t=+x.dataset.t; draw(); refocus('#slpT .on'); return; }
+    x=e.target.closest('[data-s]'); if(x){ sel.s=+x.dataset.s; draw(); refocus('#slpS .on'); return; }
+    x=e.target.closest('[data-m]'); if(x){ sel.m=+x.dataset.m; draw(); refocus('#slpM .on'); return; }
+    if(e.target.closest('#slpGo')) start();
+  });
+  function start(){
+    try{ localStorage.setItem('w2w.sleep',JSON.stringify(sel)); }catch(e){}
+    var sc=SCENES[sel.s], mu=MUSIC[sel.m], spotify=mu[1]&&mu[1]!=='mute', muted=(mu[1]!=='');
+    var bridge=window.TV&&TV.openThenReturn;
+    $i('slpFrame').innerHTML= sc[1] ? '<iframe allow="autoplay" src="https://www.youtube-nocookie.com/embed/'+sc[1]+'?autoplay=1&mute='+(muted?1:0)+'&controls=0&loop=1&playlist='+sc[1]+'&modestbranding=1&rel=0&iv_load_policy=3&disablekb=1"></iframe>' : '';
+    $i('slpCap').textContent=(sc[1]?sc[0]:'')+(spotify?(sc[1]?' · ':'')+'♪ '+mu[0]:'');
+    $i('slpDim').style.transition='none'; $i('slpDim').style.opacity=0;
+    $i('slpRun').classList.add('show'); try{history.pushState({z:1},'');}catch(e){}
+    var end=Date.now()+sel.t*60000, vol0=bridge?TV.volume():-1;
+    if(bridge){ TV.keepOn(true); if(spotify) TV.openThenReturn('spotify:playlist:'+mu[1]+':play','com.spotify.tv.android',9000); }
+    else if(spotify){ location.href='intent://playlist/'+mu[1]+'#Intent;scheme=spotify;package=com.spotify.tv.android;end'; }
+    run={end:end,vol0:vol0,spotify:spotify,timer:setInterval(function(){
+      var left=end-Date.now(), fade=Math.min(5*60000, sel.t*60000/2);
+      $i('slpLeft').textContent= left>60000 ? Math.ceil(left/60000)+' min' : '';
+      if(left<fade){ var k=Math.max(0,left/fade); $i('slpDim').style.transition='opacity 4s linear'; $i('slpDim').style.opacity=(1-k).toFixed(2);
+        if(bridge&&vol0>0) TV.setVolume(Math.max(1,Math.round(vol0*k))); }
+      if(left<=0) finish(true);
+    },5000)};
+  }
+  function finish(done){
+    if(!run) return; clearInterval(run.timer); var r=run; run=null;
+    var bridge=window.TV&&TV.pauseMedia;
+    if(bridge){ if(r.spotify) TV.pauseMedia(); setTimeout(function(){ if(r.vol0>0) TV.setVolume(r.vol0); TV.keepOn(false); },1500); }
+    $i('slpFrame').innerHTML='';
+    if(done){ $i('slpDim').style.opacity=1; $i('slpCap').textContent=''; $i('slpLeft').textContent=''; }
+    else $i('slpRun').classList.remove('show');
+  }
+  window.W2W_SLEEP={
+    open:function(){ draw(); $i('slp').classList.add('show'); try{history.pushState({y:1},'');}catch(e){} $i('slpGo').focus(); },
+    isOpen:function(){ return $i('slp').classList.contains('show')||$i('slpRun').classList.contains('show'); },
+    running:function(){ return $i('slpRun').classList.contains('show'); },
+    close:function(){ if($i('slpRun').classList.contains('show')){ finish(false); $i('slpRun').classList.remove('show'); $i('slpGo').focus(); return true; } if($i('slp').classList.contains('show')){ $i('slp').classList.remove('show'); return true; } return false; }
+  };
+  window.addEventListener('popstate',function(){ W2W_SLEEP.close(); });
+  if(/(^|[#&])sleep\b/.test(location.hash)) setTimeout(function(){ W2W_SLEEP.open(); },500);
 })();
 </script>
 
