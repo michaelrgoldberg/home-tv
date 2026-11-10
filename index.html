@@ -396,6 +396,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
   var PICK={}, NOPICK=[];
   function pick(d){ if(NOPICK.indexOf(iso(d))>=0) return []; return PICK[d.getDay()]||[]; }
   function house(){
+    if(PROJECTOR) return; // projector: no office earnings or calendar panels at all
     var now=new Date(), out=[];
     var t=pick(now), tm=new Date(now.getTime()+864e5), tmr=pick(tm);
     if(NOPICK.indexOf(iso(tm))>=0 && PICK[tm.getDay()]) out.push('<div class="line">🚫 No pickup tomorrow (holiday)</div>');
