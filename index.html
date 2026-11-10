@@ -52,7 +52,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #nl-badge-frame{display:none!important}
 /* ---------- Welcome dashboard ---------- */
 #home{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;padding:2.4vw 4vw 4.1vw;color:#fff;overflow:hidden;background:#0b1020}
-#home .bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity 2.5s ease}
+#home .bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity 1.2s ease;will-change:opacity}
 #home .bg.on{opacity:1}
 #home .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.45) 0%,rgba(0,0,0,.05) 30%,rgba(0,0,0,.05) 45%,rgba(0,0,0,.6) 100%)}
 #home .credit{position:absolute;right:1.4vw;bottom:.9vw;font-size:.8vw;opacity:.75;text-align:right;text-shadow:0 0 .4vw #000;max-width:40vw}
@@ -64,8 +64,8 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #home .clock{font-size:6vw;font-weight:200;line-height:.9;text-align:right;text-shadow:0 .2vw 1.4vw rgba(0,0,0,.5)}
 #home .clock small{font-size:2vw;font-weight:400;margin-left:.4vw}
 #home .today{margin-top:1.1vw;display:flex;flex-wrap:wrap;gap:.5vw;position:relative;max-width:58vw}
-#home .chip{background:rgba(8,12,30,.5);backdrop-filter:blur(.5vw);-webkit-backdrop-filter:blur(.5vw);border:.1vw solid rgba(255,255,255,.22);border-radius:3vw;padding:.32vw .9vw;font-size:.98vw}
-#mt{margin-top:.7vw;width:29vw;background:rgba(8,12,30,.55);backdrop-filter:blur(.7vw);-webkit-backdrop-filter:blur(.7vw);border:.1vw solid rgba(255,255,255,.16);border-radius:1.2vw;padding:.55vw 1vw .35vw;display:none}
+#home .chip{background:rgba(8,12,30,.72);border:.1vw solid rgba(255,255,255,.22);border-radius:3vw;padding:.32vw .9vw;font-size:.98vw}
+#mt{margin-top:.7vw;width:29vw;background:rgba(8,12,30,.76);border:.1vw solid rgba(255,255,255,.16);border-radius:1.2vw;padding:.55vw 1vw .35vw;display:none}
 #mt .hd{display:flex;justify-content:space-between;align-items:center;font-size:.85vw;letter-spacing:.14em;text-transform:uppercase;opacity:.75;margin-bottom:.15vw}
 #mt .dots i{display:inline-block;width:.45vw;height:.45vw;border-radius:50%;background:#fff;opacity:.3;margin-left:.3vw}
 #mt .dots i.on{opacity:1}
@@ -83,7 +83,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #tk{position:absolute;left:0;right:0;bottom:0;height:3vw;background:rgba(5,8,20,.78);display:flex;align-items:center;font-size:1.3vw;z-index:2}
 #tk .lab{flex:none;padding:0 1vw;font-weight:700;letter-spacing:.12em;font-size:1vw;color:#ffcc00}
 #tk .win{flex:1;overflow:hidden;white-space:nowrap;-webkit-mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent)}
-#tk .run{display:inline-block;white-space:nowrap;animation:tkm linear infinite}
+#tk .run{display:inline-block;white-space:nowrap;animation:tkm linear infinite;will-change:transform;transform:translateZ(0)}
 @keyframes tkm{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 #tk .it{display:inline-flex;align-items:center;gap:.45vw;margin-right:2.6vw}
 #tk .it img{width:1.9vw;height:1.9vw;object-fit:contain;background:#fff;border-radius:50%;padding:.12vw;box-sizing:border-box}
@@ -98,7 +98,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #mt .live:before{content:"";display:inline-block;width:.5vw;height:.5vw;border-radius:50%;background:#ff3b3b;margin-right:.35vw;animation:mtp 1.2s infinite}
 @keyframes mtp{50%{opacity:.25}}
 #home .cards{display:grid;grid-template-columns:1.45fr 1fr 1.15fr .95fr;gap:1.4vw;margin-top:auto;position:relative}
-#home .card2{background:rgba(8,12,30,.55);backdrop-filter:blur(.7vw);-webkit-backdrop-filter:blur(.7vw);border:.1vw solid rgba(255,255,255,.16);border-radius:1.2vw;padding:1.3vw 1.5vw;min-height:15vw}
+#home .card2{background:rgba(8,12,30,.76);border:.1vw solid rgba(255,255,255,.16);border-radius:1.2vw;padding:1.3vw 1.5vw;min-height:15vw}
 #home .card2 h3{margin:0 0 .7vw;font-size:1vw;font-weight:600;letter-spacing:.14em;text-transform:uppercase;opacity:.75}
 #home .big{font-size:3.6vw;font-weight:300;line-height:1}
 #home .row{display:flex;gap:1.1vw;margin-top:.9vw;font-size:1.1vw;flex-wrap:wrap}
@@ -112,6 +112,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #home .gobtn:focus{border-color:#fff;transform:scale(1.05)}
 #home .hint{text-align:center;font-size:.95vw;opacity:.7;margin-top:.6vw;position:relative;text-shadow:0 0 .4vw #000}
 #home.hide{display:none}
+#home.hide *{animation-play-state:paused!important}
 /* ---------- Ambient ---------- */
 #amb{position:fixed;inset:0;z-index:60;background:#070b18;color:#fff;overflow-y:auto;display:none;padding:2.2vw 3vw 4vw}
 #amb.show{display:block}
@@ -465,6 +466,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
   home.addEventListener('click',function(e){e.stopPropagation(); if(e.target.closest&&e.target.closest('#goGH')){ location.href='https://home.google.com/u/0/home'; return; } if(e.target.closest&&e.target.closest('#goAmb')){ W2W_AMB.open(); return; } if(e.target.closest&&e.target.closest('#goSp')){ W2W_SP.open(); return; } openWatch();});
   window.addEventListener('popstate',function(ev){ if(ev.state&&ev.state.w) return; if(!document.getElementById('detail').classList.contains('show') && !document.getElementById('picker').classList.contains('show')) home.classList.remove('hide'); });
   window.W2W_HOME_OPEN=function(){return !home.classList.contains('hide');};
+  window.W2W_GOHOME=function(){ home.classList.remove('hide'); tick(); var b=document.getElementById('goWatch'); if(b) b.focus(); };
   if(location.hash.indexOf('watch')>=0) home.classList.add('hide');
   // when the TV wakes and this page comes back into view, show the welcome screen again
   document.addEventListener('visibilitychange',function(){ if(!document.hidden){ home.classList.remove('hide'); tick(); weather(); } });
@@ -521,7 +523,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
 })();
 </script>
 <header>
-  <div class="logo">WHAT TO WATCH <span style="font-weight:600;letter-spacing:.03em;opacity:.85"><span id="famName"></span></span></div>
+  <button class="btn focusable" id="wHome" style="margin-right:1vw">🏠 Home</button><div class="logo">WHAT TO WATCH <span style="font-weight:600;letter-spacing:.03em;opacity:.85"><span id="famName"></span></span></div>
   <div style="font-size:1.1vw;color:var(--dim)">Only what's included with your apps &middot; no rentals or purchases</div>
   <div class="status" id="status"></div>
 </header>
@@ -963,6 +965,7 @@ function pick(options, cur, onPick, title){
 // ---------- clicks ----------
 document.addEventListener('click',function(e){
   var b=e.target.closest('.focusable'); if(!b) return;
+  if(b.id==='wHome'){ W2W_GOHOME(); return; }
   if(b.dataset.kind){state.kind=b.dataset.kind; changed(); return;}
   if(b.dataset.r){
     var r=b.dataset.r;
@@ -1105,7 +1108,7 @@ else start();
 #sp .net.ok{background:#ffcc00;color:#111;font-weight:600}
 #sp .empty{color:#9aa3c0;font-size:1.2vw;padding:2vw 0}
 </style>
-<div id="sp"><h1>🏟️ Live Sports</h1>
+<div id="sp"><h1>🏟️ Live Sports <button class="chipb focusable" id="spHome" style="font-size:1.1vw;vertical-align:middle;margin-left:1.5vw">🏠 Home</button></h1>
 <div class="sub">Games on your apps. Yellow tags show where to watch. Select a game to go straight to it (YouTube TV opens the game; other apps open to their home). Back returns.</div>
 <div class="bar" id="spDays"></div>
 <div class="bar" id="spLg"></div>
@@ -1115,7 +1118,7 @@ else start();
 (function(){
   var LG=[['nfl','🏈 NFL','football/nfl'],['cfb','🏈 College FB','football/college-football'],['nba','🏀 NBA','basketball/nba'],['cbb','🏀 College BB','basketball/mens-college-basketball'],
     ['wnba','🏀 WNBA','basketball/wnba'],['mlb','⚾ MLB','baseball/mlb'],['nhl','🏒 NHL','hockey/nhl'],['epl','⚽ Premier League','soccer/eng.1'],['ucl','⚽ Champions League','soccer/uefa.champions'],
-    ['uel','⚽ Europa League','soccer/uefa.europa'],['seriea','⚽ Serie A','soccer/ita.1'],['laliga','⚽ La Liga','soccer/esp.1'],['bund','⚽ Bundesliga','soccer/ger.1'],['mls','⚽ MLS','soccer/usa.1'],['wc','⚽ World Cup / Intl','soccer/fifa.world']];
+    ['uel','⚽ Europa League','soccer/uefa.europa'],['seriea','⚽ Serie A','soccer/ita.1'],['laliga','⚽ La Liga','soccer/esp.1'],['bund','⚽ Bundesliga','soccer/ger.1'],['mls','⚽ MLS','soccer/usa.1'],['wc','⚽ World Cup / Intl','soccer/fifa.world'],['atp','🎾 ATP Tennis','tennis/atp'],['wta','🎾 WTA Tennis','tennis/wta']];
   // Which of the family's apps carries each network
   var APPS={yttv:['YouTube TV','com.amazon.firetv.youtube.tv'],prime:['Prime Video','com.amazon.firebat'],netflix:['Netflix','com.netflix.ninja'],paramount:['Paramount+','com.cbs.ott'],
     mlb:['MLB','com.bamnetworks.mobile.android.gameday.atbat'],nba:['NBA','com.nbaimd.gametime.nba2011.amazon'],espn:['ESPN app','com.espn.gtv'],fox:['FOX Sports','com.fox.fts.android']};
@@ -1139,7 +1142,14 @@ else start();
     var reqs=[]; days().forEach(function(dd){ LG.forEach(function(l){ reqs.push(fetch('https://site.api.espn.com/apis/site/v2/sports/'+l[2]+'/scoreboard?dates='+dd).then(function(r){return r.ok?r.json():{};}).then(function(j){return {l:l,j:j};}).catch(function(){return {l:l,j:{}};})); }); });
     return Promise.all(reqs).then(function(rs){
       var seen={}; games=[];
-      rs.forEach(function(x){ (x.j.events||[]).forEach(function(e){ if(seen[e.id]) return; seen[e.id]=1;
+      var dset={}; days().forEach(function(d){dset[d]=1;});
+      rs.forEach(function(x){ if(x.l[2].indexOf('tennis/')!==0) return; (x.j.events||[]).forEach(function(e){ (e.groupings||[]).forEach(function(gr){ if(!/Singles/i.test((gr.grouping||{}).displayName||'')) return;
+        (gr.competitions||[]).forEach(function(c){ var d=new Date(c.date); if(!dset[ymd(d)]||seen['t'+c.id]) return; seen['t'+c.id]=1; var st=(c.status||{}).type||{};
+          if(/Qualifying/i.test((c.round||{}).displayName||'')) return;
+          var tms=(c.competitors||[]).map(function(p){ var a=p.athlete||{}; return {team:{shortDisplayName:(p.curatedRank&&p.curatedRank.current&&p.curatedRank.current<100?'('+p.curatedRank.current+') ':'')+(a.shortName||a.displayName||'TBD'),logo:(a.flag||{}).href}, score:(p.linescores||[]).map(function(l){return l.value;}).join(' '), winner:p.winner}; });
+          if(tms.length<2) return;
+          games.push({id:'t'+c.id,lg:x.l,date:d,name:e.name,tms:tms,state:st.state,detail:(st.shortDetail||st.detail||''),nets:[],apps:['yttv'],note:(e.shortName||e.name)+' · '+((c.round||{}).displayName||''),tennis:1,q:(e.shortName||e.name)}); }); }); }); });
+      rs.forEach(function(x){ if(x.l[2].indexOf('tennis/')===0) return; (x.j.events||[]).forEach(function(e){ if(seen[e.id]) return; seen[e.id]=1;
         var c=(e.competitions||[])[0]||{}, nets=[];
         (c.broadcasts||[]).forEach(function(b){(b.names||[]).forEach(function(n){ if(nets.indexOf(n)<0) nets.push(n);});});
         (c.geoBroadcasts||[]).forEach(function(b){var n=b.media&&b.media.shortName; if(n&&nets.indexOf(n)<0) nets.push(n);});
@@ -1168,7 +1178,7 @@ else start();
     var tm=g.tms.map(function(c){var t=c.team||{}, sc=(!noSpoil&&g.state!=='pre'&&c.score!=null)?'<span class="sc">'+esc(c.score)+'</span>':'';
       return '<div class="tm">'+(t.logo?'<img src="'+esc(t.logo)+'">':'')+'<span>'+esc(t.shortDisplayName||t.displayName||t.name)+'</span>'+sc+'</div>';}).join('');
     var nets=g.nets.map(function(n){return '<span class="net'+(appsFor(n).length?' ok':'')+'">'+esc(n)+'</span>';}).join('');
-    if(g.apps.length) nets='<span class="net ok">▶ '+g.apps.map(function(a){return APPS[a][0];}).join(' / ')+'</span>'+nets;
+    if(g.tennis) nets='<span class="net ok">▶ Find on YouTube TV</span><span class="net">Tennis Channel / ESPN</span>'; else if(g.apps.length) nets='<span class="net ok">▶ '+g.apps.map(function(a){return APPS[a][0];}).join(' / ')+'</span>'+nets;
     else nets='<span class="net">Not on your apps</span>'+nets;
     return '<div class="g focusable'+(ok?'':' off')+'" tabindex="0" data-g="'+g.id+'">'+st+tm+(g.note?'<div class="st" style="margin-top:.2vw">'+esc(g.note)+'</div>':'')+'<div class="nets">'+nets+'</div></div>';
   }
@@ -1184,10 +1194,11 @@ else start();
     $s('spBody').innerHTML=out||'<div class="empty">'+(dayMode==='live'?'No games on right now. Try Today or Upcoming.':'No games found. Try Upcoming (7 days) or All sports.')+'</div>';
   }
   function launchApp(a,g){ var p=APPS[a]; if(!p) return;
-    if(a==='yttv'&&g){ var q=g.tms.map(function(c){return (c.team||{}).displayName||'';}).join(' vs ');
+    if(a==='yttv'&&g){ var q=g.tennis?g.q:g.tms.map(function(c){return (c.team||{}).displayName||'';}).join(' vs ');
       location.href='intent://tv.youtube.com/search?q='+encodeURIComponent(q)+'#Intent;scheme=https;package='+p[1]+';launchFlags=0x10008000;end'; return; }
     location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package='+p[1]+';launchFlags=0x10008000;end'; }
   $s('sp').addEventListener('click',function(e){ e.stopPropagation();
+    if(e.target.closest('#spHome')){ history.back(); setTimeout(function(){ if(window.W2W_GOHOME) W2W_GOHOME(); },120); return; }
     if(e.target.closest('[data-ns]')){ noSpoil=!noSpoil; saveLg(); render(); var n=document.querySelector('[data-ns]'); if(n) n.focus(); return; }
     var d=e.target.closest('[data-day]'); if(d){ var nm=d.dataset.day; if(nm==='live'&&dayMode==='today'){ dayMode='live'; render(); var f0=document.querySelector('#spDays .on'); if(f0) f0.focus(); return; } dayMode=nm; $s('spBody').innerHTML='<div class="empty">Loading games…</div>'; load().then(function(){var f=document.querySelector('#spDays .on'); if(f) f.focus();}); return; }
     var l=e.target.closest('[data-lg]'); if(l){ var k=l.dataset.lg;
