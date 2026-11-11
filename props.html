@@ -48,6 +48,11 @@
   #rise .rb .play{font-size:.8em;color:#cdd7ee;margin-top:3px;line-height:1.25;max-height:2.5em;overflow:hidden}
   #rise .rring{flex:none}
   #rise.hit{border-color:var(--gold);background:linear-gradient(180deg,#2a2410,#16203a)}
+  #rise.game{border-color:var(--blue)}
+  #rise.game.final{border-color:var(--gold)}
+  #rise .gface{width:46px;height:46px;border-radius:12px;flex:none;display:flex;align-items:center;justify-content:center;font-size:26px;background:#16233c;border:1px solid var(--line)}
+  #rise .rb .tag{font-size:.72em;font-weight:800;letter-spacing:.06em;color:var(--blue);text-transform:uppercase}
+  #rise.game.final .rb .tag{color:var(--gold)}
   /* corner (floating overlay) mode: just one card, transparent surround */
   body.corner{background:transparent}
   body.corner #pp{background:transparent;border:none;box-shadow:none;height:100%;font-size:14px;justify-content:flex-end}
@@ -70,6 +75,24 @@
   .cinfo .cst .scr{color:#6f7d9b;margin-left:5px}
   .cchip .dpop{position:absolute;top:4px;right:8px;color:var(--green);font-weight:800;font-size:.8em;animation:dfade 2.6s forwards}
   @keyframes dfade{0%{opacity:0;transform:translateY(6px)}12%{opacity:1;transform:translateY(0)}80%{opacity:1}100%{opacity:0}}
+  /* parlay card */
+  .pcard{background:linear-gradient(180deg,#16203a,#0e1526);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 34px -12px #000;overflow:hidden;width:250px}
+  .pcard.won{border-color:var(--green)}.pcard.lost{border-color:var(--red);opacity:.82}
+  .pcard .phd{display:flex;align-items:center;gap:9px;padding:7px 10px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,rgba(255,204,0,.12),transparent)}
+  .pcard .pring{position:relative;width:40px;height:40px;flex:none}
+  .pcard .pring .pv{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800}
+  .pcard .pi{flex:1;min-width:0;line-height:1.15}
+  .pcard .pi .pn{font-weight:800;font-size:.86em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pcard .pi .po{font-size:.68em;color:#9fb0d6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pcard .pi .po b{color:var(--gold)}
+  .pcard .plegs{padding:4px 6px;display:flex;flex-direction:column;gap:1px}
+  .pleg{display:flex;align-items:center;gap:6px;font-size:.7em;padding:2px 4px;border-radius:6px}
+  .pleg .ld{width:9px;height:9px;border-radius:50%;flex:none}
+  .pleg .ln{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+  .pleg .ln .ll{color:#9fb0d6;font-weight:400;margin-left:3px}
+  .pleg .lv{font-weight:800;flex:none}
+  .pleg .lc{color:#6f7d9b;flex:none;font-size:.9em;min-width:30px;text-align:right}
+  .pleg.won{color:#cfeede}.pleg.lost{color:#e79a8d}.pleg.lost .ln{text-decoration:line-through;opacity:.8}
 </style></head>
 <body>
 <div id="pp"><div class="msg">Loading your props…</div></div>
@@ -88,7 +111,7 @@ function loadProps(){
   var b=function(s){return Uint8Array.from(atob(s),function(c){return c.charCodeAt(0);});};
   return fetch('props.json?'+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(p){
     return crypto.subtle.importKey('raw',b(key),'AES-GCM',false,['decrypt']).then(function(k){ return crypto.subtle.decrypt({name:'AES-GCM',iv:b(p.iv)},k,b(p.ct)); });
-  }).then(function(buf){ var a=JSON.parse(new TextDecoder().decode(buf)); return Array.isArray(a)?a:(a.props||[]); }).catch(function(){ return []; });
+  }).then(function(buf){ var a=JSON.parse(new TextDecoder().decode(buf)); if(Array.isArray(a)) return {props:a, parlays:[]}; return {props:a.props||[], parlays:a.parlays||[]}; }).catch(function(){ return {props:[], parlays:[]}; });
 }
 
 // --- stat extraction from ESPN box score ---
@@ -100,7 +123,13 @@ var STAT_MAP={ points:['PTS'], pts:['PTS'], rebounds:['REB','TOT'], reb:['REB'],
   'pass tds':['TD'], 'rush tds':['TD'], 'rec tds':['TD'], tackles:['TOT','TCKL'] };
 var GROUP_HINT={ 'passing yards':'passing','pass tds':'passing','rushing yards':'rushing','rush tds':'rushing','receiving yards':'receiving','rec tds':'receiving','receptions':'receiving','rec':'receiving' };
 function num(v){ if(v==null) return null; v=String(v); if(v.indexOf('-')>0 && /^\d+-\d+$/.test(v)) return parseInt(v.split('-')[0],10); var n=parseFloat(v.replace(/[^0-9.\-]/g,'')); return isNaN(n)?null:n; }
+// combo props (e.g. "points+rebounds", "points+assists") sum the parts
 function statFromBox(d, playerName, stat){
+  var parts=String(stat||'').toLowerCase().split('+').map(function(s){return s.trim();}).filter(Boolean);
+  if(parts.length>1){ var sum=0, any=false; for(var i=0;i<parts.length;i++){ var vv=singleStat(d,playerName,parts[i]); if(vv!=null){ sum+=vv; any=true; } } return any?sum:null; }
+  return singleStat(d,playerName,stat);
+}
+function singleStat(d, playerName, stat){
   var bs=d.boxscore||{}; var want=String(stat||'').toLowerCase().trim();
   var labelsWanted=STAT_MAP[want]||[want.toUpperCase()];
   var groupHint=GROUP_HINT[want];
@@ -155,8 +184,16 @@ var summaryCache={};
 function summary(lg,id){ if(summaryCache[id] && Date.now()-summaryCache[id].t<10000) return Promise.resolve(summaryCache[id].d);
   return fetch(ESPN+lg+'/summary?event='+id).then(function(r){return r.json();}).then(function(d){ summaryCache[id]={t:Date.now(),d:d}; return d; }).catch(function(){ return null; }); }
 
+// --- notifications / quiet mode settings ---
+// w2w.notify = { quiet:bool (hide persistent chips, popups only), games:bool (alert on followed-game score/period events) }
+function getNotify(){ try{ var o=JSON.parse(localStorage.getItem('w2w.notify')||'{}'); return {quiet:!!o.quiet, games:(o.games!==false)}; }catch(e){ return {quiet:false, games:true}; } }
+function isQuiet(){ return getNotify().quiet; }
+function getStarred(){ try{ var a=JSON.parse(localStorage.getItem('w2w.starred')||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+function sportFromLg(lg){ if(/basketball/.test(lg))return'bk'; if(/football/.test(lg))return'fb'; if(/hockey/.test(lg))return'hk'; if(/baseball/.test(lg))return'bb'; if(/soccer/.test(lg))return'sc'; return'gen'; }
+function perLabel(sp,p){ if(sp==='bk'){ return p<=4?('Q'+p):('OT'+(p>5?(p-4):'')); } if(sp==='hk'){ return p<=3?('P'+p):'OT'; } if(sp==='fb'){ return p<=4?('Q'+p):'OT'; } return 'Period '+p; }
+
 // --- state ---
-var props=[], vals={}, pageTop=0, pollT=null;
+var props=[], parlays=[], vals={}, pageTop=0, pollT=null;
 var PAGE=4; // visible chips at once
 
 function needed(p){ return Math.floor(p.line)+1; } // over hits at this integer
@@ -189,6 +226,7 @@ function chipHTML(p){
 
 // ---------- live likelihood of the prop clearing (pace + time + blowout/foul-out) ----------
 function over(p){ return (p.dir||'o')==='o'; }
+function parseClock(s){ if(!s) return 0; var m=String(s).match(/(\d+):(\d+)/); if(m) return (+m[1])*60+(+m[2]); var n=parseFloat(s); return isNaN(n)?0:n; } // "5:23" -> seconds
 var SPORT_PERIODS={ bk:{n:4,len:12}, fb:{n:4,len:15}, hk:{n:3,len:20} }; // minutes per period (NBA/NFL/NHL)
 function remGameMin(sp,per,cs){ var S=SPORT_PERIODS[sp]; if(!S) return null; if(per>S.n) return cs/60; return (S.n-per)*S.len + cs/60; }
 function elapGameMin(sp,per,cs){ var S=SPORT_PERIODS[sp]; if(!S) return null; var p=Math.min(per,S.n); return (p-1)*S.len + (S.len - cs/60); }
@@ -230,84 +268,177 @@ function cornerChip(p){
   return '<div class="cchip'+(set==='won'?' hit':'')+'">'+face+ring+'<div class="cinfo"><div class="cnm">'+esc(p.disp||p.player)+' '+rem+'</div><div class="cln">'+esc(p.label||((p.dir||'o')+p.line+' '+(p.statLabel||p.stat)))+'</div><div class="cst">'+clk+sc+'</div></div></div>';
 }
 
+// ---- parlay rendering ----
+function legStat(l){ var v=vals[l.id], st=settled(l), prob=(l._prob!=null?l._prob:0.5);
+  var color=st==='won'?'var(--green)':st==='lost'?'var(--red)':probColor(prob);
+  return {v:v, st:st, color:color}; }
+function parlayCard(pl){
+  var set=pl._settled; // 'won' | 'lost' | null
+  var prob=(pl._prob!=null?pl._prob:0.5);
+  var C=40,R=16,circ=2*Math.PI*R, fill=set?1:prob, off=circ*(1-fill);
+  var color=set==='won'?'var(--green)':set==='lost'?'var(--red)':probColor(prob);
+  var pct=set==='won'?'✓':set==='lost'?'✗':Math.round(prob*100)+'%';
+  var ring='<div class="pring"><svg width="'+C+'" height="'+C+'" viewBox="0 0 '+C+' '+C+'" style="transform:rotate(-90deg)"><circle cx="20" cy="20" r="'+R+'" fill="none" stroke="#1e283c" stroke-width="4"/><circle cx="20" cy="20" r="'+R+'" fill="none" stroke="'+color+'" stroke-width="4" stroke-linecap="round" stroke-dasharray="'+circ.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'"/></svg><span class="pv">'+pct+'</span></div>';
+  var n=pl.legs.length;
+  var sub=set==='won'?'🏆 PARLAY HIT!':set==='lost'?'✗ one leg missed':(pl._wonCount+'/'+n+' clear · '+pl._liveCount+' live');
+  var legs=pl.legs.map(function(l){ var s=legStat(l);
+    var icon=s.st==='won'?'✓':s.st==='lost'?'✗':(s.v!=null&&over(l)?'+'+(needed(l)-s.v):'');
+    var right = l._pre ? '<span class="lc">'+esc((l._status||'·').replace(/ -.*/,'').slice(0,5))+'</span>'
+                       : '<span class="lv">'+(s.v==null?'–':s.v)+'</span><span class="lc">'+icon+'</span>';
+    return '<div class="pleg '+(s.st||'')+'"><span class="ld" style="background:'+s.color+'"></span><span class="ln">'+esc(l.disp||l.player)+'<span class="ll">'+esc(l.label||'')+'</span></span>'+right+'</div>';
+  }).join('');
+  return '<div class="pcard '+(set||'')+'"><div class="phd">'+ring+'<div class="pi"><div class="pn">'+esc(pl.name||'Parlay')+'</div><div class="po"><b>'+esc(pl.odds||'')+'</b> · '+sub+'</div></div></div><div class="plegs">'+legs+'</div></div>';
+}
+function cardFor(it){ return it.legs?parlayCard(it):cornerChip(it); }
+
 var rotI=0;
 // display mode for the floating corner card: {m:'cycle'|'few'|'all', n, sec}
 function getPropMode(){ try{ var o=JSON.parse(localStorage.getItem('w2w.propMode')||'{}'); return {m:o.m||'cycle', n:o.n||3, sec:o.sec||10}; }catch(e){ return {m:'cycle',n:3,sec:10}; } }
-function visCount(){ var pm=getPropMode(); if(pm.m==='all') return props.length||1; if(pm.m==='few') return Math.min(pm.n, props.length||1); return 1; }
+function cornerItems(){ return props.concat(parlays); }
+function visCount(){ var pm=getPropMode(), n=cornerItems().length; if(pm.m==='all') return n||1; if(pm.m==='few') return Math.min(pm.n, n||1); return 1; }
 function render(){
   var el=$('pp');
   if(CORNER){
-    if(!props.length){ el.innerHTML=''; return; }
-    var vc=visCount(); if(rotI>=props.length) rotI=0;
-    var shown=[]; for(var i=0;i<vc && i<props.length;i++){ shown.push(props[(rotI+i)%props.length]); }
-    el.innerHTML='<div class="list">'+shown.map(cornerChip).join('')+'</div>';
+    if(isQuiet()){ el.innerHTML=''; return; } // quiet mode: popups only, no persistent cards
+    var items=cornerItems();
+    if(!items.length){ el.innerHTML=''; return; }
+    var vc=visCount(); if(rotI>=items.length) rotI=0;
+    var shown=[]; for(var i=0;i<vc && i<items.length;i++){ shown.push(items[(rotI+i)%items.length]); }
+    el.innerHTML='<div class="list">'+shown.map(cardFor).join('')+'</div>';
     return;
   }
-  if(!props.length){ el.innerHTML='<div class="msg">No props set.<br><span style="font-size:.85em">Tell Mike which props to track and they\'ll show here.</span></div>'; return; }
-  var total=props.length;
-  if(pageTop>Math.max(0,total-PAGE)) pageTop=Math.max(0,total-PAGE);
-  var slice=props.slice(pageTop, pageTop+PAGE);
-  var nav = total>PAGE ? '<span class="nav">◂ '+(pageTop+1)+'–'+Math.min(total,pageTop+PAGE)+' of '+total+' ▸</span>' : '<span class="nav">'+total+' prop'+(total>1?'s':'')+'</span>';
-  el.innerHTML='<div class="hd"><span class="t">🎯 PROP TRACKER</span>'+nav+'</div><div class="list">'+slice.map(chipHTML).join('')+'</div>';
+  if(!props.length && !parlays.length){ el.innerHTML='<div class="msg">No props set.<br><span style="font-size:.85em">Tell Mike which props to track and they\'ll show here.</span></div>'; return; }
+  var pHtml = props.length ? (function(){ var total=props.length;
+    if(pageTop>Math.max(0,total-PAGE)) pageTop=Math.max(0,total-PAGE);
+    var slice=props.slice(pageTop, pageTop+PAGE);
+    var nav = total>PAGE ? '<span class="nav">◂ '+(pageTop+1)+'–'+Math.min(total,pageTop+PAGE)+' of '+total+' ▸</span>' : '<span class="nav">'+total+' prop'+(total>1?'s':'')+'</span>';
+    return '<div class="hd"><span class="t">🎯 PROP TRACKER</span>'+nav+'</div><div class="list">'+slice.map(chipHTML).join('')+'</div>'; })() : '';
+  var plHtml = parlays.length ? '<div class="hd" style="margin-top:12px"><span class="t">🎟️ PARLAYS</span><span class="nav">'+parlays.length+' parlay'+(parlays.length>1?'s':'')+'</span></div><div class="list">'+parlays.map(parlayCard).join('')+'</div>' : '';
+  el.innerHTML=pHtml+plHtml;
 }
 
 function confetti(id){ var c=$('conf-'+id); if(!c) return; var cols=['#ffcc00','#2ec47a','#4f9bff','#e5533c','#fff']; var h=''; for(var i=0;i<16;i++){ h+='<i style="left:'+(5+Math.random()*90)+'%;background:'+cols[i%5]+';animation-delay:'+(Math.random()*.4).toFixed(2)+'s"></i>'; } c.innerHTML=h; }
 
+// evaluate one prop/leg (shared by standalone props and parlay legs)
+function evalProp(p){
+  if(!p.team||!p.lg){ p._status=''; p._score=''; p._live=false; return Promise.resolve(); }
+  return findGame(p.lg,p.team).then(function(g){
+    if(!g){ p._status='No game today'; p._score=''; p._live=false; return; }
+    p._live=(g.state==='in'); p._state=g.state; p.state=g.state;
+    p._status=g.status||(g.state==='post'?'Final':'');
+    p._period=g.period||0; p._clockSec=parseClock(g.clock);
+    var sa=((g.cs||[])[0]||{}).score, sb=((g.cs||[])[1]||{}).score;
+    p._blowout = (p.sport==='bk' && (g.period||0)>=4 && Math.abs((+sa||0)-(+sb||0))>=20);
+    p._score=(g.cs||[]).map(function(c){return (c.team||{}).abbreviation+' '+(c.score!=null?c.score:'');}).join(' – ');
+    if(g.state==='pre'){ vals[p.id]=0; p._prob=0.5; p._pre=true; return; }
+    p._pre=false;
+    return summary(p.lg,g.id).then(function(d){ if(!d) return; var v=statFromBox(d,p.player,p.stat);
+      var h=headshotFrom(d,p.player); var face=h.hs||(CDN_LG[p.lg]&&h.id?'https://a.espncdn.com/i/headshots/'+CDN_LG[p.lg]+'/players/full/'+h.id+'.png':''); if(face) p._face=face;
+      var pm=playerMeta(d,p.player); p._minPlayed=pm.min; p._fouledOut=(p.sport==='bk' && pm.pf>=6);
+      if(v!=null){ var old=vals[p.id]; vals[p.id]=v;
+        if(old!=null && v>old){ p._delta=v-old; p._newVal=v; p._play=lastPlayFor(d,p.player); }
+        else if(old!=null && v!==old){ p._changed=true; }
+      }
+      p._prob=likelihood(p);
+    });
+  });
+}
+function allLegs(){ var r=[]; parlays.forEach(function(pl){ r=r.concat(pl.legs); }); return r; }
 function poll(){
   clearTimeout(pollT);
-  if(!props.length){ render(); pollT=setTimeout(poll,30000); return; }
-  Promise.all(props.map(function(p){
-    if(!p.team||!p.lg){ p._status=''; p._score=''; p._live=false; return Promise.resolve(); }
-    return findGame(p.lg,p.team).then(function(g){
-      if(!g){ p._status='No game today'; p._score=''; p._live=false; return; }
-      p._live=(g.state==='in'); p._state=g.state; p.state=g.state;
-      p._status=g.status||(g.state==='post'?'Final':'');
-      p._period=g.period||0; p._clockSec=parseClock(g.clock);
-      var sa=((g.cs||[])[0]||{}).score, sb=((g.cs||[])[1]||{}).score;
-      p._blowout = (p.sport==='bk' && (g.period||0)>=4 && Math.abs((+sa||0)-(+sb||0))>=20);
-      p._score=(g.cs||[]).map(function(c){return (c.team||{}).abbreviation+' '+(c.score!=null?c.score:'');}).join(' – ');
-      if(g.state==='pre'){ vals[p.id]=0; p._prob=0.5; return; }
-      return summary(p.lg,g.id).then(function(d){ if(!d) return; var v=statFromBox(d,p.player,p.stat);
-        var h=headshotFrom(d,p.player); var face=h.hs||(CDN_LG[p.lg]&&h.id?'https://a.espncdn.com/i/headshots/'+CDN_LG[p.lg]+'/players/full/'+h.id+'.png':''); if(face) p._face=face;
-        var pm=playerMeta(d,p.player); p._minPlayed=pm.min; p._fouledOut=(p.sport==='bk' && pm.pf>=6);
-        if(v!=null){ var old=vals[p.id]; vals[p.id]=v;
-          if(old!=null && v>old){ p._delta=v-old; p._newVal=v; p._play=lastPlayFor(d,p.player); }
-          else if(old!=null && v!==old){ p._changed=true; }
-        }
-        p._prob=likelihood(p);
-      });
+  var items=props.concat(allLegs());
+  if(!items.length){ render(); pollT=setTimeout(poll,30000); return; }
+  Promise.all(items.map(evalProp)).then(function(){
+    // roll up each parlay: combined likelihood = product of legs; any leg lost => parlay dead
+    parlays.forEach(function(pl){
+      var prod=1; pl.legs.forEach(function(l){ prod*= (l._prob!=null?l._prob:0.5); });
+      pl._prob=prod;
+      pl._anyLost=pl.legs.some(function(l){ return settled(l)==='lost'; });
+      pl._allWon=pl.legs.length>0 && pl.legs.every(function(l){ return settled(l)==='won'; });
+      pl._settled=pl._anyLost?'lost':(pl._allWon?'won':null);
+      pl._wonCount=pl.legs.filter(function(l){ return settled(l)==='won'; }).length;
+      pl._liveCount=pl.legs.filter(function(l){ return l._live; }).length;
     });
-  })).then(function(){
     render();
     props.forEach(function(p){
       if(p._delta){ showRise(p); p._changed=true; p._delta=0; }
       if(p._changed){ var vEl=$((CORNER?'cv-':'val-')+p.id); if(vEl){ vEl.classList.add('pop'); setTimeout(function(){vEl.classList.remove('pop');},260);} p._changed=false; }
       var won=settled(p)==='won'; if(won && !p._celebrated){ p._celebrated=true; confetti(p.id);} if(!won) p._celebrated=false;
     });
-    var anyLive=props.some(function(p){ return p._live; });
+    // parlay-hit celebration + leg-change delta (rise card for leg scores)
+    allLegs().forEach(function(l){ if(l._delta){ showRise(l); l._delta=0; } });
+    parlays.forEach(function(pl){ if(pl._settled==='won' && !pl._celebrated){ pl._celebrated=true; } });
+    var anyLive=items.some(function(p){ return p._live; });
     pollT=setTimeout(poll, anyLive?12000:45000);
   });
 }
-var riseT=null;
+// ---- rise-card popup queue (bottom-left), shared by prop changes and game events ----
+var riseT=null, riseQ=[], riseBusy=false;
+function enqueueRise(html, cls, dur){ riseQ.push({html:html, cls:cls||'', dur:dur||6500}); pumpRise(); }
+function pumpRise(){ if(riseBusy) return; var it=riseQ.shift(); if(!it) return; var r=$('rise'); if(!r){ return; }
+  riseBusy=true; r.className=it.cls; r.innerHTML=it.html; void r.offsetWidth; r.classList.add('show');
+  clearTimeout(riseT); riseT=setTimeout(function(){ r.classList.remove('show'); setTimeout(function(){ riseBusy=false; pumpRise(); }, 420); }, it.dur);
+}
 function showRise(p){
-  if(CORNER){ // corner mode: bring that prop forward and flash it in place (no separate pop-up)
+  if(CORNER && !isQuiet()){ // persistent-chip mode: bring that prop forward and flash it in place
     var i=props.indexOf(p); if(i>=0) rotI=i; render();
     var chip=document.querySelector('#pp .chip');
-    if(chip){ var st=statusOf(p,p._newVal); var d=document.createElement('div'); d.className='dpop'; d.textContent=st.hit?'🏆 HIT!':'+'+p._delta+' '+(p.statLabel||p.stat); chip.appendChild(d);
-      var vEl=document.querySelector('#pp .ring .val'); if(vEl){ vEl.classList.add('pop'); setTimeout(function(){vEl.classList.remove('pop');},260); } }
+    if(chip){ var st0=statusOf(p,p._newVal); var d=document.createElement('div'); d.className='dpop'; d.textContent=st0.hit?'🏆 HIT!':'+'+p._delta+' '+(p.statLabel||p.stat); chip.appendChild(d); }
     return;
   }
-  var r=$('rise'); if(!r) return;
   var st=statusOf(p, p._newVal);
   var C=44,R=18,circ=2*Math.PI*R,off=circ*(1-st.prog);
   var color=st.hit?'var(--gold)':ringColor(st.prog);
   var face=p._face? '<div class="face" style="background-image:url(&quot;'+esc(p._face)+'&quot;)"></div>' : '<div class="face"></div>';
   var ring='<div class="rring"><svg width="'+C+'" height="'+C+'" viewBox="0 0 '+C+' '+C+'" style="transform:rotate(-90deg)"><circle cx="22" cy="22" r="'+R+'" fill="none" stroke="#1e283c" stroke-width="4.5"/><circle cx="22" cy="22" r="'+R+'" fill="none" stroke="'+color+'" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="'+circ.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'"/></svg></div>';
   var sl=p.statLabel||p.stat;
-  r.className=st.hit?'hit':'';
-  r.innerHTML=face+'<div class="rb"><div class="top"><span class="nm">'+esc(p.disp||p.player)+'</span><span class="delta">'+(st.hit?'🏆 HIT!':'+'+p._delta+' '+esc(sl))+'</span></div><div class="tot"><b>'+p._newVal+'</b> '+esc(sl)+' · '+(st.hit?'prop hit!':('+'+(needed(p)-p._newVal)+' to go'))+'</div>'+(p._play?'<div class="play">'+esc(p._play)+'</div>':'')+'</div>'+ring;
-  void r.offsetWidth; r.classList.add('show');
-  clearTimeout(riseT); riseT=setTimeout(function(){ r.classList.remove('show'); }, st.hit?9000:6500);
+  var html=face+'<div class="rb"><div class="top"><span class="nm">'+esc(p.disp||p.player)+'</span><span class="delta">'+(st.hit?'🏆 HIT!':'+'+p._delta+' '+esc(sl))+'</span></div><div class="tot"><b>'+p._newVal+'</b> '+esc(sl)+' · '+(st.hit?'prop hit!':('+'+(needed(p)-p._newVal)+' to go'))+'</div>'+(p._play?'<div class="play">'+esc(p._play)+'</div>':'')+'</div>'+ring;
+  enqueueRise(html, st.hit?'hit':'', st.hit?9000:6500);
+}
+// game-follow popup (score / period milestone / final)
+function showGameRise(scoreStr, tag, detail, sp, isFinal){
+  var emo={bk:'🏀',fb:'🏈',hk:'🏒',bb:'⚾',sc:'⚽'}[sp]||'📣';
+  var html='<div class="gface">'+emo+'</div><div class="rb"><div class="tag">'+esc(tag)+'</div><div class="top"><span class="nm">'+esc(scoreStr)+'</span></div>'+(detail?'<div class="play">'+esc(detail)+'</div>':'')+'</div>';
+  enqueueRise(html, 'game'+(isFinal?' final':''), isFinal?8000:6000);
+}
+
+// ---- followed-game notifications (score changes + period milestones) ----
+var gstate={}, gPollT=null;
+function pollGames(){
+  clearTimeout(gPollT);
+  var nf=getNotify(), st=getStarred();
+  if(!nf.games || !st.length){ gPollT=setTimeout(pollGames, 60000); return; }
+  var lgs=[]; st.forEach(function(s){ if(lgs.indexOf(s.lg)<0) lgs.push(s.lg); });
+  Promise.all(lgs.map(scoreboard)).then(function(res){
+    var byLg={}; lgs.forEach(function(lg,i){ byLg[lg]=res[i]||[]; });
+    var anyLive=false;
+    st.forEach(function(s){
+      var evs=byLg[s.lg]||[]; var e=null;
+      for(var i=0;i<evs.length;i++){ if(String(evs[i].id)===String(s.id)){ e=evs[i]; break; } }
+      if(!e) return;
+      var c=(e.competitions&&e.competitions[0])||{}; var cs=c.competitors||[]; var stt=e.status||{}; var ty=stt.type||{};
+      var state=ty.state, period=stt.period||0, clk=parseClock(stt.displayClock||''), sp=sportFromLg(s.lg);
+      if(state==='in') anyLive=true;
+      var sum=cs.reduce(function(a,x){return a+(+(x.score||0));},0);
+      var scoreStr=cs.map(function(x){ return ((x.team||{}).abbreviation||'')+' '+(x.score!=null?x.score:'0'); }).join('  ');
+      var lastPlay=((c.situation||{}).lastPlay||{}).text||'';
+      var g=gstate[s.id];
+      if(!g){ gstate[s.id]={state:state, period:period, score:sum, half:false, finaled:(state==='post')}; return; } // seed silently
+      if(g.state==='pre' && state==='in'){ showGameRise(scoreStr,'Tip-off','Game started',sp,false); }
+      if(state==='in'){
+        if(sp==='bk' || sp==='fb'){ // basketball/football: period end + halfway, not every score
+          if(period>g.period && g.period>=1){ showGameRise(scoreStr,'End '+perLabel(sp,g.period),lastPlay,sp,false); g.half=false; }
+          else if(period===g.period && !g.half && clk>0 && clk<=(sp==='bk'?360:450)){ showGameRise(scoreStr,perLabel(sp,period)+' halfway',lastPlay,sp,false); g.half=true; }
+        } else { // hockey / baseball / soccer / other: alert on each score change
+          if(sum>g.score){ showGameRise(scoreStr,'Score',lastPlay,sp,false); }
+        }
+      }
+      if(state==='post' && !g.finaled){ showGameRise(scoreStr,'Final',lastPlay,sp,true); g.finaled=true; }
+      if(period!==g.period) g.half=false;
+      g.state=state; g.period=period; g.score=sum;
+    });
+    gPollT=setTimeout(pollGames, anyLive?15000:45000);
+  }).catch(function(){ gPollT=setTimeout(pollGames, 45000); });
 }
 
 document.addEventListener('keydown',function(e){
@@ -315,17 +446,20 @@ document.addEventListener('keydown',function(e){
   if((k===39||k===40) && props.length>PAGE){ pageTop=Math.min(props.length-PAGE, pageTop+PAGE); render(); e.preventDefault(); }
   else if((k===37||k===38) && props.length>PAGE){ pageTop=Math.max(0, pageTop-PAGE); render(); e.preventDefault(); }
 });
+// react to settings changed from the dashboard (shared localStorage)
+window.addEventListener('storage', function(e){ if(!e.key || /^w2w\.(notify|propMode|starred)$/.test(e.key)){ render(); clearTimeout(gPollT); pollGames(); } });
 // Back returns to the dashboard (the floating corner overlay never navigates)
 window.W2W_BACK=function(){ if(CORNER) return false; try{ history.back(); }catch(e){ location.href='./'; } return true; };
-window.PROPS={ reload:function(){ loadProps().then(function(a){ props=a||[]; poll(); }); }, next:function(){if(props.length>PAGE){pageTop=Math.min(props.length-PAGE,pageTop+PAGE);render();}}, prev:function(){if(props.length>PAGE){pageTop=Math.max(0,pageTop-PAGE);render();}} };
+window.PROPS={ reload:function(){ loadProps().then(function(d){ props=d.props||[]; parlays=d.parlays||[]; poll(); }); }, next:function(){if(props.length>PAGE){pageTop=Math.min(props.length-PAGE,pageTop+PAGE);render();}}, prev:function(){if(props.length>PAGE){pageTop=Math.max(0,pageTop-PAGE);render();}} };
 
 if(CORNER){ document.body.classList.add('corner');
-  (function cyc(){ var pm=getPropMode(); var vc=visCount();
-    // only rotate when there are more props than currently shown (all = no rotation)
-    if(pm.m!=='all' && props.length>vc){ rotI=(rotI+vc)%props.length; render(); }
+  (function cyc(){ var pm=getPropMode(); var vc=visCount(); var n=cornerItems().length;
+    // only rotate when there are more items than currently shown (all = no rotation)
+    if(pm.m!=='all' && n>vc){ rotI=(rotI+vc)%n; render(); }
     setTimeout(cyc, Math.max(4, pm.sec)*1000);
   })();
 }
-loadProps().then(function(a){ props=a||[]; poll(); });
+loadProps().then(function(d){ props=d.props||[]; parlays=d.parlays||[]; poll(); });
+pollGames(); // followed-game score/period alerts (independent of props)
 </script>
 </body></html>

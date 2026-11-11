@@ -1360,6 +1360,11 @@ else {
   function getPropMode(){ try{ return JSON.parse(localStorage.getItem('w2w.propMode')||'null') || PROP_MODES[0]; }catch(e){ return PROP_MODES[0]; } }
   function propModeLabel(){ var c=getPropMode(); for(var i=0;i<PROP_MODES.length;i++){ if(PROP_MODES[i].m===c.m && (PROP_MODES[i].sec||0)===(c.sec||0) && (PROP_MODES[i].n||0)===(c.n||0)) return PROP_MODES[i].label; } return c.label||'Cycle 10s'; }
   function cyclePropMode(){ var c=getPropMode(), idx=0; for(var i=0;i<PROP_MODES.length;i++){ if(PROP_MODES[i].label===propModeLabel()){ idx=i; break; } } var nx=PROP_MODES[(idx+1)%PROP_MODES.length]; try{ localStorage.setItem('w2w.propMode', JSON.stringify(nx)); }catch(e){} }
+  // overlay notification settings: quiet = popups only (no persistent cards); games = alert on followed-game scores/periods
+  function getNotify(){ try{ var o=JSON.parse(localStorage.getItem('w2w.notify')||'{}'); return {quiet:!!o.quiet, games:(o.games!==false)}; }catch(e){ return {quiet:false, games:true}; } }
+  function setNotify(o){ try{ localStorage.setItem('w2w.notify', JSON.stringify(o)); }catch(e){} }
+  function toggleQuiet(){ var n=getNotify(); n.quiet=!n.quiet; setNotify(n); }
+  function toggleGameAlerts(){ var n=getNotify(); n.games=!n.games; setNotify(n); }
   // Gamecast auto-switch interval (0 = manual with ◂▸ only)
   var GC_CYCLES=[0,10,20,30];
   function getGcCycle(){ try{ return parseInt(localStorage.getItem('w2w.gcCycle')||'0',10)||0; }catch(e){ return 0; } }
@@ -1407,7 +1412,9 @@ else {
       '<button class="chipb focusable" data-gamecast="1">🎮 Gamecast'+(getStars().length?' ('+getStars().length+')':'')+'</button>'+
       '<button class="chipb focusable" data-gccycle="1">🔁 Switch: '+gcCycleLabel()+'</button>'+
       '<button class="chipb focusable" data-props="1">🎯 Prop tracker</button>'+
-      '<button class="chipb focusable" data-propmode="1" style="margin-left:2vw">🪧 Prop card: '+propModeLabel()+'</button>';
+      '<button class="chipb focusable" data-propmode="1" style="margin-left:2vw">🪧 Prop card: '+propModeLabel()+'</button>'+
+      '<button class="chipb focusable'+(getNotify().quiet?' on':'')+'" data-quiet="1" style="margin-left:2vw">🔕 Quiet mode'+(getNotify().quiet?': popups only':'')+'</button>'+
+      '<button class="chipb focusable'+(getNotify().games?' on':'')+'" data-gamealerts="1">📣 Game alerts'+(getNotify().games?': ON':': off')+'</button>';
     var bn=$s('spBanner'); if(!bn){ bn=document.createElement('div'); bn.id='spBanner'; var dd=$s('spDays'); dd.parentNode.insertBefore(bn, dd.nextSibling); }
     bn.innerHTML='⭐ <b>Star mode:</b> press OK on each game you want in the Gamecast panel tonight. Press <b>⭐ Done picking</b> when finished. ('+getStars().length+' starred)';
     var have={}; games.forEach(function(g){ if(g.apps.length) have[g.lg[0]]=(have[g.lg[0]]||0)+1;});
@@ -1462,6 +1469,8 @@ else {
     if(e.target.closest('[data-props]')){ location.href='props.html'; return; }
     if(e.target.closest('[data-propmode]')){ cyclePropMode(); bars(); var b2=document.querySelector('[data-propmode]'); if(b2) b2.focus(); return; }
     if(e.target.closest('[data-gccycle]')){ cycleGcCycle(); bars(); var b3=document.querySelector('[data-gccycle]'); if(b3) b3.focus(); return; }
+    if(e.target.closest('[data-quiet]')){ toggleQuiet(); bars(); var b4=document.querySelector('[data-quiet]'); if(b4) b4.focus(); return; }
+    if(e.target.closest('[data-gamealerts]')){ toggleGameAlerts(); bars(); var b5=document.querySelector('[data-gamealerts]'); if(b5) b5.focus(); return; }
     var g=e.target.closest('[data-g]'); if(g){ var gm=games.filter(function(x){return x.id===g.dataset.g;})[0];
       if(starMode){ if(gm){ var on=toggleStar(gm); var cardEl=g; cardEl.classList.toggle('starred',on); cardEl.querySelector('.starbadge,.pickhint').outerHTML=on?'<span class="starbadge">★</span>':'<span class="pickhint">☆</span>'; spToast(on?'★ Starred for Gamecast':'☆ Removed'); bars(); cardEl.focus(); } return; }
       if(gm&&gm.apps.length) launchApp(gm.apps[0],gm);
