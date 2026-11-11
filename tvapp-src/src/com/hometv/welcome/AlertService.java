@@ -10,6 +10,7 @@ import android.content.SharedPreferences;
 import android.webkit.WebView;
 import android.webkit.WebSettings;
 import android.webkit.WebViewClient;
+import android.view.KeyEvent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
@@ -52,6 +53,7 @@ public class AlertService extends Service {
   View card;            // focusable interactive pop-up
   View bug;             // non-focusable persistent scorebug
   WebView propCard;     // non-focusable persistent prop-tracker card (bottom-left)
+  WebView gamecast;     // focusable gamecast panel (left), D-pad switches games
   TextView bugText; ImageView bugLogo;
   ServerSocket server;
   volatile boolean running = false;
@@ -75,6 +77,9 @@ public class AlertService extends Service {
     else if ("propcard.toggle".equals(act)) h.post(new Runnable(){ public void run(){ togglePropCard(); } });
     else if ("propcard.show".equals(act)) h.post(new Runnable(){ public void run(){ showPropCard(); } });
     else if ("propcard.hide".equals(act)) h.post(new Runnable(){ public void run(){ hidePropCard(); } });
+    else if ("gamecast.toggle".equals(act)) h.post(new Runnable(){ public void run(){ toggleGamecast(); } });
+    else if ("gamecast.show".equals(act)) h.post(new Runnable(){ public void run(){ showGamecast(); } });
+    else if ("gamecast.hide".equals(act)) h.post(new Runnable(){ public void run(){ hideGamecast(); } });
     if (!running) { running = true; new Thread(new Server()).start(); }
     return START_STICKY;
   }
@@ -129,12 +134,47 @@ public class AlertService extends Service {
       WindowManager.LayoutParams p = overlayParams(false);
       p.flags |= WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED;
       p.gravity = Gravity.BOTTOM | Gravity.START; p.x = dp(14); p.y = dp(14);
-      p.width = dp(340); p.height = dp(120);
+      p.width = dp(250); p.height = dp(300);
       propCard = wv; wm.addView(propCard, p);
       android.util.Log.i("HOMETV", "propcard shown");
     } catch (Exception e) { android.util.Log.e("HOMETV", "propcard fail", e); propCard = null; }
   }
   void hidePropCard() { if (propCard != null) { try { wm.removeView(propCard); } catch (Exception e) {} try { propCard.destroy(); } catch (Exception e) {} propCard = null; } }
+
+  WebView makeWeb(String url) {
+    WebView wv = new WebView(this);
+    wv.setBackgroundColor(0x00000000);
+    WebSettings s = wv.getSettings(); s.setJavaScriptEnabled(true); s.setDomStorageEnabled(true); s.setDatabaseEnabled(true);
+    try { s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW); } catch (Exception e) {}
+    s.setMediaPlaybackRequiresUserGesture(false);
+    wv.setWebViewClient(new WebViewClient());
+    wv.loadUrl(url);
+    return wv;
+  }
+
+  // ---------- gamecast panel (focusable, left side): D-pad ◂▸ switches games, OK expands, Back hides ----------
+  void toggleGamecast() { if (gamecast != null) hideGamecast(); else showGamecast(); }
+  void showGamecast() {
+    if (gamecast != null) return;
+    String base = baseUrl(); if (base.length() == 0) return;
+    try {
+      WebView wv = makeWeb(base + "gamecast.html?overlay=1&t=" + (System.currentTimeMillis() / 300000L));
+      wv.setFocusable(true); wv.setFocusableInTouchMode(true);
+      wv.setOnKeyListener(new android.view.View.OnKeyListener() {
+        public boolean onKey(android.view.View v, int code, KeyEvent ev) {
+          if (code == KeyEvent.KEYCODE_BACK && ev.getAction() == KeyEvent.ACTION_UP) { hideGamecast(); return true; }
+          return false;
+        }
+      });
+      WindowManager.LayoutParams p = overlayParams(true);
+      p.flags |= WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED;
+      p.gravity = Gravity.START | Gravity.CENTER_VERTICAL; p.x = dp(14); p.y = 0;
+      p.width = dp(360); p.height = dp(400);
+      gamecast = wv; wm.addView(gamecast, p); wv.requestFocus();
+      android.util.Log.i("HOMETV", "gamecast shown");
+    } catch (Exception e) { android.util.Log.e("HOMETV", "gamecast fail", e); gamecast = null; }
+  }
+  void hideGamecast() { if (gamecast != null) { try { wm.removeView(gamecast); } catch (Exception e) {} try { gamecast.destroy(); } catch (Exception e) {} gamecast = null; } }
 
   WindowManager.LayoutParams overlayParams(boolean focusable) {
     int flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
@@ -255,6 +295,9 @@ public class AlertService extends Service {
         else if (path.startsWith("/propcard/toggle")) h.post(new Runnable(){ public void run(){ togglePropCard(); } });
         else if (path.startsWith("/propcard/show")) h.post(new Runnable(){ public void run(){ showPropCard(); } });
         else if (path.startsWith("/propcard/hide")) h.post(new Runnable(){ public void run(){ hidePropCard(); } });
+        else if (path.startsWith("/gamecast/toggle")) h.post(new Runnable(){ public void run(){ toggleGamecast(); } });
+        else if (path.startsWith("/gamecast/show")) h.post(new Runnable(){ public void run(){ showGamecast(); } });
+        else if (path.startsWith("/gamecast/hide")) h.post(new Runnable(){ public void run(){ hideGamecast(); } });
         else if (path.startsWith("/bug/clear")) clearBug();
         else if (path.startsWith("/bug")) { try { JSONObject o = new JSONObject(b); showBug(o.optString("text"), o.optString("logo")); } catch (Exception e) {} }
         OutputStream o = s.getOutputStream();
@@ -265,5 +308,5 @@ public class AlertService extends Service {
     }
   }
 
-  @Override public void onDestroy() { running = false; try { if (server != null) server.close(); } catch (Exception e) {} dismissCard(); clearBug(); hidePropCard(); if (cur == this) cur = null; super.onDestroy(); }
+  @Override public void onDestroy() { running = false; try { if (server != null) server.close(); } catch (Exception e) {} dismissCard(); clearBug(); hidePropCard(); hideGamecast(); if (cur == this) cur = null; super.onDestroy(); }
 }
