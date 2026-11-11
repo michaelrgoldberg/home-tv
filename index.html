@@ -1429,13 +1429,15 @@ else start();
   try{ var sv=JSON.parse(localStorage.getItem('w2w.sleep')||'null'); if(sv) sel=sv; }catch(e){}
   function $i(id){return document.getElementById(id);}
   function draw(){
-    $i('slpT').innerHTML=TIMES.map(function(t){return '<button class="o focusable'+(sel.t===t?' on':'')+'" data-t="'+t+'">'+t+' min</button>';}).join('');
+    $i('slpT').innerHTML=TIMES.map(function(t){return '<button class="o focusable'+(sel.t===t?' on':'')+'" data-t="'+t+'">'+t+' min</button>';}).join('')+
+      '<span style="display:inline-flex;align-items:center;gap:.5vw;margin-left:1.2vw;vertical-align:middle"><button class="o focusable" data-adj="-5" title="5 min less">–</button><button class="o focusable'+(TIMES.indexOf(sel.t)<0?' on':'')+'" data-adj="0" style="min-width:5vw">'+sel.t+' min</button><button class="o focusable" data-adj="5" title="5 min more">+</button></span>';
     $i('slpS').innerHTML=SCENES.map(function(s,i){return '<div class="sc focusable'+(sel.s===i?' on':'')+'" tabindex="0" data-s="'+i+'"'+(s[1]?' style="background-image:url(https://i.ytimg.com/vi/'+s[1]+'/mqdefault.jpg)"':'')+'><span>'+s[0]+'</span></div>';}).join('');
     $i('slpM').innerHTML=MUSIC.map(function(m,i){return '<div class="pl focusable'+(sel.m===i?' on':'')+'" tabindex="0" data-m="'+i+'"><i'+(m[2]?' style="background-image:url('+m[2]+')"':'')+'>'+(m[2]?'':(i===0?'🔊':i===1?'🔇':'🎵'))+'</i>'+m[0]+'</div>';}).join('');
   }
   function refocus(q){ var f=document.querySelector(q); if(f) f.focus(); }
   $i('slp').addEventListener('click',function(e){ e.stopPropagation();
     var x=e.target.closest('[data-t]'); if(x){ sel.t=+x.dataset.t; draw(); refocus('#slpT .on'); return; }
+    x=e.target.closest('[data-adj]'); if(x){ var a=+x.dataset.adj; if(a){ sel.t=Math.max(5,Math.min(180,sel.t+a)); draw(); refocus('[data-adj="'+a+'"]'); } return; }
     x=e.target.closest('[data-s]'); if(x){ sel.s=+x.dataset.s; draw(); refocus('#slpS .on'); return; }
     x=e.target.closest('[data-m]'); if(x){ sel.m=+x.dataset.m; draw(); refocus('#slpM .on'); return; }
     if(e.target.closest('#slpGo')) start();
