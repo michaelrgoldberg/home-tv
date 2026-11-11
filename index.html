@@ -1498,8 +1498,9 @@ else {
       else { lgOn[k]=!lgOn[k]; if(!Object.keys(lgOn).some(function(x){return lgOn[x];})) allOn=true; }
       saveLg(); render(); var f=document.querySelector('[data-lg="'+k+'"]'); if(f) f.focus(); return; }
     if(e.target.closest('[data-starmode]')){ starMode=!starMode; $s('sp').classList.toggle('starmode',starMode); render(); var sm=document.querySelector('[data-starmode]'); if(sm) sm.focus(); return; }
-    if(e.target.closest('[data-gamecast]')){ location.href='gamecast.html'; return; }
-    if(e.target.closest('[data-props]')){ location.href='props.html'; return; }
+    // mark this history entry as 'Sports' so Back from Gamecast / Props returns here, not the welcome page
+    if(e.target.closest('[data-gamecast]')){ try{ history.replaceState(history.state,'','#sports'); }catch(x){} location.href='gamecast.html'; return; }
+    if(e.target.closest('[data-props]')){ try{ history.replaceState(history.state,'','#sports'); }catch(x){} location.href='props.html'; return; }
     if(e.target.closest('[data-propmode]')){ cyclePropMode(); bars(); var b2=document.querySelector('[data-propmode]'); if(b2) b2.focus(); return; }
     if(e.target.closest('[data-gccycle]')){ cycleGcCycle(); bars(); var b3=document.querySelector('[data-gccycle]'); if(b3) b3.focus(); return; }
     if(e.target.closest('[data-quiet]')){ toggleQuiet(); bars(); var b4=document.querySelector('[data-quiet]'); if(b4) b4.focus(); return; }
@@ -1512,7 +1513,7 @@ else {
       else if(gm&&isOTA(gm.nets)){ var onet=(gm.nets||[]).filter(function(n){return OTA.test(String(n).toLowerCase().trim());})[0]||'a local channel'; spToast('📡 This game is free over the air on <b>'+esc(onet)+'</b> — watch it with a TV antenna, no subscription. (Also on YouTube TV if you have it.)'); } }
   });
   // hold OK on a game: make sure it's followed, then open its Gamecast
-  window.SPORTS={ longPress:function(el){ var gm=games.filter(function(x){return x.id===el.dataset.g;})[0]; if(!gm) return; if(!isStar(gm.id)) setStar(gm,1); spToast('🎮 Opening Gamecast…'); setTimeout(function(){ location.href='gamecast.html'; },250); } };
+  window.SPORTS={ longPress:function(el){ var gm=games.filter(function(x){return x.id===el.dataset.g;})[0]; if(!gm) return; if(!isStar(gm.id)) setStar(gm,1); spToast('🎮 Opening Gamecast…'); try{ history.replaceState(history.state,'','#sports'); }catch(x){} setTimeout(function(){ location.href='gamecast.html'; },250); } };
   window.W2W_SP={
     open:function(){ $s('sp').classList.add('show'); starMode=false; $s('sp').classList.remove('starmode'); try{history.pushState({s:1},'');}catch(e){} $s('sp').scrollTop=0;
       var sync=(window.W2W_FOLLOW?W2W_FOLLOW.sync():Promise.resolve()); sync.catch(function(){}).then(load).then(function(){ var f=document.querySelector('#sp .g:not(.off)')||document.querySelector('#sp .chipb'); if(f) f.focus(); });

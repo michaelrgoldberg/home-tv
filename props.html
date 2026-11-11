@@ -112,6 +112,7 @@
   .pleg .ld{width:9px;height:9px;border-radius:50%;flex:none}
   .pleg .ln{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
   .pleg .ln .ll{color:#9fb0d6;font-weight:400;margin-left:3px}
+  .tm{color:#7f8fb3;font-weight:600;font-size:.82em;letter-spacing:.04em}
   .pleg .lv{font-weight:800;flex:none}
   .pleg .lc{color:#6f7d9b;flex:none;font-size:.9em;min-width:34px;text-align:right}
   .pleg .lc.live{color:var(--green)}
@@ -223,6 +224,10 @@ function sportFromLg(lg){ if(/basketball/.test(lg))return'bk'; if(/football/.tes
 function perLabel(sp,p){ if(sp==='bk'){ return p<=4?('Q'+p):('OT'+(p>5?(p-4):'')); } if(sp==='hk'){ return p<=3?('P'+p):'OT'; } if(sp==='fb'){ return p<=4?('Q'+p):'OT'; } return 'Period '+p; }
 function tipTime(iso){ try{ var d=new Date(iso); var h=d.getHours(), m=d.getMinutes(); return (h%12||12)+':'+(m<10?'0':'')+m+(h<12?'a':'p'); }catch(e){ return ''; } }
 
+// --- betting day: rolls over at 2:00 AM Eastern; picks dated before it disappear ---
+function bettingDay(){ var now=new Date(); var et=new Date(now.toLocaleString('en-US',{timeZone:'America/New_York'})); et.setHours(et.getHours()-2); return et.getFullYear()+'-'+('0'+(et.getMonth()+1)).slice(-2)+'-'+('0'+et.getDate()).slice(-2); }
+function fresh(x){ return !x.date || x.date>=bettingDay(); }
+function pruneOld(d){ var bd=bettingDay(); d.props=(d.props||[]).filter(fresh); d.parlays=(d.parlays||[]).filter(function(pl){ return fresh(pl) || (pl.legs||[]).some(fresh); }); return d; }
 // --- state ---
 var props=[], parlays=[], vals={}, pageTop=0, pollT=null;
 var PAGE=4;
@@ -317,7 +322,7 @@ function chipHTML(p){
   var label = p.label || ((p.dir||'o')+p.line+' '+(p.statLabel||p.stat));
   var pace=paceTxt(p); var clk=p._status?'<span class="clk'+(p._live?' live':'')+'">'+esc(shortStatus(p))+'</span>':''; var scr=p._score?'<span class="scr">'+esc(p._score)+'</span>':'';
   return '<div class="chip'+(st.hit?' hit pulse':'')+(st.bust?' bust':'')+(isSweat(p)?' sweat':'')+'" data-id="'+esc(p.id)+'">'+(st.hit?'<div class="conf" id="conf-'+p.id+'"></div>':'')+ring+
-    '<div class="info"><div class="nm">'+esc(p.disp||p.player)+'</div><div class="ln"><b>'+esc(label)+'</b>'+(pace?'<span class="pace">'+esc(pace)+'</span>':'')+'</div>'+((clk||scr)?'<div class="gm">'+clk+scr+'</div>':'')+'</div>'+right+'</div>';
+    '<div class="info"><div class="nm">'+esc(p.disp||p.player)+(p.team?' <span class="tm">'+esc(p.team)+'</span>':'')+'</div><div class="ln"><b>'+esc(label)+'</b>'+(pace?'<span class="pace">'+esc(pace)+'</span>':'')+'</div>'+((clk||scr)?'<div class="gm">'+clk+scr+'</div>':'')+'</div>'+right+'</div>';
 }
 // ---------- compact corner chip ----------
 function cornerChip(p){
@@ -330,7 +335,7 @@ function cornerChip(p){
   var pace=paceTxt(p);
   var clk=p._status?('<span class="'+(p._live?'clk live':'clk')+'">'+esc(shortStatus(p))+'</span>'):'';
   var sc=p._score?'<span class="scr">'+esc(p._score)+'</span>':'';
-  return '<div class="cchip'+(set==='won'?' hit':'')+(isSweat(p)?' sweat':'')+'">'+face+ring+'<div class="cinfo"><div class="cnm">'+esc(p.disp||p.player)+' '+rem+'</div><div class="cln">'+esc(p.label||((p.dir||'o')+p.line+' '+(p.statLabel||p.stat)))+(pace?'<span class="pace">'+esc(pace)+'</span>':'')+'</div><div class="cst">'+clk+sc+'</div></div></div>';
+  return '<div class="cchip'+(set==='won'?' hit':'')+(isSweat(p)?' sweat':'')+'">'+face+ring+'<div class="cinfo"><div class="cnm">'+esc(p.disp||p.player)+(p.team?' <span class="tm">'+esc(p.team)+'</span>':'')+' '+rem+'</div><div class="cln">'+esc(p.label||((p.dir||'o')+p.line+' '+(p.statLabel||p.stat)))+(pace?'<span class="pace">'+esc(pace)+'</span>':'')+'</div><div class="cst">'+clk+sc+'</div></div></div>';
 }
 
 // ---------- parlays ----------
@@ -357,7 +362,7 @@ function legRow(l){ var s=legStat(l);
   var icon=s.st==='won'?'✓':s.st==='lost'?'✗':(s.v!=null&&over(l)&&l._live?'+'+(needed(l)-s.v):'');
   var right = l._pre ? '<span class="lc">'+esc(shortStatus(l))+'</span>'
     : '<span class="lv">'+(s.v==null?'–':s.v)+'</span><span class="lc'+(l._live?' live':'')+'">'+esc(icon||(l._live?String(l._status||'').replace(/^(\w+ )?/,''):shortStatus(l)))+'</span>';
-  return '<div class="pleg '+(s.st||'')+(isSweat(l)?' sweat':'')+'"><span class="ld" style="background:'+s.color+'"></span><span class="ln">'+esc(l.disp||l.player)+'<span class="ll">'+esc(l.label||'')+'</span></span>'+right+'</div>';
+  return '<div class="pleg '+(s.st||'')+(isSweat(l)?' sweat':'')+'"><span class="ld" style="background:'+s.color+'"></span><span class="ln">'+esc(l.disp||l.player)+(l.team?' <span class="tm">'+esc(l.team)+'</span>':'')+'<span class="ll">'+esc(l.label||'')+'</span></span>'+right+'</div>';
 }
 function parlayCard(pl){ // full page: every leg listed, nothing clipped
   return '<div class="pcard '+(pl._settled||'')+'">'+parlayHeader(pl)+'<div class="plegs">'+orderedLegs(pl).map(legRow).join('')+'</div></div>';
@@ -369,7 +374,7 @@ function parlayCorner(pl){ // overlay: header + one dot per leg + the leg in foc
   var rail='<div class="rail">'+legs.map(function(l){ var s=legStat(l); var t=s.st==='won'?'✓':s.st==='lost'?'✗':''; return '<i class="'+(l===focus?'on':'')+'" style="background:'+s.color+'" title="'+esc(l.disp)+'">'+t+'</i>'; }).join('')+'</div>';
   var f=''; if(focus){ var s=legStat(focus); var v=s.v; var right, nm;
     if(focus.kind&&focus.kind!=='prop'){ nm=esc(focus.disp||focus.label||'')+'<span class="ll">'+esc(focus._score||'')+'</span>'; right = focus._pre ? esc(shortStatus(focus)) : ('<span class="fv">'+esc(lineValTxt(focus))+'</span> <span class="fc">'+esc(lineEdgeTxt(focus)||shortStatus(focus))+'</span>'); }
-    else { nm=esc(focus.disp||focus.player)+'<span class="ll">'+esc(focus.label||'')+'</span>'; right = focus._pre ? esc(shortStatus(focus)) : ('<span class="fv">'+(v==null?'–':v)+'</span> '+(s.st==='won'?'✓':s.st==='lost'?'✗':(over(focus)&&v!=null?'+'+(needed(focus)-v):''))+' <span class="fc">'+esc(shortStatus(focus))+'</span>'); }
+    else { nm=esc(focus.disp||focus.player)+(focus.team?' <span class="tm">'+esc(focus.team)+'</span>':'')+'<span class="ll">'+esc(focus.label||'')+'</span>'; right = focus._pre ? esc(shortStatus(focus)) : ('<span class="fv">'+(v==null?'–':v)+'</span> '+(s.st==='won'?'✓':s.st==='lost'?'✗':(over(focus)&&v!=null?'+'+(needed(focus)-v):''))+' <span class="fc">'+esc(shortStatus(focus))+'</span>'); }
     f='<div class="focus"><span class="fn">'+nm+'</span>'+right+'</div>'; }
   return '<div class="pcard '+(pl._settled||'')+'">'+parlayHeader(pl)+rail+f+'</div>';
 }
@@ -482,7 +487,7 @@ function showRise(p){
   var face=p._face? '<div class="face" style="background-image:url(&quot;'+esc(p._face)+'&quot;)"></div>' : '<div class="face"></div>';
   var ring='<div class="rring"><svg width="'+C+'" height="'+C+'" viewBox="0 0 '+C+' '+C+'" style="transform:rotate(-90deg)"><circle cx="22" cy="22" r="'+R+'" fill="none" stroke="#1e283c" stroke-width="4.5"/><circle cx="22" cy="22" r="'+R+'" fill="none" stroke="'+color+'" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="'+circ.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'"/></svg></div>';
   var sl=p.statLabel||p.stat;
-  var html=face+'<div class="rb"><div class="top"><span class="nm">'+esc(p.disp||p.player)+'</span><span class="delta">'+(st.hit?'🏆 HIT!':'+'+p._delta+' '+esc(sl))+'</span></div><div class="tot"><b>'+p._newVal+'</b> '+esc(sl)+' · '+(st.hit?'prop hit!':('+'+(needed(p)-p._newVal)+' to go'))+'</div>'+(p._play?'<div class="play">'+esc(p._play)+'</div>':'')+'</div>'+ring;
+  var html=face+'<div class="rb"><div class="top"><span class="nm">'+esc(p.disp||p.player)+(p.team?' <span class="tm">'+esc(p.team)+'</span>':'')+'</span><span class="delta">'+(st.hit?'🏆 HIT!':'+'+p._delta+' '+esc(sl))+'</span></div><div class="tot"><b>'+p._newVal+'</b> '+esc(sl)+' · '+(st.hit?'prop hit!':('+'+(needed(p)-p._newVal)+' to go'))+'</div>'+(p._play?'<div class="play">'+esc(p._play)+'</div>':'')+'</div>'+ring;
   enqueueRise(html, st.hit?'hit':'', st.hit?9000:6500, (p.disp||p.player)+' +'+p._delta+' '+sl+' → '+p._newVal+(st.hit?' ✓ HIT':''));
 }
 function showParlayHit(pl){
@@ -553,7 +558,8 @@ document.addEventListener('keydown',function(e){
 });
 window.addEventListener('storage', function(e){ if(!e.key || /^w2w\.(notify|propMode|starred|starLevel|ovOpacity|settingsRev)$/.test(e.key)){ applyOpacity(); render(); clearTimeout(gPollT); pollGames(); } });
 window.W2W_BACK=function(){ if(CORNER) return false; try{ history.back(); }catch(e){ location.href='./'; } return true; };
-function reloadAll(){ return loadProps().then(function(d){ props=d.props||[]; parlays=d.parlays||[]; poll(); }); }
+function reloadAll(){ return loadProps().then(function(d){ d=pruneOld(d); props=d.props||[]; parlays=d.parlays||[]; poll(); }); }
+setInterval(function(){ var before=props.length+parlays.length; var d=pruneOld({props:props,parlays:parlays}); if(d.props.length+d.parlays.length!==before){ props=d.props; parlays=d.parlays; render(); } }, 60000); // 2 AM roll-over
 window.PROPS={ reload:reloadAll, history:showHistory, next:function(){}, prev:function(){} };
 
 if(CORNER){ document.body.classList.add('corner');
