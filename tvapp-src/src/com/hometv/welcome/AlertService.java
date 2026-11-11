@@ -119,7 +119,20 @@ public class AlertService extends Service {
 
   // ---------- floating prop-tracker card (bottom-left, non-focusable so it never steals the remote) ----------
   String baseUrl() { SharedPreferences sp = getSharedPreferences("cfg", MODE_PRIVATE); String home = sp.getString("home", ""); return home.replaceAll("[?#].*$", ""); }
-  void togglePropCard() { if (propCard != null) hidePropCard(); else showPropCard(); }
+  boolean propFocused = false;
+  // ☰ double-press: show -> take the remote -> hide
+  void togglePropCard() { if (propCard == null) showPropCard(); else if (!propFocused) focusPropCard(); else hidePropCard(); }
+  void setPropFocusable(boolean on) {
+    if (propCard == null) return;
+    try { WindowManager.LayoutParams p = (WindowManager.LayoutParams) propCard.getLayoutParams();
+      if (on) p.flags &= ~WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE; else p.flags |= WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE;
+      wm.updateViewLayout(propCard, p); propFocused = on;
+      if (on) { propCard.setFocusable(true); propCard.setFocusableInTouchMode(true); propCard.requestFocus(); }
+      propCard.evaluateJavascript("window.PROPS&&PROPS.focus&&PROPS.focus(" + (on ? "true" : "false") + ")", null);
+    } catch (Exception e) {}
+  }
+  void focusPropCard() { setPropFocusable(true); }
+  void releasePropCard() { setPropFocusable(false); if (gamecast != null) { try { WindowManager.LayoutParams p = (WindowManager.LayoutParams) gamecast.getLayoutParams(); wm.updateViewLayout(gamecast, p); gamecast.requestFocus(); } catch (Exception e) {} } }
   void showPropCard() {
     if (propCard != null) return;
     String base = baseUrl(); if (base.length() == 0) return;
@@ -131,16 +144,37 @@ public class AlertService extends Service {
       s.setMediaPlaybackRequiresUserGesture(false);
       wv.setWebViewClient(new WebViewClient());
       wv.loadUrl(base + "props.html?corner=1&t=" + (System.currentTimeMillis() / 300000L));
+      wv.addJavascriptInterface(new OverlayBridge(), "OV");
+      wv.setOnKeyListener(new android.view.View.OnKeyListener() {
+        public boolean onKey(android.view.View v, int code, KeyEvent ev) {
+          if (!propFocused) return false;
+          if (ev.getAction() != KeyEvent.ACTION_UP) return code == KeyEvent.KEYCODE_BACK;
+          if (code == KeyEvent.KEYCODE_BACK) { releasePropCard(); return true; }
+          if (code == KeyEvent.KEYCODE_DPAD_UP && gamecast != null) { releasePropCard(); return true; }
+          return false;
+        }
+      });
       WindowManager.LayoutParams p = overlayParams(false);
       p.flags |= WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED;
       p.gravity = Gravity.BOTTOM | Gravity.START; p.x = dp(14); p.y = dp(14);
       p.width = dp(250); p.height = dp(300);
       propCard = wv; wm.addView(propCard, p);
       android.util.Log.i("HOMETV", "propcard shown");
+      try { propCard.evaluateJavascript("window.PROPS&&PROPS.summon&&PROPS.summon()", null); } catch (Exception e) {}
     } catch (Exception e) { android.util.Log.e("HOMETV", "propcard fail", e); propCard = null; }
   }
-  void hidePropCard() { if (propCard != null) { try { wm.removeView(propCard); } catch (Exception e) {} try { propCard.destroy(); } catch (Exception e) {} propCard = null; } }
+  void hidePropCard() { propFocused = false; if (propCard != null) { try { wm.removeView(propCard); } catch (Exception e) {} try { propCard.destroy(); } catch (Exception e) {} propCard = null; } }
 
+  volatile boolean gcHandoffOk = true;   // gamecast page says whether ▾ should hand off (false while expanded / in settings)
+  class OverlayBridge {
+    @android.webkit.JavascriptInterface public void handoff(boolean ok) { gcHandoffOk = ok; }
+    @android.webkit.JavascriptInterface public void focusProps() { h.post(new Runnable(){ public void run(){ if (propCard == null) showPropCard(); focusPropCard(); } }); }
+    @android.webkit.JavascriptInterface public void focusGamecast() { h.post(new Runnable(){ public void run(){ releasePropCard(); } }); }
+    @android.webkit.JavascriptInterface public void hideProps() { h.post(new Runnable(){ public void run(){ hidePropCard(); } }); }
+    @android.webkit.JavascriptInterface public void hideGamecast() { h.post(new Runnable(){ public void run(){ AlertService.this.hideGamecast(); } }); }
+    @android.webkit.JavascriptInterface public boolean propsShown() { return propCard != null; }
+    @android.webkit.JavascriptInterface public boolean gamecastShown() { return gamecast != null; }
+  }
   WebView makeWeb(String url) {
     WebView wv = new WebView(this);
     wv.setBackgroundColor(0x00000000);
@@ -159,10 +193,12 @@ public class AlertService extends Service {
     String base = baseUrl(); if (base.length() == 0) return;
     try {
       WebView wv = makeWeb(base + "gamecast.html?overlay=1&t=" + (System.currentTimeMillis() / 300000L));
+      wv.addJavascriptInterface(new OverlayBridge(), "OV");
       wv.setFocusable(true); wv.setFocusableInTouchMode(true);
       wv.setOnKeyListener(new android.view.View.OnKeyListener() {
         public boolean onKey(android.view.View v, int code, KeyEvent ev) {
           if (code == KeyEvent.KEYCODE_BACK && ev.getAction() == KeyEvent.ACTION_UP) { hideGamecast(); return true; }
+          if (code == KeyEvent.KEYCODE_DPAD_DOWN && ev.getAction() == KeyEvent.ACTION_UP && propCard != null && gcHandoffOk) { if (gamecast != null) gamecast.evaluateJavascript("window.GC&&GC.blur&&GC.blur()", null); focusPropCard(); return true; }
           return false;
         }
       });

@@ -287,6 +287,7 @@ function footer(g){
   return '<div class="last"><span class="txt">'+esc(txt)+'</span><span class="nav">'+nav+'</span></div>';
 }
 function render(){
+  try{ if(window.OV&&OV.handoff) OV.handoff(!expanded && !setOpen && !card); }catch(x){}
   var el=$('gc');
   if(!games.length){ el.className=''; el.innerHTML='<div class="msg">No starred games right now.<br><span style="font-size:.85em">Star games in Sports — or tell Claude "track the Knicks" — and they\'ll appear here.</span></div>'; return; }
   if(idx>=games.length) idx=0;
@@ -491,7 +492,7 @@ function resetCycle(){ clearTimeout(cycleT); if(GC_CYCLE>0){ cycleT=setTimeout(f
 resetCycle();
 window.addEventListener('storage', function(e){ if(!e.key || /^w2w\.(starred|starLevel|ovOpacity|gcCycle)$/.test(e.key)){ applyOpacity(); try{ GC_CYCLE=parseInt(localStorage.getItem('w2w.gcCycle')||'0',10)||0; }catch(x){} resetCycle(); load(); } });
 window.W2W_BACK=function(){ if(setOpen){ setOpen=false; render(); return true; } if(card){ card=null; render(); return true; } if(expanded){ expanded=false; tab=0; sel=0; render(); return true; } try{ history.back(); }catch(e){ location.href='./'; } return true; };
-window.GC={ next:function(){if(!expanded&&games.length){idx=(idx+1)%games.length;cur=games[idx];render();}},
+window.GC={ blur:function(){ document.getElementById('gc').style.outline='none'; }, next:function(){if(!expanded&&games.length){idx=(idx+1)%games.length;cur=games[idx];render();}},
   prev:function(){if(!expanded&&games.length){idx=(idx-1+games.length)%games.length;cur=games[idx];render();}},
   ok:function(){ if(card){ card=null; render(); } else if(expanded){ var n=tabsFor(cur).length; tab=(tab+1)%n; scrollPos=0; render(); } else if(cur){expanded=true;tab=0;scrollPos=0;sel=0;fetchSummary(cur);} }, tab:function(n){ if(expanded){ var L=tabsFor(cur).length; tab=((n%L)+L)%L; scrollPos=0; render(); } },
   back:function(){ if(expanded){expanded=false;render();} }, reload:load };

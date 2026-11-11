@@ -77,6 +77,9 @@
   body.corner #pp .hd{display:none}
   body.corner #pp .scroll{padding:0;justify-content:flex-end;overflow:visible;gap:5px}
   body.corner .cchip,body.corner .pcard{opacity:var(--ov)}
+  body.corner.focused .list>:first-child{outline:2px solid var(--gold);outline-offset:2px;border-radius:12px}
+  body.corner.focused #pp:after{content:"◂ history · ▸ next · OK legs · ▴ Gamecast · Back release";position:fixed;left:14px;bottom:2px;font-size:10px;color:#9fb0d6;background:rgba(10,15,30,.85);padding:2px 7px;border-radius:6px;white-space:nowrap}
+  body.corner .pcard .plegs{max-height:150px;overflow:auto}
   .cchip{display:flex;align-items:center;gap:7px;background:linear-gradient(180deg,#16203a,#0e1526);border:1px solid var(--line);border-radius:10px;padding:5px 8px;box-shadow:0 10px 30px -10px #000;position:relative;overflow:hidden;width:250px}
   .cchip.hit{border-color:var(--gold);background:linear-gradient(90deg,rgba(255,204,0,.22),#16203a)}
   .cface{width:30px;height:30px;border-radius:50%;flex:none;background:#223049 center/cover;border:1.5px solid #3a4a6b}
@@ -368,8 +371,9 @@ function legRow(l){ var s=legStat(l);
 function parlayCard(pl){ // full page: every leg listed, nothing clipped
   return '<div class="pcard '+(pl._settled||'')+'">'+parlayHeader(pl)+'<div class="plegs">'+orderedLegs(pl).map(legRow).join('')+'</div></div>';
 }
-var focusTick=0;
-function parlayCorner(pl){ // overlay: header + one dot per leg + the leg in focus
+var focusTick=0, openId=null;
+function parlayCorner(pl){
+  if(openId===pl.id){ return '<div class="pcard '+(pl._settled||'')+'">'+parlayHeader(pl)+'<div class="plegs">'+orderedLegs(pl).map(legRow).join('')+'</div></div>'; } // overlay: header + one dot per leg + the leg in focus
   var legs=orderedLegs(pl); var live=legs.filter(function(l){ return l._live && !settled(l); });
   var focus = live.length ? live[focusTick%live.length] : (legs.filter(function(l){return !settled(l);})[0]||legs[0]);
   var rail='<div class="rail">'+legs.map(function(l){ var s=legStat(l); var t=s.st==='won'?'✓':s.st==='lost'?'✗':''; return '<i class="'+(l===focus?'on':'')+'" style="background:'+s.color+'" title="'+esc(l.disp)+'">'+t+'</i>'; }).join('')+'</div>';
@@ -551,9 +555,18 @@ function pollGames(){
 }
 
 // ---------- keys / wiring ----------
+var focused=false;
 document.addEventListener('keydown',function(e){
   var k=e.keyCode||e.which;
   if($('hist').classList.contains('show')){ hideHistory(); e.preventDefault(); return; }
+  if(CORNER && focused){
+    var items=cornerItems();
+    if(k===37){ showHistory(); }
+    else if(k===39){ if(items.length){ rotI=(rotI+1)%items.length; openId=null; render(); } }
+    else if(k===13||k===23||k===66){ var it=items[rotI%Math.max(1,items.length)]; if(it&&it.legs){ openId=(openId===it.id)?null:it.id; render(); } }
+    else if(k===38){ try{ if(window.OV&&OV.gamecastShown()) OV.focusGamecast(); }catch(x){} }
+    else if(k===40){ /* reserved */ }
+    e.preventDefault(); return; }
   if(CORNER && (k===37||k===38)){ showHistory(); e.preventDefault(); return; }
   if(!CORNER){ var sc=document.querySelector('#pp .scroll'); if(sc){ if(k===40||k===39){ sc.scrollTop+=140; e.preventDefault(); } else if(k===38||k===37){ sc.scrollTop-=140; e.preventDefault(); } } }
 });
@@ -561,11 +574,12 @@ window.addEventListener('storage', function(e){ if(!e.key || /^w2w\.(notify|prop
 window.W2W_BACK=function(){ if(CORNER) return false; try{ history.back(); }catch(e){ location.href='./'; } return true; };
 function reloadAll(){ return loadProps().then(function(d){ d=pruneOld(d); props=d.props||[]; parlays=d.parlays||[]; poll(); }); }
 setInterval(function(){ var before=props.length+parlays.length; var d=pruneOld({props:props,parlays:parlays}); if(d.props.length+d.parlays.length!==before){ props=d.props; parlays=d.parlays; render(); } }, 60000); // 2 AM roll-over
-window.PROPS={ reload:reloadAll, history:showHistory, next:function(){}, prev:function(){}, summon:function(){ summonUntil=Date.now()+25000; render(); setTimeout(render, 25500); } };
+window.PROPS={ reload:reloadAll, history:showHistory, next:function(){}, prev:function(){}, summon:function(){ summonUntil=Date.now()+25000; render(); setTimeout(render, 25500); },
+  focus:function(on){ focused=!!on; document.body.classList.toggle('focused',focused); if(focused){ summonUntil=Date.now()+600000; } else { openId=null; summonUntil=Date.now()+25000; setTimeout(render,25500); } render(); } };
 
 if(CORNER){ document.body.classList.add('corner'); summonUntil=Date.now()+25000; setTimeout(render, 25500); // opening the card is itself a summons
   (function cyc(){ var pm=getPropMode(); var vc=visCount(); var n=cornerItems().length; focusTick++;
-    if(pm.m!=='all' && n>vc){ rotI=(rotI+vc)%n; } render();
+    if(!focused && pm.m!=='all' && n>vc){ rotI=(rotI+vc)%n; } render();
     setTimeout(cyc, Math.max(4, pm.sec)*1000);
   })();
 }
