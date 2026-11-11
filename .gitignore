@@ -4,3 +4,5 @@ tools/props_plain.json
 tools/set_props.py
 tools/build_private.py
 tools/data_plain.json
+showcase/
+Sports_Overlays_Guide.pdf
