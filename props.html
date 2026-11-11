@@ -237,6 +237,8 @@ document.addEventListener('keydown',function(e){
   if((k===39||k===40) && props.length>PAGE){ pageTop=Math.min(props.length-PAGE, pageTop+PAGE); render(); e.preventDefault(); }
   else if((k===37||k===38) && props.length>PAGE){ pageTop=Math.max(0, pageTop-PAGE); render(); e.preventDefault(); }
 });
+// Back returns to the dashboard (the floating corner overlay never navigates)
+window.W2W_BACK=function(){ if(CORNER) return false; try{ history.back(); }catch(e){ location.href='./'; } return true; };
 window.PROPS={ reload:function(){ loadProps().then(function(a){ props=a||[]; poll(); }); }, next:function(){if(props.length>PAGE){pageTop=Math.min(props.length-PAGE,pageTop+PAGE);render();}}, prev:function(){if(props.length>PAGE){pageTop=Math.max(0,pageTop-PAGE);render();}} };
 
 if(CORNER){ document.body.classList.add('corner'); setInterval(function(){ if(props.length>1){ rotI=(rotI+1)%props.length; render(); } }, 10000); }
