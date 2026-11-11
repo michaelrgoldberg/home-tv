@@ -51,7 +51,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #picker .box{background:var(--panel);padding:2vw;border-radius:1vw;display:flex;flex-wrap:wrap;gap:.8vw;max-width:70vw}
 #nl-badge-frame{display:none!important}
 /* ---------- Welcome dashboard ---------- */
-#home{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;padding:2.4vw 4vw 5.9vw;color:#fff;overflow:hidden;background:#0b1020}
+#home{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;padding:2.4vw 4vw 8.2vw;color:#fff;overflow:hidden;background:#0b1020}
 #home .bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity 1.2s ease;will-change:opacity}
 #home .bg.on{opacity:1}
 #home .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.45) 0%,rgba(0,0,0,.05) 30%,rgba(0,0,0,.05) 45%,rgba(0,0,0,.6) 100%)}
@@ -110,7 +110,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #home .line{font-size:1.2vw;margin:.3vw 0;line-height:1.35}
 #home .line.dim{opacity:.72;font-size:1vw}
 #home .hl{color:#ffd76a;font-weight:600}
-#home .go{position:relative;margin:1.6vw auto 0;display:flex;gap:1.2vw}
+#home .go{position:absolute;left:0;right:0;bottom:4vw;margin:0;display:flex;justify-content:center;gap:1.2vw;z-index:3}
 #home .gobtn{font-size:1.6vw;font-weight:700;padding:.8vw 2.1vw;border-radius:4vw;border:.25vw solid transparent;background:#ffcc00;color:#0e2460;cursor:pointer;outline:none;box-shadow:0 .5vw 2vw rgba(0,0,0,.35)}
 #home .gobtn:focus{border-color:#fff;transform:scale(1.05)}
 #home .hint{text-align:center;font-size:.95vw;opacity:.7;margin-top:.6vw;position:relative;text-shadow:0 0 .4vw #000}
