@@ -68,6 +68,8 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #home .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.45) 0%,rgba(0,0,0,.05) 30%,rgba(0,0,0,.05) 45%,rgba(0,0,0,.6) 100%)}
 #home .credit{position:absolute;right:1.6vw;top:.55vw;font-size:.9vw;opacity:.8;text-align:right;text-shadow:0 0 .4vw #000;z-index:2}
 #home .top{display:flex;justify-content:space-between;align-items:flex-start;position:relative}
+#goNative{position:absolute;top:1.1vw;left:2.2vw;z-index:9;font-size:1vw;padding:.35vw .9vw;border-radius:2vw;background:rgba(10,15,30,.55);color:#cdd7ee;border:.14vw solid rgba(255,255,255,.25);cursor:pointer;outline:none}
+#goNative:focus{border-color:#ffcc00;color:#fff;box-shadow:0 0 0 .18vw rgba(255,204,0,.35)}
 #home .greet{font-size:3.6vw;font-weight:300;letter-spacing:-.01em;line-height:1.1;text-shadow:0 .2vw 1.4vw rgba(0,0,0,.5)}
 #home .greet b{font-weight:700}
 #home .date{font-size:2.3vw;font-weight:500;margin-top:.8vw;text-shadow:0 .1vw .8vw rgba(0,0,0,.6)}
@@ -175,6 +177,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
   <div class="bg" id="bgA"></div><div class="bg" id="bgB"></div><div class="shade"></div>
   <div id="tk" tabindex="0"><span class="lab">SCORES</span><div class="win"><div class="run" id="tkRun"></div></div></div>
   <div class="credit" id="bgCredit"></div>
+  <button id="goNative" class="focusable" title="Open the Hisense / Fire TV home screen">⌂ Hisense Home</button>
   <div class="top">
     <div><div class="greet" id="greet"></div><div class="date" id="hdate"></div><div class="hdate" id="hheb"></div><div class="today" id="htoday"></div></div>
     <div><div class="clock" id="hclock"></div><div id="mt"><div class="hd"><span>🏆 My teams</span><span class="dots"><i class="on"></i><i></i></span></div><div id="mtRows"></div></div><div id="alertChip" class="focusable" tabindex="0" style="display:none;margin-top:.45vw;width:auto;box-sizing:border-box;padding:.22vw .7vw;border-radius:2vw;background:rgba(8,12,30,.76);border:.1vw solid rgba(255,255,255,.18);font-size:.72vw;cursor:pointer;outline:none;text-align:left" onfocus="this.style.borderColor='#fff'" onblur="this.style.borderColor='rgba(255,255,255,.18)'"></div></div>
@@ -587,7 +590,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
 
   // ---------- open / close ----------
   function openWatch(){ home.classList.add('hide'); try{if(window.renderRails)renderRails();}catch(e){} try{history.pushState({w:1},'');}catch(e){} var f=document.querySelector('#grid .card')||document.querySelector('[data-kind]'); if(f) f.focus(); }
-  home.addEventListener('click',function(e){e.stopPropagation(); if(e.target.closest&&e.target.closest('#goGH')){ location.href='https://home.google.com/u/0/home'; return; } if(e.target.closest&&e.target.closest('#goAmb')){ W2W_AMB.open(); return; } if(e.target.closest&&e.target.closest('#goSp')){ W2W_SP.open(); return; } if(e.target.closest&&e.target.closest('#goSleep')){ W2W_SLEEP.open(); return; } openWatch();});
+  home.addEventListener('click',function(e){e.stopPropagation(); if(e.target.closest&&e.target.closest('#goNative')){ try{ if(window.TV&&TV.nativeHome){ TV.nativeHome(); return; } }catch(x){} location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.HOME;package=com.amazon.tv.launcher;launchFlags=0x10000000;end'; return; } if(e.target.closest&&e.target.closest('#goGH')){ location.href='https://home.google.com/u/0/home'; return; } if(e.target.closest&&e.target.closest('#goAmb')){ W2W_AMB.open(); return; } if(e.target.closest&&e.target.closest('#goSp')){ W2W_SP.open(); return; } if(e.target.closest&&e.target.closest('#goSleep')){ W2W_SLEEP.open(); return; } openWatch();});
   window.addEventListener('popstate',function(ev){ if(ev.state&&ev.state.w) return; if(!document.getElementById('detail').classList.contains('show') && !document.getElementById('picker').classList.contains('show')) home.classList.remove('hide'); });
   window.W2W_HOME_OPEN=function(){return !home.classList.contains('hide');};
   window.W2W_GOHOME=function(){ home.classList.remove('hide'); tick(); var b=document.getElementById('goWatch'); if(b) b.focus(); };

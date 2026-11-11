@@ -168,7 +168,8 @@ public class AlertService extends Service {
       });
       WindowManager.LayoutParams p = overlayParams(true);
       p.flags |= WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED;
-      p.gravity = Gravity.START | Gravity.CENTER_VERTICAL; p.x = dp(14); p.y = 0;
+      // top-left so it never covers the prop/parlay card that lives bottom-left
+      p.gravity = Gravity.START | Gravity.TOP; p.x = dp(14); p.y = dp(20);
       p.width = dp(360); p.height = dp(400);
       gamecast = wv; wm.addView(gamecast, p); wv.requestFocus();
       android.util.Log.i("HOMETV", "gamecast shown");
