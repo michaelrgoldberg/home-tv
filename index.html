@@ -1264,7 +1264,7 @@ else {
 #spBanner{display:none;background:linear-gradient(90deg,rgba(255,204,0,.16),transparent);border:.12vw solid #ffcc00;border-radius:.7vw;padding:.7vw 1.2vw;margin:.3vw 0 .6vw;font-size:1.05vw;color:#ffe9a8}
 #sp.starmode #spBanner{display:block}
 #sp .g:focus{border-color:#ffcc00;background:#1a2747}
-#sp .g.off{opacity:.45}
+#sp .g.off{opacity:.9}
 #sp .tm{display:flex;align-items:center;gap:.6vw;font-size:1.15vw;margin:.25vw 0}
 #sp .tm img{width:2vw;height:2vw;object-fit:contain;background:#fff;border-radius:50%;padding:.18vw;box-sizing:border-box}
 #sp .tm .sc{margin-left:auto;font-weight:700;font-size:1.3vw}
@@ -1373,15 +1373,13 @@ else {
   function render(){
     bars();
     var list=games.filter(function(g){return shown(g.lg[0]) && (dayMode!=='live'||g.state==='in');});
-    var mine=list.filter(function(g){return g.apps.length;});
-    var freeOnly=list.filter(function(g){return !g.apps.length && isOTA(g.nets);});
-    var other=list.filter(function(g){return !g.apps.length && !isOTA(g.nets);});
     var ord={'in':0,'pre':1,'post':2}; var sortf=function(a,b){return (ord[a.state]-ord[b.state])||(a.date-b.date);};
-    var live=mine.filter(function(g){return g.state==='in';}).sort(sortf), out='';
-    if(live.length) out+='<h2>🔴 Live now</h2><div class="grid">'+live.map(card).join('')+'</div>';
-    LG.forEach(function(l){ var gs=mine.filter(function(g){return g.lg[0]===l[0]&&g.state!=='in';}).sort(sortf); if(gs.length) out+='<h2>'+l[1]+'</h2><div class="grid">'+gs.map(card).join('')+'</div>'; });
-    if(freeOnly.length) out+='<h2 style="color:#2ec47a">📡 Free with an antenna</h2><div class="grid">'+freeOnly.sort(sortf).map(card).join('')+'</div>';
-    if(other.length && !noSpoil) out+='<h2 style="color:#9aa3c0">Not on your apps</h2><div class="grid">'+other.sort(sortf).map(card).join('')+'</div>';
+    var out='';
+    // One section per sport: every game for that sport together (ones you can watch
+    // and ones you can't), sorted live first, then by start time. The card's tag
+    // still shows whether it's on your apps, free over the air, or not available.
+    LG.forEach(function(l){ var gs=list.filter(function(g){return g.lg[0]===l[0];}).sort(sortf);
+      if(gs.length) out+='<h2>'+l[1]+'</h2><div class="grid">'+gs.map(card).join('')+'</div>'; });
     $s('spBody').innerHTML=out||'<div class="empty">'+(dayMode==='live'?'No games on right now. Try Today or Upcoming.':'No games found. Try Upcoming (7 days) or All sports.')+'</div>';
   }
   function launchApp(a,g){ var p=APPS[a]; if(!p) return;
