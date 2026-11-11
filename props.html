@@ -551,7 +551,7 @@ document.addEventListener('keydown',function(e){
   if(CORNER && (k===37||k===38)){ showHistory(); e.preventDefault(); return; }
   if(!CORNER){ var sc=document.querySelector('#pp .scroll'); if(sc){ if(k===40||k===39){ sc.scrollTop+=140; e.preventDefault(); } else if(k===38||k===37){ sc.scrollTop-=140; e.preventDefault(); } } }
 });
-window.addEventListener('storage', function(e){ if(!e.key || /^w2w\.(notify|propMode|starred|starLevel|ovOpacity)$/.test(e.key)){ applyOpacity(); render(); clearTimeout(gPollT); pollGames(); } });
+window.addEventListener('storage', function(e){ if(!e.key || /^w2w\.(notify|propMode|starred|starLevel|ovOpacity|settingsRev)$/.test(e.key)){ applyOpacity(); render(); clearTimeout(gPollT); pollGames(); } });
 window.W2W_BACK=function(){ if(CORNER) return false; try{ history.back(); }catch(e){ location.href='./'; } return true; };
 function reloadAll(){ return loadProps().then(function(d){ props=d.props||[]; parlays=d.parlays||[]; poll(); }); }
 window.PROPS={ reload:reloadAll, history:showHistory, next:function(){}, prev:function(){} };

@@ -124,6 +124,12 @@
   .split .half .tm{padding:3px 12px}.split .half .tm .pts{font-size:1.4em}
   .split .half .hd{padding:4px 12px}
   .split .half .sit{padding:4px 12px;flex:1}
+.set{border-top:1px solid var(--line);background:#0c1322;padding:6px 10px;flex:none}
+  .set .row{display:flex;gap:5px;flex-wrap:wrap}
+  .set .it{font-size:.66em;background:#141d31;border:1px solid var(--line);border-radius:7px;padding:4px 8px;color:var(--muted);line-height:1.15}
+  .set .it b{display:block;color:#fff;font-size:1.05em}
+  .set .it.on{border-color:var(--gold);background:rgba(255,204,0,.14);color:#ffe9a8}
+  .set .hint{font-size:.62em;color:#5e6b88;margin-top:5px}
   .key{margin-top:6px;font-size:.78em;color:#cdd7ee;display:flex;flex-direction:column;gap:3px}
   .key b{color:#fff}.key .lab{color:var(--muted);font-size:.9em;margin-right:5px}
 </style></head>
@@ -250,9 +256,33 @@ function lscore(g){
 function keyStats(g){ var s=sumCache[g.id]; if(!s){ fetchSummary(g,true); return ''; } if(!s.leaders||!s.leaders.length) return '';
   return '<div class="key">'+s.leaders.slice(0,3).map(function(l){ return '<div><span class="lab">'+esc(l.ab)+'</span><b>'+esc(l.name)+'</b> '+esc(l.val)+'</div>'; }).join('')+'</div>'; }
 
+// ---- in-panel settings strip (▴ to open while floating over any app) ----
+var setOpen=false, setSel=0;
+function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+var PROP_MODES=[{m:'cycle',sec:10,label:'Cycle 10s'},{m:'cycle',sec:20,label:'Cycle 20s'},{m:'few',n:3,label:'Show 3'},{m:'all',label:'Show all'}];
+function propModeIdx(){ var c=lsGet('w2w.propMode',{}); for(var i=0;i<PROP_MODES.length;i++){ var P=PROP_MODES[i]; if(P.m===c.m&&(P.sec||0)===(c.sec||0)&&(P.n||0)===(c.n||0)) return i; } return 0; }
+function notifyGet(){ var o=lsGet('w2w.notify',{}); return {quiet:!!o.quiet, games:(o.games!==false)}; }
+var GC_CYCLES=[0,10,20,30], OPACS=[1,.8,.65];
+function settingsList(g){
+  var nf=notifyGet(); var lvl=g?starLevel(String(g.id)):0;
+  return [
+    {k:'prop', t:'Prop card', v:PROP_MODES[propModeIdx()].label, next:function(){ lsSet('w2w.propMode', PROP_MODES[(propModeIdx()+1)%PROP_MODES.length]); }},
+    {k:'quiet', t:'Quiet mode', v:nf.quiet?'ON · popups only':'off', next:function(){ nf.quiet=!nf.quiet; lsSet('w2w.notify',nf); }},
+    {k:'alerts', t:'Game alerts', v:nf.games?'ON':'off', next:function(){ nf.games=!nf.games; lsSet('w2w.notify',nf); }},
+    {k:'switch', t:'Switch games', v:GC_CYCLE?('Auto '+GC_CYCLE+'s'):'Manual', next:function(){ var i=GC_CYCLES.indexOf(GC_CYCLE); GC_CYCLE=GC_CYCLES[(i+1)%GC_CYCLES.length]; try{ localStorage.setItem('w2w.gcCycle',String(GC_CYCLE)); }catch(e){} resetCycle(); }},
+    {k:'dim', t:'Dim', v:Math.round((parseFloat(lsGet('w2w.ovOpacity',1))||1)*100)+'%', next:function(){ var o=parseFloat(lsGet('w2w.ovOpacity',1))||1; var i=OPACS.indexOf(o); lsSet('w2w.ovOpacity', OPACS[(i+1)%OPACS.length]); applyOpacity(); }},
+    {k:'game', t:'This game', v: lvl===2?'🔔 every score':'★ key moments', next:function(){ if(!g) return; var m=lsGet('w2w.starLevel',{}); if(lvl===2) delete m[String(g.id)]; else m[String(g.id)]=2; lsSet('w2w.starLevel',m); g.level=starLevel(String(g.id)); }},
+    {k:'unfollow', t:'Unfollow', v:'✕ remove from panel', next:function(){ if(!g) return; var st=getStarred().filter(function(x){ return String(x.id)!==String(g.id); }); lsSet('w2w.starred',st); var auto=lsGet('w2w.autoStar',{}); auto[String(g.id)]=1; lsSet('w2w.autoStar',auto); setSel=0; load(); }}
+  ];
+}
+function settingsStrip(g){ var L=settingsList(g); if(setSel>=L.length) setSel=0;
+  return '<div class="set"><div class="row">'+L.map(function(it,i){ return '<span class="it'+(i===setSel?' on':'')+'">'+esc(it.t)+'<b>'+esc(it.v)+'</b></span>'; }).join('')+'</div><div class="hint">◂ ▸ choose · OK change · ▾ or Back close · the prop card follows these too</div></div>'; }
+// let the prop-card overlay (another WebView) see changes made here: a tiny version bump it listens for
+function pokeOthers(){ try{ localStorage.setItem('w2w.settingsRev', String(Date.now())); }catch(e){} }
+
 function footer(g){
   var n=games.length, dots=''; if(n>1){ for(var i=0;i<n;i++) dots+='<i class="'+(i===idx?'on':'')+'"></i>'; }
-  var nav = (n>1?'<span style="color:#ffcc00">◂</span> <span class="dots">'+dots+'</span> <span style="color:#ffcc00">▸</span>':'') + (g.state==='in'?'<span style="color:var(--muted);margin-left:6px">OK · plays</span>':'');
+  var nav = (n>1?'<span style="color:#ffcc00">◂</span> <span class="dots">'+dots+'</span> <span style="color:#ffcc00">▸</span>':'') + '<span style="color:var(--muted);margin-left:6px">'+(g.state==='in'?'OK · plays · ':'')+'▴ settings</span>';
   var txt = (g.sport==='bb'||g.sport==='fb') ? trunc(g.last,42) : (g.level>=2?'🔔 every score':'');
   return '<div class="last"><span class="txt">'+esc(txt)+'</span><span class="nav">'+nav+'</span></div>';
 }
@@ -281,7 +311,7 @@ function render(){
       '<div class="last"><span class="txt">'+(sum.loading?'Loading…':(g.state==='in'?'Live · updates every 15s':''))+'</span><span class="nav">Back · minimize</span></div>';
     var sb=$('sitbox'); if(sb){ var selEl=sb.querySelector('.br.sel'); if(selEl&&!card){ var r=selEl.getBoundingClientRect(), b=sb.getBoundingClientRect(); if(r.top<b.top+30||r.bottom>b.bottom) selEl.scrollIntoView({block:'center'}); scrollPos=sb.scrollTop; } else sb.scrollTop=scrollPos; }
   } else if(splitPair()){ renderSplit(); } else {
-    el.innerHTML=head+teamRow(g.away,aLose,g)+teamRow(g.home,hLose,g)+metaRow(g)+'<div class="sit">'+sitHTML(g)+wpBar(g)+'</div>'+footer(g);
+    el.innerHTML=head+teamRow(g.away,aLose,g)+teamRow(g.home,hLose,g)+metaRow(g)+'<div class="sit">'+sitHTML(g)+wpBar(g)+'</div>'+(setOpen?settingsStrip(g):'')+footer(g);
   }
 }
 
@@ -442,6 +472,13 @@ document.addEventListener('keydown',function(e){
     else if(k===38){ if(inBox&&rowList.length){ sel=Math.max(0,sel-1); render(); } else if(sb){ sb.scrollTop-=120; scrollPos=sb.scrollTop; } e.preventDefault(); }
     else if(k===13||k===23||k===66){ if(inBox&&rowList[sel]){ var rr=rowList[sel]; openPlayer(cur, rr.a, rr.labels, rr.group); } else { tab=(tab+1)%tabs.length; scrollPos=0; render(); } e.preventDefault(); }
     return; }
+  if(setOpen){ var L=settingsList(cur);
+    if(k===8||k===4||k===27||k===40){ setOpen=false; render(); }
+    else if(k===39){ setSel=(setSel+1)%L.length; render(); }
+    else if(k===37){ setSel=(setSel+L.length-1)%L.length; render(); }
+    else if(k===13||k===23||k===66){ L[setSel].next(); pokeOthers(); render(); }
+    e.preventDefault(); return; }
+  if(k===38 && !expanded){ setOpen=true; setSel=0; render(); e.preventDefault(); return; }
   if(splitPair()){ if(k===37||k===39){ splitOff=true; render(); e.preventDefault(); return; } }
   if(k===39){ if(games.length>1){ idx=(idx+1)%games.length; cur=games[idx]; render(); resetCycle(); e.preventDefault(); } }
   else if(k===37){ if(games.length>1){ idx=(idx-1+games.length)%games.length; cur=games[idx]; render(); resetCycle(); e.preventDefault(); } }
@@ -453,7 +490,7 @@ var cycleT=null;
 function resetCycle(){ clearTimeout(cycleT); if(GC_CYCLE>0){ cycleT=setTimeout(function tick(){ if(!expanded&&games.length>1){ idx=(idx+1)%games.length; cur=games[idx]; render(); } cycleT=setTimeout(tick, GC_CYCLE*1000); }, GC_CYCLE*1000); } }
 resetCycle();
 window.addEventListener('storage', function(e){ if(!e.key || /^w2w\.(starred|starLevel|ovOpacity|gcCycle)$/.test(e.key)){ applyOpacity(); try{ GC_CYCLE=parseInt(localStorage.getItem('w2w.gcCycle')||'0',10)||0; }catch(x){} resetCycle(); load(); } });
-window.W2W_BACK=function(){ if(card){ card=null; render(); return true; } if(expanded){ expanded=false; tab=0; sel=0; render(); return true; } try{ history.back(); }catch(e){ location.href='./'; } return true; };
+window.W2W_BACK=function(){ if(setOpen){ setOpen=false; render(); return true; } if(card){ card=null; render(); return true; } if(expanded){ expanded=false; tab=0; sel=0; render(); return true; } try{ history.back(); }catch(e){ location.href='./'; } return true; };
 window.GC={ next:function(){if(!expanded&&games.length){idx=(idx+1)%games.length;cur=games[idx];render();}},
   prev:function(){if(!expanded&&games.length){idx=(idx-1+games.length)%games.length;cur=games[idx];render();}},
   ok:function(){ if(card){ card=null; render(); } else if(expanded){ var n=tabsFor(cur).length; tab=(tab+1)%n; scrollPos=0; render(); } else if(cur){expanded=true;tab=0;scrollPos=0;sel=0;fetchSummary(cur);} }, tab:function(n){ if(expanded){ var L=tabsFor(cur).length; tab=((n%L)+L)%L; scrollPos=0; render(); } },
