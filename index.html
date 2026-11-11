@@ -1255,6 +1255,14 @@ else {
 #sp h2{font-size:1.2vw;letter-spacing:.14em;text-transform:uppercase;color:#ffcc00;margin:1.3vw 0 .6vw;font-weight:600}
 #sp .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.9vw}
 #sp .g{background:#121b31;border-radius:.8vw;padding:.8vw 1vw;border:.22vw solid transparent;outline:none;cursor:pointer;position:relative}
+#sp .g .starbadge{position:absolute;top:.5vw;right:.6vw;color:#ffcc00;font-size:1.3vw;line-height:1;text-shadow:0 .1vw .3vw rgba(0,0,0,.6)}
+#sp .g .pickhint{display:none;position:absolute;top:.5vw;right:.6vw;color:#7f8db0;font-size:1.3vw;line-height:1}
+#sp.starmode .g{border-color:#3a4a6b}
+#sp.starmode .g:focus{border-color:#ffcc00;box-shadow:0 0 0 .15vw rgba(255,204,0,.4)}
+#sp.starmode .g .pickhint{display:block}
+#sp.starmode .g.starred .pickhint{display:none}
+#spBanner{display:none;background:linear-gradient(90deg,rgba(255,204,0,.16),transparent);border:.12vw solid #ffcc00;border-radius:.7vw;padding:.7vw 1.2vw;margin:.3vw 0 .6vw;font-size:1.05vw;color:#ffe9a8}
+#sp.starmode #spBanner{display:block}
 #sp .g:focus{border-color:#ffcc00;background:#1a2747}
 #sp .g.off{opacity:.45}
 #sp .tm{display:flex;align-items:center;gap:.6vw;font-size:1.15vw;margin:.25vw 0}
@@ -1295,7 +1303,15 @@ else {
   // Over-the-air broadcast networks = free with a TV antenna, no subscription.
   var OTA=/^(abc|cbs|nbc|fox|the cw|cw|telemundo|univision|unimas|unim[aá]s|ion|mynetworktv|pbs)$/;
   function isOTA(nets){ return (nets||[]).some(function(n){ return OTA.test(String(n).toLowerCase().trim()); }); }
-  var dayMode='today', lgOn={}, games=[], timer=null, allOn=true, noSpoil=false;
+  var dayMode='today', lgOn={}, games=[], timer=null, allOn=true, noSpoil=false, starMode=false;
+  // Starred games for the Gamecast panel. Stored as [{lg:'hockey/nhl', id:'401...'}].
+  function getStars(){ try{ var a=JSON.parse(localStorage.getItem('w2w.starred')||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
+  function isStar(id){ return getStars().some(function(s){ return String(s.id)===String(id); }); }
+  function toggleStar(g){ var a=getStars(), id=g.id, lgp=(g.lg&&g.lg[2])||'', i=-1;
+    a.forEach(function(s,k){ if(String(s.id)===String(id)) i=k; });
+    if(i>=0) a.splice(i,1); else a.push({lg:lgp, id:id});
+    try{ localStorage.setItem('w2w.starred', JSON.stringify(a)); }catch(e){}
+    return i<0; }
   try{ noSpoil=localStorage.getItem('w2w.sp.nospoil')==='1'; var sv=JSON.parse(localStorage.getItem('w2w.sp.lg')||'null'); if(sv&&sv.length){ allOn=false; sv.forEach(function(k){lgOn[k]=true;}); } }catch(e){}
   function saveLg(){ try{ localStorage.setItem('w2w.sp.lg',JSON.stringify(allOn?[]:Object.keys(lgOn).filter(function(k){return lgOn[k];}))); localStorage.setItem('w2w.sp.nospoil',noSpoil?'1':'0'); }catch(e){} }
   function shown(k){ return allOn || !!lgOn[k]; }
@@ -1328,7 +1344,11 @@ else {
   }
   function bars(){
     $s('spDays').innerHTML='<span class="lbl">WHEN</span>'+[['live','🔴 Live now'],['today','Today'],['tomorrow','Tomorrow'],['week','Upcoming (7 days)']].map(function(d){return '<button class="chipb focusable'+(dayMode===d[0]?' on':'')+'" data-day="'+d[0]+'">'+d[1]+'</button>';}).join('')+
-      '<button class="chipb focusable'+(noSpoil?' on':'')+'" data-ns="1" style="margin-left:2vw">🙈 No spoilers'+(noSpoil?': ON':'')+'</button>';
+      '<button class="chipb focusable'+(noSpoil?' on':'')+'" data-ns="1" style="margin-left:2vw">🙈 No spoilers'+(noSpoil?': ON':'')+'</button>'+
+      '<button class="chipb focusable'+(starMode?' on':'')+'" data-starmode="1" style="margin-left:2vw">⭐ '+(starMode?'Done picking':'Star games')+'</button>'+
+      '<button class="chipb focusable" data-gamecast="1">🎮 Gamecast'+(getStars().length?' ('+getStars().length+')':'')+'</button>';
+    var bn=$s('spBanner'); if(!bn){ bn=document.createElement('div'); bn.id='spBanner'; var dd=$s('spDays'); dd.parentNode.insertBefore(bn, dd.nextSibling); }
+    bn.innerHTML='⭐ <b>Star mode:</b> press OK on each game you want in the Gamecast panel tonight. Press <b>⭐ Done picking</b> when finished. ('+getStars().length+' starred)';
     var have={}; games.forEach(function(g){ if(g.apps.length) have[g.lg[0]]=(have[g.lg[0]]||0)+1;});
     $s('spLg').innerHTML='<span class="lbl">SPORTS</span><button class="chipb focusable'+(allOn?' on':'')+'" data-lg="*">All</button>'+LG.map(function(l){var n=have[l[0]]||0; return '<button class="chipb focusable'+(!allOn&&lgOn[l[0]]?' on':'')+'" data-lg="'+l[0]+'"'+(n?'':' style="opacity:.45"')+'>'+l[1]+(n?' <small style="opacity:.7">'+n+'</small>':'')+'</button>';}).join('');
   }
@@ -1346,7 +1366,9 @@ else {
     if(g.tennis) nets='<span class="net ok">▶ Find on YouTube TV</span><span class="net">Tennis Channel / ESPN</span>'; else if(g.apps.length) nets='<span class="net ok">▶ '+g.apps.map(function(a){return APPS[a][0];}).join(' / ')+'</span>'+freeTag+nets;
     else if(free) nets=freeTag+nets;
     else nets='<span class="net">Not on your apps</span>'+nets;
-    return '<div class="g focusable'+(ok?'':' off')+'" tabindex="0" data-g="'+g.id+'">'+st+tm+(g.note?'<div class="st" style="margin-top:.2vw">'+esc(g.note)+'</div>':'')+'<div class="nets">'+nets+'</div></div>';
+    var starred=isStar(g.id);
+    var badge=starred?'<span class="starbadge">★</span>':'<span class="pickhint">☆</span>';
+    return '<div class="g focusable'+(ok?'':' off')+(starred?' starred':'')+'" tabindex="0" data-g="'+g.id+'">'+badge+st+tm+(g.note?'<div class="st" style="margin-top:.2vw">'+esc(g.note)+'</div>':'')+'<div class="nets">'+nets+'</div></div>';
   }
   function render(){
     bars();
@@ -1376,12 +1398,15 @@ else {
       else if(allOn){ allOn=false; lgOn={}; lgOn[k]=true; }
       else { lgOn[k]=!lgOn[k]; if(!Object.keys(lgOn).some(function(x){return lgOn[x];})) allOn=true; }
       saveLg(); render(); var f=document.querySelector('[data-lg="'+k+'"]'); if(f) f.focus(); return; }
+    if(e.target.closest('[data-starmode]')){ starMode=!starMode; $s('sp').classList.toggle('starmode',starMode); render(); var sm=document.querySelector('[data-starmode]'); if(sm) sm.focus(); return; }
+    if(e.target.closest('[data-gamecast]')){ location.href='gamecast.html'; return; }
     var g=e.target.closest('[data-g]'); if(g){ var gm=games.filter(function(x){return x.id===g.dataset.g;})[0];
+      if(starMode){ if(gm){ var on=toggleStar(gm); var cardEl=g; cardEl.classList.toggle('starred',on); cardEl.querySelector('.starbadge,.pickhint').outerHTML=on?'<span class="starbadge">★</span>':'<span class="pickhint">☆</span>'; spToast(on?'★ Starred for Gamecast':'☆ Removed'); bars(); cardEl.focus(); } return; }
       if(gm&&gm.apps.length) launchApp(gm.apps[0],gm);
       else if(gm&&isOTA(gm.nets)){ var onet=(gm.nets||[]).filter(function(n){return OTA.test(String(n).toLowerCase().trim());})[0]||'a local channel'; spToast('📡 This game is free over the air on <b>'+esc(onet)+'</b> — watch it with a TV antenna, no subscription. (Also on YouTube TV if you have it.)'); } }
   });
   window.W2W_SP={
-    open:function(){ $s('sp').classList.add('show'); try{history.pushState({s:1},'');}catch(e){} $s('sp').scrollTop=0;
+    open:function(){ $s('sp').classList.add('show'); starMode=false; $s('sp').classList.remove('starmode'); try{history.pushState({s:1},'');}catch(e){} $s('sp').scrollTop=0;
       load().then(function(){ var f=document.querySelector('#sp .g:not(.off)')||document.querySelector('#sp .chipb'); if(f) f.focus(); });
       clearInterval(timer); timer=setInterval(function(){ if(W2W_SP.isOpen()) load(); },60000); },
     isOpen:function(){ return $s('sp').classList.contains('show'); },
