@@ -170,14 +170,15 @@ function ringColor(prog){ var h=Math.round(prog*120); return 'hsl('+h+',72%,48%)
 
 function chipHTML(p){
   var v=vals[p.id], st=statusOf(p,v);
-  var C=46, R=19, circ=2*Math.PI*R, off=circ*(1-st.prog);
-  var color = st.bust? 'var(--red)' : st.hit? 'var(--gold)' : probColor(p._prob!=null?p._prob:likelihood(p));
+  var set=settled(p);
+  var C=46, R=19, circ=2*Math.PI*R, off=circ*(1-(set?1:st.prog));
+  var color = set==='won'? 'var(--green)' : set==='lost'? 'var(--red)' : probColor(p._prob!=null?p._prob:likelihood(p));
   var ring='<div class="ring"><svg width="'+C+'" height="'+C+'" viewBox="0 0 '+C+' '+C+'">'+
     '<circle cx="23" cy="23" r="'+R+'" fill="none" stroke="#1e283c" stroke-width="5"/>'+
     '<circle cx="23" cy="23" r="'+R+'" fill="none" stroke="'+color+'" stroke-width="5" stroke-linecap="round" stroke-dasharray="'+circ.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'"/></svg>'+
     '<div class="val" id="val-'+p.id+'">'+(v==null?'–':v)+'</div></div>';
-  var remain = v==null? '' : ((p.dir||'o')==='o' ? (v>p.line? 'HIT' : '+'+(needed(p)-v)+' to go') : (v>p.line?'BUST':(Math.floor(p.line)-v>=0?(Math.floor(p.line)-v)+' left':'on line')));
-  var right = st.hit? '<div class="trophy">🏆</div>' : '<div class="need"><div class="big">'+esc(remain)+'</div></div>';
+  var remain = v==null? '' : (set==='won'?'HIT':set==='lost'?'MISS':over(p) ? '+'+(needed(p)-v)+' to go' : (v>p.line?'BUST':(Math.floor(p.line)-v>=0?(Math.floor(p.line)-v)+' left':'on line')));
+  var right = set==='won'? '<div class="trophy">🏆</div>' : '<div class="need"><div class="big">'+esc(remain)+'</div></div>';
   var label = p.label || ((p.dir||'o')+p.line+' '+(p.statLabel||p.stat));
   var clk = p._status ? '<span class="clk'+(p._live?' live':'')+'">'+esc(p._status)+'</span>' : '';
   var scr = p._score ? '<span class="scr">'+esc(p._score)+'</span>' : '';
@@ -209,18 +210,24 @@ function likelihood(p){
   return 1/(1+Math.exp(-margin/sigma));
 }
 function probColor(prob){ return 'hsl('+Math.round(prob*120)+',74%,47%)'; }
+// settled = outcome is locked: 'won' (cleared) / 'lost' (can't win). done = player can't add more.
+function settled(p){ var v=vals[p.id]; if(v==null) return null;
+  var done = (p.state==='post') || p._fouledOut; // game over, or fouled out / can't return
+  if(over(p)){ if(v>p.line) return 'won'; if(done) return 'lost'; }
+  else { if(v>p.line) return 'lost'; if(done) return 'won'; }
+  return null; }
 
 // compact card for the floating corner overlay (headshot + ring + tight text)
 function cornerChip(p){
-  var v=vals[p.id], st=statusOf(p,v), prob=(p._prob!=null?p._prob:likelihood(p));
-  var C=38,R=15,circ=2*Math.PI*R,off=circ*(1-st.prog);
-  var color = st.hit?'var(--gold)' : st.bust?'var(--red)' : probColor(prob);
+  var v=vals[p.id], st=statusOf(p,v), set=settled(p), prob=(p._prob!=null?p._prob:likelihood(p));
+  var C=38,R=15,circ=2*Math.PI*R, fill=set?1:st.prog, off=circ*(1-fill);
+  var color = set==='won'?'var(--green)' : set==='lost'?'var(--red)' : probColor(prob);
   var ring='<div class="cring"><svg width="'+C+'" height="'+C+'" viewBox="0 0 '+C+' '+C+'" style="transform:rotate(-90deg)"><circle cx="19" cy="19" r="'+R+'" fill="none" stroke="#1e283c" stroke-width="4"/><circle cx="19" cy="19" r="'+R+'" fill="none" stroke="'+color+'" stroke-width="4" stroke-linecap="round" stroke-dasharray="'+circ.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'"/></svg><span class="cv" id="cv-'+esc(p.id)+'">'+(v==null?'–':v)+'</span></div>';
   var face=p._face?'<div class="cface" style="background-image:url(&quot;'+esc(p._face)+'&quot;)"></div>':'';
-  var rem = v==null?'' : (st.hit?'<b class="rem go">✓</b>' : st.bust?'<b class="rem bust">✗</b>' : over(p)?'<b class="rem go">+'+(needed(p)-v)+'</b>':'');
+  var rem = v==null?'' : (set==='won'?'<b class="rem go">✓</b>' : set==='lost'?'<b class="rem bust">✗</b>' : over(p)?'<b class="rem go">+'+(needed(p)-v)+'</b>':'');
   var clk=p._status?('<span class="'+(p._live?'clk live':'clk')+'">'+esc(p._status)+'</span>'):'';
   var sc=p._score?'<span class="scr">'+esc(p._score)+'</span>':'';
-  return '<div class="cchip'+(st.hit?' hit':'')+'">'+face+ring+'<div class="cinfo"><div class="cnm">'+esc(p.disp||p.player)+' '+rem+'</div><div class="cln">'+esc(p.label||((p.dir||'o')+p.line+' '+(p.statLabel||p.stat)))+'</div><div class="cst">'+clk+sc+'</div></div></div>';
+  return '<div class="cchip'+(set==='won'?' hit':'')+'">'+face+ring+'<div class="cinfo"><div class="cnm">'+esc(p.disp||p.player)+' '+rem+'</div><div class="cln">'+esc(p.label||((p.dir||'o')+p.line+' '+(p.statLabel||p.stat)))+'</div><div class="cst">'+clk+sc+'</div></div></div>';
 }
 
 var rotI=0;
@@ -275,7 +282,7 @@ function poll(){
     props.forEach(function(p){
       if(p._delta){ showRise(p); p._changed=true; p._delta=0; }
       if(p._changed){ var vEl=$((CORNER?'cv-':'val-')+p.id); if(vEl){ vEl.classList.add('pop'); setTimeout(function(){vEl.classList.remove('pop');},260);} p._changed=false; }
-      var st=statusOf(p,vals[p.id]); if(st.hit && !p._celebrated){ p._celebrated=true; confetti(p.id);} if(!st.hit) p._celebrated=false;
+      var won=settled(p)==='won'; if(won && !p._celebrated){ p._celebrated=true; confetti(p.id);} if(!won) p._celebrated=false;
     });
     var anyLive=props.some(function(p){ return p._live; });
     pollT=setTimeout(poll, anyLive?12000:45000);
