@@ -48,6 +48,14 @@
   #rise .rb .play{font-size:.8em;color:#cdd7ee;margin-top:3px;line-height:1.25;max-height:2.5em;overflow:hidden}
   #rise .rring{flex:none}
   #rise.hit{border-color:var(--gold);background:linear-gradient(180deg,#2a2410,#16203a)}
+  /* corner (floating overlay) mode: just one card, transparent surround */
+  body.corner{background:transparent}
+  body.corner #pp{background:transparent;border:none;box-shadow:none;height:auto;font-size:15px}
+  body.corner #pp .hd{display:none}
+  body.corner #pp .list{padding:0}
+  body.corner #pp .chip{background:linear-gradient(180deg,#16203a,#0e1526);box-shadow:0 14px 40px -12px #000}
+  body.corner #pp .chip .dpop{position:absolute;top:6px;right:10px;color:var(--green);font-weight:800;font-size:.95em;animation:dfade 2.6s forwards}
+  @keyframes dfade{0%{opacity:0;transform:translateY(6px)}12%{opacity:1;transform:translateY(0)}80%{opacity:1}100%{opacity:0}}
 </style></head>
 <body>
 <div id="pp"><div class="msg">Loading your props…</div></div>
@@ -55,6 +63,7 @@
 <script>
 'use strict';
 var ESPN='https://site.web.api.espn.com/apis/site/v2/sports/';
+var CORNER=/[?&]corner/.test(location.search); // compact single-card mode for the floating overlay
 function $(id){return document.getElementById(id);}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 
@@ -153,8 +162,15 @@ function chipHTML(p){
     '<div class="info"><div class="nm">'+esc(p.disp||p.player)+'</div><div class="ln"><b>'+esc(label)+'</b></div>'+gm+'</div>'+right+'</div>';
 }
 
+var rotI=0;
 function render(){
   var el=$('pp');
+  if(CORNER){
+    if(!props.length){ el.innerHTML=''; return; }
+    if(rotI>=props.length) rotI=0;
+    el.innerHTML='<div class="list">'+chipHTML(props[rotI])+'</div>';
+    return;
+  }
   if(!props.length){ el.innerHTML='<div class="msg">No props set.<br><span style="font-size:.85em">Tell Mike which props to track and they\'ll show here.</span></div>'; return; }
   var total=props.length;
   if(pageTop>Math.max(0,total-PAGE)) pageTop=Math.max(0,total-PAGE);
@@ -196,6 +212,13 @@ function poll(){
 }
 var riseT=null;
 function showRise(p){
+  if(CORNER){ // corner mode: bring that prop forward and flash it in place (no separate pop-up)
+    var i=props.indexOf(p); if(i>=0) rotI=i; render();
+    var chip=document.querySelector('#pp .chip');
+    if(chip){ var st=statusOf(p,p._newVal); var d=document.createElement('div'); d.className='dpop'; d.textContent=st.hit?'🏆 HIT!':'+'+p._delta+' '+(p.statLabel||p.stat); chip.appendChild(d);
+      var vEl=document.querySelector('#pp .ring .val'); if(vEl){ vEl.classList.add('pop'); setTimeout(function(){vEl.classList.remove('pop');},260); } }
+    return;
+  }
   var r=$('rise'); if(!r) return;
   var st=statusOf(p, p._newVal);
   var C=44,R=18,circ=2*Math.PI*R,off=circ*(1-st.prog);
@@ -216,6 +239,7 @@ document.addEventListener('keydown',function(e){
 });
 window.PROPS={ reload:function(){ loadProps().then(function(a){ props=a||[]; poll(); }); }, next:function(){if(props.length>PAGE){pageTop=Math.min(props.length-PAGE,pageTop+PAGE);render();}}, prev:function(){if(props.length>PAGE){pageTop=Math.max(0,pageTop-PAGE);render();}} };
 
+if(CORNER){ document.body.classList.add('corner'); setInterval(function(){ if(props.length>1){ rotI=(rotI+1)%props.length; render(); } }, 10000); }
 loadProps().then(function(a){ props=a||[]; poll(); });
 </script>
 </body></html>
