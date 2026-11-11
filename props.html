@@ -217,7 +217,8 @@ function summary(lg,id){ if(summaryCache[id] && Date.now()-summaryCache[id].t<10
 
 // --- settings ---
 function getNotify(){ var o=lsGet('w2w.notify',{}); return {quiet:!!o.quiet, games:(o.games!==false)}; }
-function isQuiet(){ return getNotify().quiet; }
+var summonUntil=0;
+function isQuiet(){ return getNotify().quiet && Date.now()>summonUntil; } // a deliberate ☰ double-press shows the card even in quiet mode
 function getStarred(){ var a=lsGet('w2w.starred',[]); return Array.isArray(a)?a:[]; }
 function starLevel(id){ var m=lsGet('w2w.starLevel',{}); return +(m[id]||1); } // 1 key moments, 2 every score
 function sportFromLg(lg){ if(/basketball/.test(lg))return'bk'; if(/football/.test(lg))return'fb'; if(/hockey/.test(lg))return'hk'; if(/baseball/.test(lg))return'bb'; if(/soccer/.test(lg))return'sc'; return'gen'; }
@@ -560,9 +561,9 @@ window.addEventListener('storage', function(e){ if(!e.key || /^w2w\.(notify|prop
 window.W2W_BACK=function(){ if(CORNER) return false; try{ history.back(); }catch(e){ location.href='./'; } return true; };
 function reloadAll(){ return loadProps().then(function(d){ d=pruneOld(d); props=d.props||[]; parlays=d.parlays||[]; poll(); }); }
 setInterval(function(){ var before=props.length+parlays.length; var d=pruneOld({props:props,parlays:parlays}); if(d.props.length+d.parlays.length!==before){ props=d.props; parlays=d.parlays; render(); } }, 60000); // 2 AM roll-over
-window.PROPS={ reload:reloadAll, history:showHistory, next:function(){}, prev:function(){} };
+window.PROPS={ reload:reloadAll, history:showHistory, next:function(){}, prev:function(){}, summon:function(){ summonUntil=Date.now()+25000; render(); setTimeout(render, 25500); } };
 
-if(CORNER){ document.body.classList.add('corner');
+if(CORNER){ document.body.classList.add('corner'); summonUntil=Date.now()+25000; setTimeout(render, 25500); // opening the card is itself a summons
   (function cyc(){ var pm=getPropMode(); var vc=visCount(); var n=cornerItems().length; focusTick++;
     if(pm.m!=='all' && n>vc){ rotI=(rotI+vc)%n; } render();
     setTimeout(cyc, Math.max(4, pm.sec)*1000);
