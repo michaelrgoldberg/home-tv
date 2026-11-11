@@ -598,6 +598,14 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
       if(k===39){ TK_SPEED=Math.min(3,Math.round(TK_SPEED*1.25*100)/100); apply(); e.preventDefault(); }
       else if(k===37){ TK_SPEED=Math.max(0.4,Math.round(TK_SPEED/1.25*100)/100); apply(); e.preventDefault(); }
     });
+    tk.addEventListener('focus',function(){ if(tip){tip.textContent='Scores ticker — ◂ slower · faster ▸';tip.style.display='block';clearTimeout(tip._t);tip._t=setTimeout(function(){tip.style.display='none';},2600);} else toast(); });
+    // Make the bottom ticker reachable with the D-pad: Down from a button lands on it; Up leaves it.
+    document.addEventListener('keydown',function(e){
+      if(!(window.W2W_HOME_OPEN&&W2W_HOME_OPEN())) return;
+      var k=e.keyCode||e.which, ae=document.activeElement;
+      if(k===40 && ae && ae.classList && ae.classList.contains('gobtn')){ tk.focus(); e.preventDefault(); e.stopPropagation(); }
+      else if(k===38 && ae===tk){ var b=document.getElementById('goSp')||document.querySelector('.gobtn'); if(b){ b.focus(); e.preventDefault(); e.stopPropagation(); } }
+    },true);
   })();
   W2W_CFG.then(function(c){ CFG=c||{}; NAMES=esc2(CFG.names||''); BDAYS=CFG.bdays||[]; PICK=CFG.pick||{}; NOPICK=CFG.nopick||[];
     tick(); chips(); weather(); shabbat(); mtLoad(); tkLoad(); });
