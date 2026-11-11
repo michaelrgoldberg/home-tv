@@ -1234,7 +1234,12 @@ function startLive(){
 }
 function focusFirstCard(){if(window.W2W_HOME_OPEN&&W2W_HOME_OPEN()) return; var a=document.activeElement; if(a && a.classList && a.classList.contains('focusable')) return; var c=$('grid').querySelector('.card'); if(c) c.focus();}
 if(window.W2W_MOCK){ window.W2W_MOCK(function(t,g,im,ids){titles=t;genres=g;imdbCache=im;idCache=ids;drawBars();render(false);focusFirstCard();}); }
-else start();
+else {
+  // Pull keys (tmdb/omdb) and other fields from the encrypted config.json, without
+  // clobbering anything already set from this TV's localStorage or the URL hash.
+  window.W2W_CFG.then(function(c){ c=c||{}; for(var k in c){ if(c.hasOwnProperty(k) && (CFG[k]==null||CFG[k]==='')) CFG[k]=c[k]; } start(); },
+    function(){ start(); });
+}
 })();
 </script>
 <style>
