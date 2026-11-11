@@ -50,9 +50,9 @@
   #rise.hit{border-color:var(--gold);background:linear-gradient(180deg,#2a2410,#16203a)}
   /* corner (floating overlay) mode: just one card, transparent surround */
   body.corner{background:transparent}
-  body.corner #pp{background:transparent;border:none;box-shadow:none;height:auto;font-size:15px}
+  body.corner #pp{background:transparent;border:none;box-shadow:none;height:100%;font-size:15px;justify-content:flex-end}
   body.corner #pp .hd{display:none}
-  body.corner #pp .list{padding:0}
+  body.corner #pp .list{padding:0;justify-content:flex-end;overflow:visible}
   body.corner #pp .chip{background:linear-gradient(180deg,#16203a,#0e1526);box-shadow:0 14px 40px -12px #000}
   body.corner #pp .chip .dpop{position:absolute;top:6px;right:10px;color:var(--green);font-weight:800;font-size:.95em;animation:dfade 2.6s forwards}
   @keyframes dfade{0%{opacity:0;transform:translateY(6px)}12%{opacity:1;transform:translateY(0)}80%{opacity:1}100%{opacity:0}}
@@ -163,12 +163,16 @@ function chipHTML(p){
 }
 
 var rotI=0;
+// display mode for the floating corner card: {m:'cycle'|'few'|'all', n, sec}
+function getPropMode(){ try{ var o=JSON.parse(localStorage.getItem('w2w.propMode')||'{}'); return {m:o.m||'cycle', n:o.n||3, sec:o.sec||10}; }catch(e){ return {m:'cycle',n:3,sec:10}; } }
+function visCount(){ var pm=getPropMode(); if(pm.m==='all') return props.length||1; if(pm.m==='few') return Math.min(pm.n, props.length||1); return 1; }
 function render(){
   var el=$('pp');
   if(CORNER){
     if(!props.length){ el.innerHTML=''; return; }
-    if(rotI>=props.length) rotI=0;
-    el.innerHTML='<div class="list">'+chipHTML(props[rotI])+'</div>';
+    var vc=visCount(); if(rotI>=props.length) rotI=0;
+    var shown=[]; for(var i=0;i<vc && i<props.length;i++){ shown.push(props[(rotI+i)%props.length]); }
+    el.innerHTML='<div class="list">'+shown.map(chipHTML).join('')+'</div>';
     return;
   }
   if(!props.length){ el.innerHTML='<div class="msg">No props set.<br><span style="font-size:.85em">Tell Mike which props to track and they\'ll show here.</span></div>'; return; }
@@ -241,7 +245,13 @@ document.addEventListener('keydown',function(e){
 window.W2W_BACK=function(){ if(CORNER) return false; try{ history.back(); }catch(e){ location.href='./'; } return true; };
 window.PROPS={ reload:function(){ loadProps().then(function(a){ props=a||[]; poll(); }); }, next:function(){if(props.length>PAGE){pageTop=Math.min(props.length-PAGE,pageTop+PAGE);render();}}, prev:function(){if(props.length>PAGE){pageTop=Math.max(0,pageTop-PAGE);render();}} };
 
-if(CORNER){ document.body.classList.add('corner'); setInterval(function(){ if(props.length>1){ rotI=(rotI+1)%props.length; render(); } }, 10000); }
+if(CORNER){ document.body.classList.add('corner');
+  (function cyc(){ var pm=getPropMode(); var vc=visCount();
+    // only rotate when there are more props than currently shown (all = no rotation)
+    if(pm.m!=='all' && props.length>vc){ rotI=(rotI+vc)%props.length; render(); }
+    setTimeout(cyc, Math.max(4, pm.sec)*1000);
+  })();
+}
 loadProps().then(function(a){ props=a||[]; poll(); });
 </script>
 </body></html>
