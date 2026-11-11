@@ -170,6 +170,7 @@ public class AlertService extends Service {
     @android.webkit.JavascriptInterface public void handoff(boolean ok) { gcHandoffOk = ok; }
     @android.webkit.JavascriptInterface public void focusProps() { h.post(new Runnable(){ public void run(){ if (propCard == null) showPropCard(); focusPropCard(); } }); }
     @android.webkit.JavascriptInterface public void focusGamecast() { h.post(new Runnable(){ public void run(){ releasePropCard(); } }); }
+    @android.webkit.JavascriptInterface public void openGamecast() { h.post(new Runnable(){ public void run(){ if (gamecast == null) showGamecast(); releasePropCard(); } }); }
     @android.webkit.JavascriptInterface public void hideProps() { h.post(new Runnable(){ public void run(){ hidePropCard(); } }); }
     @android.webkit.JavascriptInterface public void hideGamecast() { h.post(new Runnable(){ public void run(){ AlertService.this.hideGamecast(); } }); }
     @android.webkit.JavascriptInterface public boolean propsShown() { return propCard != null; }

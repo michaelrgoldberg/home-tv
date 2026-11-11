@@ -435,6 +435,7 @@ function fetchSummary(g, quiet){
       if(lastTeam) run={team:lastTeam, pts:pts}; }catch(e){}
     sumCache[g.id]={t:Date.now(), scoring:scoring, plays:plays, fouls:fouls, leaders:leaders, box:d.boxscore||null, shots:(g.sport==='bk'?shotsFrom(d):[])};
     games.forEach(function(x){ if(x.id===g.id){ if(wp) x.wp=wp; x.run=run; } });
+    if(jumpPending&&String(jumpPending.id)===String(g.id)){ applyJump(); return; }
     render();
   }).catch(function(){ sumCache[g.id]={t:Date.now(), scoring:[],plays:[]}; render(); });
 }
@@ -453,6 +454,7 @@ function load(){
     games=out; window.__gc_games=games.length; if(!splitPair()) splitOff=false;
     if(cur){ var ni=games.map(function(g){return g.id;}).indexOf(cur.id); if(ni>=0) idx=ni; }
     // auto-promote: when a game first turns close-and-late during auto-switch, jump to it once
+    if(jumpPending){ applyJump(); return; }
     if(GC_CYCLE>0 && !expanded){ for(var i=0;i<games.length;i++){ if(games[i].closeLate && !promoted[games[i].id]){ promoted[games[i].id]=1; idx=i; cur=games[i]; resetCycle(); break; } } }
     render();
     // keep run / fouls fresh for live basketball & football cards
@@ -490,14 +492,22 @@ try{ if(!GC_CYCLE) GC_CYCLE=parseInt(localStorage.getItem('w2w.gcCycle')||'0',10
 var cycleT=null;
 function resetCycle(){ clearTimeout(cycleT); if(GC_CYCLE>0){ cycleT=setTimeout(function tick(){ if(!expanded&&games.length>1){ idx=(idx+1)%games.length; cur=games[idx]; render(); } cycleT=setTimeout(tick, GC_CYCLE*1000); }, GC_CYCLE*1000); } }
 resetCycle();
-window.addEventListener('storage', function(e){ if(!e.key || /^w2w\.(starred|starLevel|ovOpacity|gcCycle)$/.test(e.key)){ applyOpacity(); try{ GC_CYCLE=parseInt(localStorage.getItem('w2w.gcCycle')||'0',10)||0; }catch(x){} resetCycle(); load(); } });
+// jump request from the prop card: show this game, open the box score on the player's team, open his card
+var jumpPending=null;
+function takeJump(){ var j=lsGet('w2w.gcJump',null); if(!j||!j.t||Date.now()-j.t>60000) return; try{ localStorage.removeItem('w2w.gcJump'); }catch(e){} jumpPending=j; applyJump(); }
+function applyJump(){ var j=jumpPending; if(!j) return; var gi=games.map(function(g){return String(g.id);}).indexOf(String(j.id)); if(gi<0){ if(getStarred().every(function(s){return String(s.id)!==String(j.id);})){ var st=getStarred(); st.push({lg:j.lg,id:String(j.id)}); lsSet('w2w.starred',st); } load(); return; }
+  idx=gi; cur=games[gi]; expanded=true; setOpen=false; card=null; var g=cur; tab=tabsFor(g).indexOf((g.away.ab===j.team)?'away':'home'); if(tab<0) tab=1; sel=0; scrollPos=0;
+  var sum=sumCache[g.id]; if(!sum||!sum.box){ fetchSummary(g); return; }
+  render(); var nm=String(j.player||'').toLowerCase(); var ri=rowList.map(function(r){ var a=r.a.athlete||{}; return String(a.displayName||a.shortName||'').toLowerCase(); }).findIndex(function(x){ return x&&(x.indexOf(nm)>=0||nm.indexOf(x)>=0||x.split(' ').pop()===nm.split(' ').pop()); });
+  if(ri>=0){ sel=ri; var rr=rowList[ri]; jumpPending=null; openPlayer(g, rr.a, rr.labels, rr.group); } else { jumpPending=null; render(); } }
+window.addEventListener('storage', function(e){ if(e.key==='w2w.gcJump'){ takeJump(); return; } if(!e.key || /^w2w\.(starred|starLevel|ovOpacity|gcCycle)$/.test(e.key)){ applyOpacity(); try{ GC_CYCLE=parseInt(localStorage.getItem('w2w.gcCycle')||'0',10)||0; }catch(x){} resetCycle(); load(); } });
 window.W2W_BACK=function(){ if(setOpen){ setOpen=false; render(); return true; } if(card){ card=null; render(); return true; } if(expanded){ expanded=false; tab=0; sel=0; render(); return true; } try{ history.back(); }catch(e){ location.href='./'; } return true; };
 window.GC={ blur:function(){ document.getElementById('gc').style.outline='none'; }, next:function(){if(!expanded&&games.length){idx=(idx+1)%games.length;cur=games[idx];render();}},
   prev:function(){if(!expanded&&games.length){idx=(idx-1+games.length)%games.length;cur=games[idx];render();}},
   ok:function(){ if(card){ card=null; render(); } else if(expanded){ var n=tabsFor(cur).length; tab=(tab+1)%n; scrollPos=0; render(); } else if(cur){expanded=true;tab=0;scrollPos=0;sel=0;fetchSummary(cur);} }, tab:function(n){ if(expanded){ var L=tabsFor(cur).length; tab=((n%L)+L)%L; scrollPos=0; render(); } },
   back:function(){ if(expanded){expanded=false;render();} }, reload:load };
 // boot: pull in games Mike asked Claude to track (and prop/parlay games), then poll
-(window.W2W_FOLLOW?W2W_FOLLOW.sync():Promise.resolve()).catch(function(){}).then(poll);
+(window.W2W_FOLLOW?W2W_FOLLOW.sync():Promise.resolve()).catch(function(){}).then(function(){ var j=lsGet('w2w.gcJump',null); if(j&&j.t&&Date.now()-j.t<60000){ jumpPending=j; try{ localStorage.removeItem('w2w.gcJump'); }catch(e){} } return load(); }).then(function(){ var live=games.some(function(g){return g.state==='in';}); pollT=setTimeout(poll, live?12000:45000); });
 setInterval(function(){ if(window.W2W_FOLLOW) W2W_FOLLOW.sync().then(function(r){ if(r&&r.added) load(); }); }, 5*60*1000);
 </script>
 </body></html>
