@@ -478,7 +478,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
 
   // ---------- My teams (favorites from the encrypted config) ----------
   var MT=[], mtView=0, RANKS={};
-  function mtFetch(u){return fetch('https://site.api.espn.com/apis/site/v2/sports/'+u).then(function(r){return r.ok?r.json():{};}).catch(function(){return {};});}
+  function mtFetch(u){return fetch('https://site.web.api.espn.com/apis/site/v2/sports/'+u).then(function(r){return r.ok?r.json():{};}).catch(function(){return {};});}
   function mtShort(d){var n=new Date(); var dd=sod(d), dn=sod(n), diff=Math.round((dd-dn)/864e5);
     var t=(d.getHours()%12||12)+(d.getMinutes()?':'+pad(d.getMinutes()):'')+(d.getHours()<12?'a':'p');
     if(diff===0) return (d.getHours()>=17?'Tonight ':'Today ')+t; if(diff===1) return 'Tmrw '+t; if(diff===-1) return 'Yesterday';
@@ -1240,8 +1240,17 @@ document.addEventListener('keydown',function(e){
   else if(k==='ArrowRight'||c===39){move('right');e.preventDefault();}
   else if(k==='ArrowUp'||c===38){move('up');e.preventDefault();}
   else if(k==='ArrowDown'||c===40){move('down');e.preventDefault();}
-  else if(k==='Enter'||c===13||c===23){var a=document.activeElement; if(a&&a.classList.contains('focusable')){a.click();e.preventDefault();}}
+  else if(k==='Enter'||c===13||c===23){var a=document.activeElement; if(a&&a.classList.contains('focusable')){
+      // game cards: short press = normal; long press (hold OK ~0.6s) = star it and jump straight to its Gamecast
+      if(a.hasAttribute('data-g')){ e.preventDefault();
+        if(!e.repeat){ window.__okDown=Date.now(); window.__okLong=false; }
+        else if(!window.__okLong && Date.now()-(window.__okDown||0)>=600){ window.__okLong=true; if(window.SPORTS&&SPORTS.longPress) SPORTS.longPress(a); }
+        return; }
+      a.click();e.preventDefault();}}
   else if(k==='Escape'||k==='Backspace'||c===27){ if(closeOverlays()){e.preventDefault();} }
+});
+document.addEventListener('keyup',function(e){ var k=e.key||'', c=e.keyCode;
+  if(k==='Enter'||c===13||c===23){ var a=document.activeElement; if(a&&a.hasAttribute('data-g')&&window.__okDown){ var wasLong=window.__okLong; window.__okDown=0; window.__okLong=false; if(!wasLong) a.click(); e.preventDefault(); } }
 });
 
 // ---------- start ----------
@@ -1304,6 +1313,9 @@ else {
 #sp .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.9vw}
 #sp .g{background:#121b31;border-radius:.8vw;padding:.8vw 1vw;border:.22vw solid transparent;outline:none;cursor:pointer;position:relative}
 #sp .g .starbadge{position:absolute;top:.5vw;right:.6vw;color:#ffcc00;font-size:1.3vw;line-height:1;text-shadow:0 .1vw .3vw rgba(0,0,0,.6)}
+#sp .g .starbadge.bell{font-size:1.15vw}
+#sp .grid.tonight .g{border-color:rgba(255,204,0,.35)}
+#spOv{background:rgba(255,204,0,.05);border-radius:.8vw;padding:.4vw .6vw}
 #sp .g .pickhint{display:none;position:absolute;top:.5vw;right:.6vw;color:#7f8db0;font-size:1.3vw;line-height:1}
 #sp.starmode .g{border-color:#3a4a6b}
 #sp.starmode .g:focus{border-color:#ffcc00;box-shadow:0 0 0 .15vw rgba(255,204,0,.4)}
@@ -1330,6 +1342,7 @@ else {
 <div class="bar" id="spDays"></div>
 <div class="bar" id="spLg"></div>
 <div id="spBody"><div class="empty">Loading games…</div></div>
+<script src="follow.js"></script>
 </div>
 <script>
 (function(){
@@ -1370,11 +1383,22 @@ else {
   function getGcCycle(){ try{ return parseInt(localStorage.getItem('w2w.gcCycle')||'0',10)||0; }catch(e){ return 0; } }
   function gcCycleLabel(){ var s=getGcCycle(); return s? ('Auto '+s+'s') : 'Manual'; }
   function cycleGcCycle(){ var s=getGcCycle(), i=GC_CYCLES.indexOf(s); var nx=GC_CYCLES[(i+1)%GC_CYCLES.length]; try{ localStorage.setItem('w2w.gcCycle', String(nx)); }catch(e){} }
-  function toggleStar(g){ var a=getStars(), id=g.id, lgp=(g.lg&&g.lg[2])||'', i=-1;
-    a.forEach(function(s,k){ if(String(s.id)===String(id)) i=k; });
-    if(i>=0) a.splice(i,1); else a.push({lg:lgp, id:id});
-    try{ localStorage.setItem('w2w.starred', JSON.stringify(a)); }catch(e){}
-    return i<0; }
+  // star levels: 0 off -> 1 ★ key moments -> 2 🔔 every score -> 0
+  function lsGet(k,d){ try{ var v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }
+  function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  function starLevel(id){ if(!isStar(id)) return 0; var m=lsGet('w2w.starLevel',{}); return +(m[String(id)]||1); }
+  function setStar(g, level){ var a=getStars(), id=String(g.id), lgp=(g.lg&&g.lg[2])||'', i=-1;
+    a.forEach(function(s,k){ if(String(s.id)===id) i=k; });
+    var lv=lsGet('w2w.starLevel',{}), auto=lsGet('w2w.autoStar',{});
+    if(level<=0){ if(i>=0) a.splice(i,1); delete lv[id]; auto[id]=1; /* remember: don't auto re-add tonight */ }
+    else { if(i<0) a.push({lg:lgp, id:id}); if(level>=2) lv[id]=2; else delete lv[id]; }
+    lsSet('w2w.starred',a); lsSet('w2w.starLevel',lv); lsSet('w2w.autoStar',auto);
+    return level; }
+  function toggleStar(g){ var cur=starLevel(g.id); var nx=(cur+1)%3; setStar(g,nx); return nx; }
+  function starBadge(id){ var l=starLevel(id); return l===2?'<span class="starbadge bell">🔔</span>':l===1?'<span class="starbadge">★</span>':'<span class="pickhint">☆</span>'; }
+  // overlay settings (shared with the floating cards)
+  var OPAC=[1,.8,.65]; function getOpac(){ return parseFloat(lsGet('w2w.ovOpacity',1))||1; } function cycleOpac(){ var i=OPAC.indexOf(getOpac()); lsSet('w2w.ovOpacity', OPAC[(i+1)%OPAC.length]); } function opacLabel(){ return Math.round(getOpac()*100)+'%'; }
+  var ovOpen=false;
   try{ noSpoil=localStorage.getItem('w2w.sp.nospoil')==='1'; var sv=JSON.parse(localStorage.getItem('w2w.sp.lg')||'null'); if(sv&&sv.length){ allOn=false; sv.forEach(function(k){lgOn[k]=true;}); } }catch(e){}
   function saveLg(){ try{ localStorage.setItem('w2w.sp.lg',JSON.stringify(allOn?[]:Object.keys(lgOn).filter(function(k){return lgOn[k];}))); localStorage.setItem('w2w.sp.nospoil',noSpoil?'1':'0'); }catch(e){} }
   function shown(k){ return allOn || !!lgOn[k]; }
@@ -1382,7 +1406,7 @@ else {
   function days(){var n=new Date(),a=[]; var cnt=dayMode==='week'?7:1, off=dayMode==='tomorrow'?1:0; for(var i=0;i<cnt;i++){var d=new Date(n.getFullYear(),n.getMonth(),n.getDate()+off+i); a.push(ymd(d));} return a;}
   function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
   function load(){
-    var reqs=[]; days().forEach(function(dd){ LG.forEach(function(l){ reqs.push(fetch('https://site.api.espn.com/apis/site/v2/sports/'+l[2]+'/scoreboard?dates='+dd).then(function(r){return r.ok?r.json():{};}).then(function(j){return {l:l,j:j};}).catch(function(){return {l:l,j:{}};})); }); });
+    var reqs=[]; days().forEach(function(dd){ LG.forEach(function(l){ reqs.push(fetch('https://site.web.api.espn.com/apis/site/v2/sports/'+l[2]+'/scoreboard?dates='+dd).then(function(r){return r.ok?r.json():{};}).then(function(j){return {l:l,j:j};}).catch(function(){return {l:l,j:{}};})); }); });
     return Promise.all(reqs).then(function(rs){
       var seen={}; games=[];
       var dset={}; days().forEach(function(d){dset[d]=1;});
@@ -1410,13 +1434,18 @@ else {
       '<button class="chipb focusable'+(noSpoil?' on':'')+'" data-ns="1" style="margin-left:2vw">🙈 No spoilers'+(noSpoil?': ON':'')+'</button>'+
       '<button class="chipb focusable'+(starMode?' on':'')+'" data-starmode="1" style="margin-left:2vw">⭐ '+(starMode?'Done picking':'Star games')+'</button>'+
       '<button class="chipb focusable" data-gamecast="1">🎮 Gamecast'+(getStars().length?' ('+getStars().length+')':'')+'</button>'+
-      '<button class="chipb focusable" data-gccycle="1">🔁 Switch: '+gcCycleLabel()+'</button>'+
-      '<button class="chipb focusable" data-props="1">🎯 Prop tracker</button>'+
-      '<button class="chipb focusable" data-propmode="1" style="margin-left:2vw">🪧 Prop card: '+propModeLabel()+'</button>'+
-      '<button class="chipb focusable'+(getNotify().quiet?' on':'')+'" data-quiet="1" style="margin-left:2vw">🔕 Quiet mode'+(getNotify().quiet?': popups only':'')+'</button>'+
-      '<button class="chipb focusable'+(getNotify().games?' on':'')+'" data-gamealerts="1">📣 Game alerts'+(getNotify().games?': ON':': off')+'</button>';
-    var bn=$s('spBanner'); if(!bn){ bn=document.createElement('div'); bn.id='spBanner'; var dd=$s('spDays'); dd.parentNode.insertBefore(bn, dd.nextSibling); }
-    bn.innerHTML='⭐ <b>Star mode:</b> press OK on each game you want in the Gamecast panel tonight. Press <b>⭐ Done picking</b> when finished. ('+getStars().length+' starred)';
+      '<button class="chipb focusable" data-props="1">🎯 Props & parlays</button>'+
+      '<button class="chipb focusable'+(ovOpen?' on':'')+'" data-ovmenu="1" style="margin-left:2vw">⚙ Overlay'+(ovOpen?' ▴':' ▾')+'</button>';
+    var ov=$s('spOv'); if(!ov){ ov=document.createElement('div'); ov.id='spOv'; ov.className='bar'; var dd0=$s('spDays'); dd0.parentNode.insertBefore(ov, dd0.nextSibling); }
+    ov.style.display=ovOpen?'':'none';
+    ov.innerHTML='<span class="lbl">OVERLAY</span>'+
+      '<button class="chipb focusable" data-gccycle="1">🔁 Switch games: '+gcCycleLabel()+'</button>'+
+      '<button class="chipb focusable" data-propmode="1">🪧 Prop card: '+propModeLabel()+'</button>'+
+      '<button class="chipb focusable'+(getNotify().quiet?' on':'')+'" data-quiet="1">🔕 Quiet mode'+(getNotify().quiet?': popups only':': off')+'</button>'+
+      '<button class="chipb focusable'+(getNotify().games?' on':'')+'" data-gamealerts="1">📣 Game alerts'+(getNotify().games?': ON':': off')+'</button>'+
+      '<button class="chipb focusable" data-opac="1">🌗 Dim: '+opacLabel()+'</button>';
+    var bn=$s('spBanner'); if(!bn){ bn=document.createElement('div'); bn.id='spBanner'; var dd=$s('spOv'); dd.parentNode.insertBefore(bn, dd.nextSibling); }
+    bn.innerHTML='⭐ <b>Star mode:</b> press OK on a game to cycle <b>★ key moments → 🔔 every score → off</b>. Hold OK on any game to jump to its Gamecast. Press <b>⭐ Done picking</b> when finished. ('+getStars().length+' followed)';
     var have={}; games.forEach(function(g){ if(g.apps.length) have[g.lg[0]]=(have[g.lg[0]]||0)+1;});
     $s('spLg').innerHTML='<span class="lbl">SPORTS</span><button class="chipb focusable'+(allOn?' on':'')+'" data-lg="*">All</button>'+LG.map(function(l){var n=have[l[0]]||0; return '<button class="chipb focusable'+(!allOn&&lgOn[l[0]]?' on':'')+'" data-lg="'+l[0]+'"'+(n?'':' style="opacity:.45"')+'>'+l[1]+(n?' <small style="opacity:.7">'+n+'</small>':'')+'</button>';}).join('');
   }
@@ -1435,14 +1464,18 @@ else {
     else if(free) nets=freeTag+nets;
     else nets='<span class="net">Not on your apps</span>'+nets;
     var starred=isStar(g.id);
-    var badge=starred?'<span class="starbadge">★</span>':'<span class="pickhint">☆</span>';
+    var badge=starBadge(g.id);
     return '<div class="g focusable'+(ok?'':' off')+(starred?' starred':'')+'" tabindex="0" data-g="'+g.id+'">'+badge+st+tm+(g.note?'<div class="st" style="margin-top:.2vw">'+esc(g.note)+'</div>':'')+'<div class="nets">'+nets+'</div></div>';
   }
+  // "Tonight" strip: the games you're following (starred by hand, told Claude to track, or in a prop/parlay)
+  function tonight(list){ var mine=list.filter(function(g){ return isStar(g.id); }); if(!mine.length) return '';
+    var ord={'in':0,'pre':1,'post':2}; mine.sort(function(a,b){ return (ord[a.state]-ord[b.state])||(a.date-b.date); });
+    return '<h2 style="color:#ffcc00">Tonight · following ('+mine.length+')</h2><div class="grid tonight">'+mine.map(card).join('')+'</div>'; }
   function render(){
     bars();
     var list=games.filter(function(g){return shown(g.lg[0]) && (dayMode!=='live'||g.state==='in');});
     var ord={'in':0,'pre':1,'post':2}; var sortf=function(a,b){return (ord[a.state]-ord[b.state])||(a.date-b.date);};
-    var out='';
+    var out=tonight(list);
     // One section per sport: every game for that sport together (ones you can watch
     // and ones you can't), sorted live first, then by start time. The card's tag
     // still shows whether it's on your apps, free over the air, or not available.
@@ -1471,14 +1504,18 @@ else {
     if(e.target.closest('[data-gccycle]')){ cycleGcCycle(); bars(); var b3=document.querySelector('[data-gccycle]'); if(b3) b3.focus(); return; }
     if(e.target.closest('[data-quiet]')){ toggleQuiet(); bars(); var b4=document.querySelector('[data-quiet]'); if(b4) b4.focus(); return; }
     if(e.target.closest('[data-gamealerts]')){ toggleGameAlerts(); bars(); var b5=document.querySelector('[data-gamealerts]'); if(b5) b5.focus(); return; }
+    if(e.target.closest('[data-ovmenu]')){ ovOpen=!ovOpen; bars(); var b6=document.querySelector(ovOpen?'[data-gccycle]':'[data-ovmenu]'); if(b6) b6.focus(); return; }
+    if(e.target.closest('[data-opac]')){ cycleOpac(); bars(); var b7=document.querySelector('[data-opac]'); if(b7) b7.focus(); return; }
     var g=e.target.closest('[data-g]'); if(g){ var gm=games.filter(function(x){return x.id===g.dataset.g;})[0];
-      if(starMode){ if(gm){ var on=toggleStar(gm); var cardEl=g; cardEl.classList.toggle('starred',on); cardEl.querySelector('.starbadge,.pickhint').outerHTML=on?'<span class="starbadge">★</span>':'<span class="pickhint">☆</span>'; spToast(on?'★ Starred for Gamecast':'☆ Removed'); bars(); cardEl.focus(); } return; }
+      if(starMode){ if(gm){ var lv=toggleStar(gm); spToast(lv===1?'★ Following — key moments (end of quarter, halfway, close & late)':lv===2?'🔔 Following closely — every score':'☆ Removed'); render(); var again=document.querySelector('[data-g="'+gm.id+'"]'); if(again) again.focus(); } return; }
       if(gm&&gm.apps.length) launchApp(gm.apps[0],gm);
       else if(gm&&isOTA(gm.nets)){ var onet=(gm.nets||[]).filter(function(n){return OTA.test(String(n).toLowerCase().trim());})[0]||'a local channel'; spToast('📡 This game is free over the air on <b>'+esc(onet)+'</b> — watch it with a TV antenna, no subscription. (Also on YouTube TV if you have it.)'); } }
   });
+  // hold OK on a game: make sure it's followed, then open its Gamecast
+  window.SPORTS={ longPress:function(el){ var gm=games.filter(function(x){return x.id===el.dataset.g;})[0]; if(!gm) return; if(!isStar(gm.id)) setStar(gm,1); spToast('🎮 Opening Gamecast…'); setTimeout(function(){ location.href='gamecast.html'; },250); } };
   window.W2W_SP={
     open:function(){ $s('sp').classList.add('show'); starMode=false; $s('sp').classList.remove('starmode'); try{history.pushState({s:1},'');}catch(e){} $s('sp').scrollTop=0;
-      load().then(function(){ var f=document.querySelector('#sp .g:not(.off)')||document.querySelector('#sp .chipb'); if(f) f.focus(); });
+      var sync=(window.W2W_FOLLOW?W2W_FOLLOW.sync():Promise.resolve()); sync.catch(function(){}).then(load).then(function(){ var f=document.querySelector('#sp .g:not(.off)')||document.querySelector('#sp .chipb'); if(f) f.focus(); });
       clearInterval(timer); timer=setInterval(function(){ if(W2W_SP.isOpen()) load(); },60000); },
     isOpen:function(){ return $s('sp').classList.contains('show'); },
     close:function(){ if(!W2W_SP.isOpen()) return false; $s('sp').classList.remove('show'); clearInterval(timer); return true; }
