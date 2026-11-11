@@ -26,6 +26,17 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 .rng{display:inline-flex;align-items:center;gap:.4vw}
 .rng b{min-width:2.6vw;text-align:center;font-size:1.25vw;color:var(--yel)}
 #grid{display:grid;grid-template-columns:repeat(8,1fr);gap:1.3vw;padding:1vw 2.5vw 4vw}
+#rails{padding:.2vw 2.5vw 0}
+#rails .rail{margin:.2vw 0 .3vw}
+#rails .rail h4{font-size:1.05vw;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#9fb0d6;margin:.7vw 0 .5vw;display:flex;align-items:center;gap:.5vw}
+#rails .rail h4 .hint{font-size:.78vw;font-weight:400;letter-spacing:0;text-transform:none;color:#5f6d8a}
+#rails .strip{display:flex;gap:1vw;overflow-x:auto;padding-bottom:.3vw}
+#rails .rc{position:relative;flex:0 0 auto;width:8.4vw;border-radius:.8vw;overflow:hidden;background:#141c33;border:.2vw solid transparent;outline:none;cursor:pointer}
+#rails .rc:focus{border-color:#ffcc00;transform:scale(1.04)}
+#rails .rc img{width:100%;height:12.4vw;object-fit:cover;display:block}
+#rails .rc .noimg{height:12.4vw;display:flex;align-items:center;justify-content:center;padding:.4vw;font-size:.9vw;text-align:center;color:#c7d0e4}
+#rails .rc .cap{font-size:.82vw;padding:.4vw .5vw;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#rails .rc .pl{position:absolute;top:.45vw;left:.45vw;background:rgba(5,8,20,.72);border-radius:2vw;font-size:.72vw;padding:.12vw .55vw;max-width:7vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .card{background:var(--panel);border-radius:.7vw;overflow:hidden;border:.22vw solid transparent;transition:transform .12s;position:relative;outline:none}
 .card img{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#222a48}
 .card .noimg{width:100%;aspect-ratio:2/3;display:flex;align-items:center;justify-content:center;padding:1vw;text-align:center;color:var(--dim)}
@@ -575,7 +586,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
   })();
 
   // ---------- open / close ----------
-  function openWatch(){ home.classList.add('hide'); try{history.pushState({w:1},'');}catch(e){} var f=document.querySelector('#grid .card')||document.querySelector('[data-kind]'); if(f) f.focus(); }
+  function openWatch(){ home.classList.add('hide'); try{if(window.renderRails)renderRails();}catch(e){} try{history.pushState({w:1},'');}catch(e){} var f=document.querySelector('#grid .card')||document.querySelector('[data-kind]'); if(f) f.focus(); }
   home.addEventListener('click',function(e){e.stopPropagation(); if(e.target.closest&&e.target.closest('#goGH')){ location.href='https://home.google.com/u/0/home'; return; } if(e.target.closest&&e.target.closest('#goAmb')){ W2W_AMB.open(); return; } if(e.target.closest&&e.target.closest('#goSp')){ W2W_SP.open(); return; } if(e.target.closest&&e.target.closest('#goSleep')){ W2W_SLEEP.open(); return; } openWatch();});
   window.addEventListener('popstate',function(ev){ if(ev.state&&ev.state.w) return; if(!document.getElementById('detail').classList.contains('show') && !document.getElementById('picker').classList.contains('show')) home.classList.remove('hide'); });
   window.W2W_HOME_OPEN=function(){return !home.classList.contains('hide');};
@@ -707,6 +718,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
   <button class="btn focusable" id="genreBtn"></button>
 </div>
 <div class="bar" id="bar2"><span class="lbl">Apps</span></div>
+<div id="rails"></div>
 <div id="msg"></div>
 <div id="grid"></div>
 
@@ -797,6 +809,39 @@ function curSub(){ var c=curCat(); return c && state.cat.s>=0 ? c.subs[state.cat
 // ---------- storage (safe) ----------
 function sget(k,d){try{var v=localStorage.getItem('w2w.'+k);return v==null?d:JSON.parse(v);}catch(e){return d;}}
 function sset(k,v){try{localStorage.setItem('w2w.'+k,JSON.stringify(v));}catch(e){}}
+
+// ---------- Continue watching / Recently watched ----------
+// Tracks titles you launch from What to Watch (we can't see inside Netflix etc).
+var curDetail=null;
+function getWatching(){ var a=sget('watching',[]); return Array.isArray(a)?a:[]; }
+function getRecent(){ var a=sget('recent',[]); return Array.isArray(a)?a:[]; }
+function entryOf(t,svc){ return {k:t.k,title:t.title,poster:t.poster||'',pimg:t.pimg||'',svc:svc||(t.svc&&t.svc[0])||'',ts:Date.now()}; }
+function recordWatch(t,svc){ if(!t) return; var w=getWatching().filter(function(x){return x.k!==t.k;}); w.unshift(entryOf(t,svc)); sset('watching', w.slice(0,12));
+  // if it was in Recently watched, pull it back out — it's current again
+  var r=getRecent().filter(function(x){return x.k!==t.k;}); sset('recent', r); }
+function markFinished(k){ var e=null, w=getWatching().filter(function(x){ if(x.k===k){e=x;return false;} return true; }); sset('watching',w);
+  if(e){ e.ts=Date.now(); var r=getRecent().filter(function(x){return x.k!==k;}); r.unshift(e); sset('recent', r.slice(0,24)); } }
+function removeEntry(list,k){ sset(list, sget(list,[]).filter(function(x){return x.k!==k;})); }
+function railCard(e,list){ var img=e.poster?'<img loading="lazy" src="'+IMG+'w342'+e.poster+'" alt="">':e.pimg?'<img loading="lazy" src="'+e.pimg+'" alt="">':'<div class="noimg">'+esc(e.title)+'</div>';
+  var app=e.svc?'<div class="pl">'+esc(svcName(e.svc))+'</div>':'';
+  return '<div class="rc focusable" tabindex="0" data-rail="'+list+'" data-rk="'+esc(e.k)+'">'+img+app+'<div class="cap">'+esc(e.title)+'</div></div>'; }
+function renderRails(){ var r=document.getElementById('rails'); if(!r) return; var w=getWatching(), rec=getRecent(), html='';
+  if(w.length) html+='<div class="rail"><h4>▶ Continue watching <span class="hint">press OK for resume / finished / remove</span></h4><div class="strip">'+w.map(function(e){return railCard(e,'watching');}).join('')+'</div></div>';
+  if(rec.length) html+='<div class="rail"><h4>🕑 Recently watched <span class="hint">press OK to watch again or remove</span></h4><div class="strip">'+rec.map(function(e){return railCard(e,'recent');}).join('')+'</div></div>';
+  r.innerHTML=html; }
+window.renderRails=renderRails;
+function relaunch(e){ var t=titles[e.k]; var dl=t&&t.links&&e.svc&&t.links[e.svc]; if(dl){ location.href=dl; } else if(e.svc){ launch(e.svc); } else if(t){ openDetail(t); } }
+function railMenu(list,k){ var e=sget(list,[]).filter(function(x){return x.k===k;})[0]; if(!e) return;
+  var opts=[{v:'play',l:'▶ '+(list==='recent'?'Watch it again':'Resume watching')}];
+  if(list==='watching') opts.push({v:'done',l:'✓ Mark as finished'});
+  opts.push({v:'rm',l:'🗑 Remove from this list'});
+  pick(opts, null, function(v){
+    if(v==='play'){ relaunch(e); }
+    else if(v==='done'){ markFinished(k); renderRails(); focusRails(); }
+    else if(v==='rm'){ removeEntry(list,k); renderRails(); focusRails(); }
+  }, e.title);
+}
+function focusRails(){ var f=document.querySelector('#rails .rc')||document.querySelector('#bar1 .focusable'); if(f) try{f.focus();}catch(e){} }
 
 var state = sget('state', null) || {kind:'all', rmin:7.0, rmax:10, sort:'imdb_desc', cat:null, off:{}};
 if(!('cat' in state)) state.cat=null; delete state.genre;
@@ -1016,6 +1061,7 @@ function render(keepFocus){
   var rated=0; for(var k in titles){if(imdbFor(titles[k])&&imdbFor(titles[k]).r!=null) rated++;}
   setStatus(shown.length+' titles'+(window.W2W_CATALOG?' · list updated '+String(W2W_CATALOG).slice(0,10):' · IMDb ratings loaded for '+rated+' of '+Object.keys(titles).length));
   if(fk){var el=g.querySelector('[data-k="'+fk+'"]'); if(el) el.focus();}
+  renderRails();
 }
 function esc(s){return String(s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 
@@ -1034,6 +1080,7 @@ function drawBars(){
 
 // ---------- detail ----------
 function openDetail(t){
+  curDetail=t;
   var im=imdbFor(t);
   var d=$('detail');
   var on=t.svc.filter(function(s){return !state.off[s];});
@@ -1144,10 +1191,11 @@ document.addEventListener('click',function(e){
     }, 'Pick a genre');
     return;
   }
+  if(b.classList.contains('rc')){ railMenu(b.dataset.rail, b.dataset.rk); return; }
   if(b.classList.contains('card')){var t=titles[b.dataset.k]; lastCard=b.dataset.k; if(t) openDetail(t); return;}
   if(b.dataset.close){history.back(); return;}
   if(b.id==='trailerBtn'&&b.dataset.yt){playTrailer(b.dataset.yt); return;}
-  if(b.dataset.open){ if(b.dataset.link){ location.href=b.dataset.link; } else launch(b.dataset.open); return;}
+  if(b.dataset.open){ recordWatch(curDetail, b.dataset.open); if(b.dataset.link){ location.href=b.dataset.link; } else launch(b.dataset.open); return;}
 });
 function changed(){save(); limit=LIMIT; drawBars(); render(false);}
 
