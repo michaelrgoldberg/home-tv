@@ -228,6 +228,7 @@ function summary(lg,id){ if(summaryCache[id] && Date.now()-summaryCache[id].t<10
 // --- settings ---
 function getNotify(){ var o=lsGet('w2w.notify',{}); return {quiet:!!o.quiet, games:(o.games!==false)}; }
 var summonUntil=0;
+function privProps(){ return !!(lsGet('w2w.privacy',{})||{}).props; }
 function isQuiet(){ return getNotify().quiet && Date.now()>summonUntil; } // a deliberate ☰ double-press shows the card even in quiet mode
 function getStarred(){ var a=lsGet('w2w.starred',[]); return Array.isArray(a)?a:[]; }
 function starLevel(id){ var m=lsGet('w2w.starLevel',{}); return +(m[id]||1); } // 1 key moments, 2 every score
@@ -419,6 +420,7 @@ function cornerItems(){ return props.concat(parlays).filter(function(x){ return 
 function visCount(){ var pm=getPropMode(), n=cornerItems().length; if(pm.m==='all') return n||1; if(pm.m==='few') return Math.min(pm.n, n||1); return 1; }
 function render(){
   var el=$('pp');
+  if(privProps()){ el.innerHTML=CORNER?'':'<div class="msg">🔒 Props are hidden by Privacy.<br><span style="font-size:.85em">Welcome screen → 🔒 Privacy (top-right) to show them again.</span></div>'; return; }
   if(CORNER){
     if(isQuiet()){ el.innerHTML=''; return; }
     var items=cornerItems(); if(!items.length){ el.innerHTML=''; return; }
@@ -505,7 +507,7 @@ function pumpRise(){ if(riseBusy) return; var it=riseQ.shift(); if(!it) return; 
   clearTimeout(riseT); riseT=setTimeout(function(){ r.classList.remove('show'); setTimeout(function(){ riseBusy=false; pumpRise(); }, 420); }, it.dur);
 }
 function showRise(p){
-  if(isMuted(p.id)) return;
+  if(isMuted(p.id)||privProps()) return;
   if(p.kind&&p.kind!=='prop'){ var tg=(p.kind==='total'?'Total':p.kind==='ml'?'Moneyline':'Spread')+' · '+(p._status||''); enqueueRise('<div class="gface">'+({bk:'🏀',fb:'🏈',hk:'🏒',bb:'⚾',sc:'⚽'}[p.sport]||'📣')+'</div><div class="rb"><div class="tag">'+esc(tg)+'</div><div class="top"><span class="nm">'+esc(p.disp||p.label||'')+'</span><span class="delta" style="color:'+(p._lineEdge>0?'var(--green)':'var(--red)')+'">'+esc(lineValTxt(p))+'</span></div><div class="tot">'+esc(p._score||'')+' · '+esc(lineEdgeTxt(p))+'</div></div>','game',5500,(p.disp||p.label)+' '+lineValTxt(p)+' · '+lineEdgeTxt(p)); return; }
   var isProp=props.indexOf(p)>=0;
   if(CORNER && !isQuiet() && isProp){ // persistent-chip mode: flash in place
@@ -524,7 +526,7 @@ function showRise(p){
   var html=face+'<div class="rb"><div class="top"><span class="nm">'+esc(p.disp||p.player)+(p.team?' <span class="tm">'+esc(p.team)+'</span>':'')+'</span><span class="delta">'+(st.hit?'🏆 HIT!':'+'+p._delta+' '+esc(sl))+'</span></div><div class="tot"><b>'+p._newVal+'</b> '+esc(sl)+' · '+(st.hit?'prop hit!':('+'+(needed(p)-p._newVal)+' to go'))+'</div>'+(p._play?'<div class="play">'+esc(p._play)+'</div>':'')+'</div>'+ring;
   enqueueRise(html, st.hit?'hit':'', st.hit?9000:6500, (p.disp||p.player)+' +'+p._delta+' '+sl+' → '+p._newVal+(st.hit?' ✓ HIT':''));
 }
-function showParlayHit(pl){
+function showParlayHit(pl){ if(privProps()) return;
   enqueueRise('<div class="gface" style="font-size:30px">🏆</div><div class="rb"><div class="tag" style="color:var(--gold)">Parlay hit</div><div class="top"><span class="nm">'+esc(pl.name||'Parlay')+'</span><span class="delta" style="color:var(--gold)">'+esc(pl.odds||'')+'</span></div><div class="tot">All '+pl.legs.length+' legs cleared</div></div>', 'hit', 12000, '🏆 '+(pl.name||'Parlay')+' '+(pl.odds||'')+' HIT');
 }
 function showGameRise(cs, scoreStr, tag, detail, sp, kind){
@@ -618,7 +620,7 @@ document.addEventListener('keyup',function(e){ var k=e.keyCode||e.which; if(!(k=
   if(window.__rtFired){ window.__rtFired=false; return; }
   if(CORNER && focused && !pop && window.__okLeg){ window.__okLeg=0; var items=cornerItems(); var it=items[rotI%Math.max(1,items.length)]; if(it&&it.legs&&openId===it.id){ var L=orderedLegs(it).filter(function(l){return l.id===legSelId;})[0]; if(L){ pop=L; render(); } } } });
 window.addEventListener('keyup',function(e){ var k=e.keyCode||e.which; if(k===39) window.__rtFired=false; });
-window.addEventListener('storage', function(e){ if(!e.key || /^w2w\.(notify|propMode|starred|starLevel|ovOpacity|settingsRev)$/.test(e.key)){ applyOpacity(); render(); clearTimeout(gPollT); pollGames(); } });
+window.addEventListener('storage', function(e){ if(!e.key || /^w2w\.(notify|propMode|starred|starLevel|ovOpacity|settingsRev|privacy)$/.test(e.key)){ applyOpacity(); render(); clearTimeout(gPollT); pollGames(); } });
 window.W2W_BACK=function(){ if(CORNER) return false; try{ history.back(); }catch(e){ location.href='./'; } return true; };
 function reloadAll(){ return loadProps().then(function(d){ d=pruneOld(d); props=d.props||[]; parlays=d.parlays||[]; poll(); }); }
 setInterval(function(){ var before=props.length+parlays.length; var d=pruneOld({props:props,parlays:parlays}); if(d.props.length+d.parlays.length!==before){ props=d.props; parlays=d.parlays; render(); } }, 60000); // 2 AM roll-over

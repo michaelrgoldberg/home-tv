@@ -70,6 +70,23 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #home .top{display:flex;justify-content:space-between;align-items:flex-start;position:relative}
 #goNative{position:absolute;top:1.1vw;left:2.2vw;z-index:9;font-size:1vw;padding:.35vw .9vw;border-radius:2vw;background:rgba(10,15,30,.55);color:#cdd7ee;border:.14vw solid rgba(255,255,255,.25);cursor:pointer;outline:none}
 #goNative:focus{border-color:#ffcc00;color:#fff;box-shadow:0 0 0 .18vw rgba(255,204,0,.35)}
+#privBtn{position:absolute;top:2.5vw;right:2.2vw;z-index:9;font-size:1vw;padding:.35vw .9vw;border-radius:2vw;background:rgba(10,15,30,.55);color:#cdd7ee;border:.14vw solid rgba(255,255,255,.25);cursor:pointer;outline:none}
+#privBtn:focus{border-color:#ffcc00;color:#fff;box-shadow:0 0 0 .18vw rgba(255,204,0,.35)}
+#privBtn.active{border-color:#e5533c;color:#ffb3a7}
+#priv{display:none;position:fixed;inset:0;background:rgba(3,6,14,.78);z-index:60;align-items:center;justify-content:center}
+#priv.show{display:flex}
+#priv .pbox{width:44vw;background:linear-gradient(180deg,#131c30,#0b1120);border:.14vw solid #ffcc00;border-radius:1.4vw;padding:1.6vw 2vw;box-shadow:0 2vw 6vw rgba(0,0,0,.7)}
+#priv h2{margin:0 0 .3vw;font-size:2vw}
+#priv .psub{color:#9aa7c2;font-size:1.05vw;margin-bottom:1vw}
+#priv .prow{display:flex;align-items:center;gap:1.2vw;padding:.9vw 1vw;border-radius:1vw;border:.16vw solid transparent;outline:none;cursor:pointer}
+#priv .prow:focus{border-color:#ffcc00;background:rgba(255,204,0,.08)}
+#priv .prow .pt{flex:1}#priv .prow .pt b{display:block;font-size:1.3vw}#priv .prow .pt span{color:#9aa7c2;font-size:.95vw}
+#priv .sw{width:4.2vw;height:2.2vw;border-radius:2vw;background:#2b3550;position:relative;flex:none;transition:background .2s}
+#priv .sw:after{content:"";position:absolute;top:.25vw;left:.25vw;width:1.7vw;height:1.7vw;border-radius:50%;background:#fff;transition:left .2s}
+#priv .prow.on .sw{background:#e5533c}#priv .prow.on .sw:after{left:2.25vw}
+#priv .prow.all{border-top:.1vw solid #232d41;border-radius:0 0 1vw 1vw;margin-top:.4vw;padding-top:1.2vw}
+#priv .prow.all.on .sw{background:#e5533c}
+.privmask{color:#9aa7c2;font-size:1.05vw;padding:.6vw .2vw}
 #home .greet{font-size:3.6vw;font-weight:300;letter-spacing:-.01em;line-height:1.1;text-shadow:0 .2vw 1.4vw rgba(0,0,0,.5)}
 #home .greet b{font-weight:700}
 #home .date{font-size:2.3vw;font-weight:500;margin-top:.8vw;text-shadow:0 .1vw .8vw rgba(0,0,0,.6)}
@@ -178,6 +195,8 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
   <div id="tk" tabindex="0"><span class="lab">SCORES</span><div class="win"><div class="run" id="tkRun"></div></div></div>
   <div class="credit" id="bgCredit"></div>
   <button id="goNative" class="focusable" title="Open the Hisense / Fire TV home screen">⌂ Hisense Home</button>
+  <button id="privBtn" class="focusable" title="Privacy: hide props, calendar or earnings">🔒 Privacy</button>
+  <div id="priv" role="dialog" aria-label="Privacy"><div class="pbox"><h2>🔒 Privacy</h2><div class="psub">Hide things from the screen when someone else is in the room. OK flips a switch · Back closes.</div><div id="privRows"></div></div></div>
   <div class="top">
     <div><div class="greet" id="greet"></div><div class="date" id="hdate"></div><div class="hdate" id="hheb"></div><div class="today" id="htoday"></div></div>
     <div><div class="clock" id="hclock"></div><div id="mt"><div class="hd"><span>🏆 My teams</span><span class="dots"><i class="on"></i><i></i></span></div><div id="mtRows"></div></div><div id="alertChip" class="focusable" tabindex="0" style="display:none;margin-top:.45vw;width:auto;box-sizing:border-box;padding:.22vw .7vw;border-radius:2vw;background:rgba(8,12,30,.76);border:.1vw solid rgba(255,255,255,.18);font-size:.72vw;cursor:pointer;outline:none;text-align:left" onfocus="this.style.borderColor='#fff'" onblur="this.style.borderColor='rgba(255,255,255,.18)'"></div></div>
@@ -230,6 +249,22 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
     var _cards=document.querySelector('#home .cards'); if(_cards) _cards.style.gridTemplateColumns='1.5fr 1.1fr';
   }
   var hebDate='', todayEv=[], usHol=[], jHol=[], candles=null, sunTimes=null, privateData=null;
+  // ---------- privacy switches (shared with the overlays through localStorage) ----------
+  var PRIV_ROWS=[['props','🎯 Props & parlays','Hides the tracker, the overlay card and prop pop-ups'],['calendar','📅 Calendar events','Hides the family calendar lines in Today at home'],['earnings','💵 Earnings','Hides the money in the Office card']];
+  function getPriv(){ try{ return JSON.parse(localStorage.getItem('w2w.privacy')||'{}')||{}; }catch(e){ return {}; } }
+  function setPriv(o){ try{ localStorage.setItem('w2w.privacy', JSON.stringify(o)); }catch(e){} paintPriv(); }
+  function privOn(k){ return !!getPriv()[k]; }
+  function paintPriv(){ var o=getPriv(), any=PRIV_ROWS.some(function(r){return o[r[0]];}), all=PRIV_ROWS.every(function(r){return o[r[0]];});
+    var b=document.getElementById('privBtn'); if(b){ b.classList.toggle('active',any); b.textContent=any?'🔒 Privacy ON':'🔒 Privacy'; }
+    var rows=document.getElementById('privRows'); if(rows){ rows.innerHTML=PRIV_ROWS.map(function(r){ return '<div class="prow focusable'+(o[r[0]]?' on':'')+'" tabindex="0" data-priv="'+r[0]+'"><div class="pt"><b>'+r[1]+'</b><span>'+r[2]+'</span></div><div class="sw"></div></div>'; }).join('')+'<div class="prow all focusable'+(all?' on':'')+'" tabindex="0" data-priv="*"><div class="pt"><b>👥 Guest mode · hide everything</b><span>All three at once</span></div><div class="sw"></div></div>'; }
+    if(typeof house==='function') try{ house(); }catch(e){} }
+  function openPriv(){ paintPriv(); document.getElementById('priv').classList.add('show'); var f=document.querySelector('#priv .prow'); if(f) f.focus(); }
+  function closePriv(){ var p=document.getElementById('priv'); if(!p.classList.contains('show')) return false; p.classList.remove('show'); var b=document.getElementById('privBtn'); if(b) b.focus(); return true; }
+  window.W2W_PRIV={ open:openPriv, close:closePriv, isOpen:function(){ return document.getElementById('priv').classList.contains('show'); } };
+  document.getElementById('priv').addEventListener('click',function(e){ var r=e.target.closest&&e.target.closest('[data-priv]'); if(!r) return; e.stopPropagation(); var o=getPriv(), k=r.dataset.priv;
+    if(k==='*'){ var all=PRIV_ROWS.every(function(x){return o[x[0]];}); PRIV_ROWS.forEach(function(x){ o[x[0]]=!all; }); } else { o[k]=!o[k]; }
+    setPriv(o); var again=document.querySelector('[data-priv="'+k+'"]'); if(again) again.focus(); });
+  setTimeout(paintPriv, 0);
   var TK_SPEED=1; try{ TK_SPEED=parseFloat(localStorage.getItem('w2w.tkSpeed'))||1; }catch(e){} if(!(TK_SPEED>=0.4&&TK_SPEED<=3)) TK_SPEED=1;
   function pad(n){return ('0'+n).slice(-2);}
   function iso(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
@@ -432,6 +467,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
         sched.push('<div class="line'+(isT?'':' dim')+'">'+e.icon+' '+(isT?'':'Tmrw ')+(e.allDay?'':'<b>'+fmtT(d).replace(':00','')+'</b> ')+esc2(e.title)+'</div>');
       });
     }
+    if(privOn('calendar')) sched=['<div class="line dim">🔒 Calendar hidden (Privacy)</div>'];
     var hdr = sched.length ? sched.slice(0,5).join('') : '<div class="line dim">Nothing else on the family calendar today</div>';
     document.getElementById('cHouse').innerHTML='<h3>Today at home</h3>'+hdr+'<div style="height:.4vw"></div>'+out.join('');
     function updLine(b){ if(!b) return ''; var t=new Date(b); if(isNaN(t)) return '';
@@ -443,7 +479,8 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
       var tm=t.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
       return '<div style="position:absolute;right:1.1vw;bottom:.8vw;font-style:italic;font-size:.8vw;opacity:'+(stale?'.95':'.5')+';color:'+(stale?'#ffb347':'inherit')+'">'+(stale?'⚠ ':'')+'Updated '+day+' '+tm+'</div>'; }
     var oc=document.getElementById('cOffice');
-    if(privateData&&privateData.earnings){ var e=privateData.earnings, $$=function(v){return '$'+Math.round(v).toLocaleString();};
+    if(privateData&&privateData.earnings&&privOn('earnings')){ oc.style.display=''; oc.innerHTML='<h3>'+esc2(CFG.office||'Office')+'</h3>'+whereBanner()+'<div class="privmask">🔒 Earnings hidden (Privacy)</div>'; }
+    else if(privateData&&privateData.earnings){ var e=privateData.earnings, $$=function(v){return '$'+Math.round(v).toLocaleString();};
       var dayOver = now.getHours()>=18;
       oc.style.display=''; oc.style.position='relative'; oc.style.paddingBottom='2.2vw';
       oc.innerHTML='<h3>'+esc2(CFG.office||'Office')+'</h3>'+whereBanner()+
@@ -590,7 +627,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
 
   // ---------- open / close ----------
   function openWatch(){ home.classList.add('hide'); try{if(window.renderRails)renderRails();}catch(e){} try{history.pushState({w:1},'');}catch(e){} var f=document.querySelector('#grid .card')||document.querySelector('[data-kind]'); if(f) f.focus(); }
-  home.addEventListener('click',function(e){e.stopPropagation(); if(e.target.closest&&e.target.closest('#goNative')){ try{ if(window.TV&&TV.nativeHome){ TV.nativeHome(); return; } }catch(x){} location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.HOME;package=com.amazon.tv.launcher;launchFlags=0x10000000;end'; return; } if(e.target.closest&&e.target.closest('#goGH')){ location.href='https://home.google.com/u/0/home'; return; } if(e.target.closest&&e.target.closest('#goAmb')){ W2W_AMB.open(); return; } if(e.target.closest&&e.target.closest('#goSp')){ W2W_SP.open(); return; } if(e.target.closest&&e.target.closest('#goSleep')){ W2W_SLEEP.open(); return; } openWatch();});
+  home.addEventListener('click',function(e){e.stopPropagation(); if(e.target.closest&&e.target.closest('#priv')){ return; } if(e.target.closest&&e.target.closest('#privBtn')){ openPriv(); return; } if(e.target.closest&&e.target.closest('#goNative')){ try{ if(window.TV&&TV.nativeHome){ TV.nativeHome(); return; } }catch(x){} location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.HOME;package=com.amazon.tv.launcher;launchFlags=0x10000000;end'; return; } if(e.target.closest&&e.target.closest('#goGH')){ location.href='https://home.google.com/u/0/home'; return; } if(e.target.closest&&e.target.closest('#goAmb')){ W2W_AMB.open(); return; } if(e.target.closest&&e.target.closest('#goSp')){ W2W_SP.open(); return; } if(e.target.closest&&e.target.closest('#goSleep')){ W2W_SLEEP.open(); return; } openWatch();});
   window.addEventListener('popstate',function(ev){ if(ev.state&&ev.state.w) return; if(!document.getElementById('detail').classList.contains('show') && !document.getElementById('picker').classList.contains('show')) home.classList.remove('hide'); });
   window.W2W_HOME_OPEN=function(){return !home.classList.contains('hide');};
   window.W2W_GOHOME=function(){ home.classList.remove('hide'); tick(); var b=document.getElementById('goWatch'); if(b) b.focus(); };
@@ -1130,6 +1167,7 @@ function playTrailer(key){
 }
 function closeOverlays(){
   var was=false;
+  if(window.W2W_PRIV&&W2W_PRIV.isOpen()){ W2W_PRIV.close(); return true; }
   if(window.W2W_SLEEP&&W2W_SLEEP.isOpen()){ history.back(); return true; }
   if(window.W2W_SP&&W2W_SP.isOpen()){ history.back(); return true; }
   var tr=document.getElementById('trailer'); if(tr){ tr.remove(); var tb=$('trailerBtn'); if(tb) tb.focus(); return true; }
@@ -1503,7 +1541,7 @@ else {
     if(e.target.closest('[data-starmode]')){ starMode=!starMode; $s('sp').classList.toggle('starmode',starMode); render(); var sm=document.querySelector('[data-starmode]'); if(sm) sm.focus(); return; }
     // mark this history entry as 'Sports' so Back from Gamecast / Props returns here, not the welcome page
     if(e.target.closest('[data-gamecast]')){ try{ history.replaceState(history.state,'','#sports'); }catch(x){} location.href='gamecast.html'; return; }
-    if(e.target.closest('[data-props]')){ try{ history.replaceState(history.state,'','#sports'); }catch(x){} location.href='props.html'; return; }
+    if(e.target.closest('[data-props]')){ try{ if(JSON.parse(localStorage.getItem('w2w.privacy')||'{}').props){ spToast('🔒 Props are hidden by Privacy (welcome screen, top-right)'); return; } }catch(x){} try{ history.replaceState(history.state,'','#sports'); }catch(x){} location.href='props.html'; return; }
     if(e.target.closest('[data-propmode]')){ cyclePropMode(); bars(); var b2=document.querySelector('[data-propmode]'); if(b2) b2.focus(); return; }
     if(e.target.closest('[data-gccycle]')){ cycleGcCycle(); bars(); var b3=document.querySelector('[data-gccycle]'); if(b3) b3.focus(); return; }
     if(e.target.closest('[data-quiet]')){ toggleQuiet(); bars(); var b4=document.querySelector('[data-quiet]'); if(b4) b4.focus(); return; }
