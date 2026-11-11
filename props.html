@@ -251,6 +251,7 @@ function projection(p){
   return {proj:v+rate*remP, rate:rate, remP:remP, rem:rem};
 }
 function likelihood(p){
+  if(p.kind&&p.kind!=='prop') return (p._lineProb!=null?p._lineProb:0.5);
   var v=vals[p.id]; if(v==null) return 0.5;
   if(p.state==='post') return over(p) ? (v>p.line?1:0) : (v<=p.line?1:0);
   if(p.state!=='in') return 0.5;
@@ -259,13 +260,46 @@ function likelihood(p){
   var sigma = Math.max(1.3, 0.85*Math.sqrt(pj.rate*pj.remP + 1));
   return 1/(1+Math.exp(-margin/sigma));
 }
-function settled(p){ var v=vals[p.id]; if(v==null) return null;
+function settled(p){ if(p.kind&&p.kind!=='prop') return p._lineSettled||null;
+  var v=vals[p.id]; if(v==null) return null;
   var done=(p.state==='post')||p._fouledOut;
   if(over(p)){ if(v>p.line) return 'won'; if(done) return 'lost'; } else { if(v>p.line) return 'lost'; if(done) return 'won'; }
   return null; }
 // "sweat": live, needs <=2 more, under 3 minutes left
-function isSweat(p){ var v=vals[p.id]; if(v==null||!p._live||settled(p)) return false; var rem=remGameMin(p.sport,p._period||1,p._clockSec||0); if(rem==null) return false; return over(p) && (needed(p)-v)<=2 && rem<=3; }
-function paceTxt(p){ var pj=projection(p); if(!pj||settled(p)) return ''; return 'pace '+Math.round(pj.proj); }
+function isSweat(p){ var v=vals[p.id]; if(v==null||!p._live||settled(p)) return false; var rem=remGameMin(p.sport,p._period||1,p._clockSec||0); if(rem==null||rem>3) return false;
+  if(p.kind&&p.kind!=='prop') return Math.abs(p._lineEdge||0)<=(p.sport==='bk'?4:p.sport==='fb'?7:1);
+  return over(p) && (needed(p)-v)<=2; }
+// #29: pace + what he needs per remaining minute
+function paceTxt(p){ if(p.kind&&p.kind!=='prop') return ''; var pj=projection(p); if(!pj||settled(p)) return ''; var v=vals[p.id]; var out='pace '+Math.round(pj.proj);
+  if(over(p)&&v!=null&&pj.remP>0.5){ var need=needed(p)-v; if(need>0){ var r=need/pj.remP; out+=' · needs '+(r>=10?Math.round(r):r.toFixed(1))+'/min'+(r>pj.rate*2.2?' ⚠':''); } } return out; }
+// ---- game-line legs (#32): spread / moneyline / total ----
+// per-sport std-dev of the FINAL margin (or total) per sqrt(remaining minute), from pre-game spreads of ~12.5 (NBA) / 13.5 (NFL) / 1.8 goals (NHL)
+var LINE_SIG={ bk:{m:1.8,t:2.6}, fb:{m:1.75,t:1.7}, hk:{m:0.23,t:0.25}, sc:{m:0.17,t:0.2}, bb:{m:1.3,t:1.5} };
+function normCdf(z){ var t=1/(1+0.2316419*Math.abs(z)); var d=0.3989423*Math.exp(-z*z/2); var pr=d*t*(0.319381530+t*(-0.356563782+t*(1.781477937+t*(-1.821255978+t*1.330274429)))); return z>0?1-pr:pr; }
+function evalLine(l){
+  return findGame(l.lg,l.team).then(function(g){
+    if(!g){ l._status='No game today'; l._score=''; l._live=false; return; }
+    l._live=(g.state==='in'); l.state=g.state; l._date=g.date; l._status=g.status||(g.state==='post'?'Final':''); l._period=g.period||0; l._clockSec=parseClock(g.clock); l._pre=(g.state==='pre');
+    var mine=null, opp=null; (g.cs||[]).forEach(function(c){ var tm=c.team||{}; if(tm.abbreviation===l.team||(tm.displayName||'').indexOf(l.team)>=0) mine=c; else opp=c; });
+    if(!mine||!opp) return; var ms=+(mine.score||0), os=+(opp.score||0), margin=ms-os, total=ms+os;
+    l._score=(mine.team||{}).abbreviation+' '+ms+' – '+(opp.team||{}).abbreviation+' '+os;
+    var rem=remGameMin(l.sport,l._period||1,l._clockSec||0); if(rem==null){ var S=l.sport==='bb'?9:2; rem=Math.max(0,(S-(l._period||0)))*(l.sport==='bb'?1:45); }
+    var sig=LINE_SIG[l.sport]||LINE_SIG.bk; var edge, sd, prob;
+    if(l.kind==='total'){ var ov=(l.dir||'o')==='o'; edge=ov?(total-l.line):(l.line-total); vals[l.id]=total; sd=sig.t*Math.sqrt(Math.max(rem,0)+0.25);
+      // expected remaining scoring pushes the total up: use current pace for the rest of the game
+      var el=elapGameMin(l.sport,l._period||1,l._clockSec||0); var drift=(el&&el>1)?(total/el)*rem:0; edge+= ov?drift:-drift; }
+    else { var ln=(l.kind==='ml')?0:(+l.line||0); edge=margin+ln; vals[l.id]=margin; sd=sig.m*Math.sqrt(Math.max(rem,0)+0.25); }
+    l._lineEdge=edge; l._remMin=rem;
+    if(g.state==='pre'){ prob=0.5; }
+    else if(g.state==='post'){ prob= edge>0?1:(edge<0?0:0.5); l._lineSettled= edge>0?'won':(edge<0?'lost':'push'); }
+    else { prob=normCdf(edge/sd); if(rem<=0.05) l._lineSettled=edge>0?'won':'lost';
+      if(l.kind==='total'){ var ovr=(l.dir||'o')==='o'; if(ovr&&total>l.line){ prob=1; l._lineSettled='won'; } if(!ovr&&total>l.line){ prob=0; l._lineSettled='lost'; } } }
+    var old=l._prevVal; var cur=vals[l.id]; if(old!=null&&cur!==old&&g.state==='in'){ l._delta=cur-old; l._newVal=cur; l._play=(((g.cs||[])[0]||{}).team||{}).abbreviation?'':''; } l._prevVal=cur;
+    l._prob=prob; l._lineProb=prob;
+  });
+}
+function lineValTxt(l){ var v=vals[l.id]; if(v==null) return '–'; if(l.kind==='total') return String(v); return (v>0?'+':'')+v; }
+function lineEdgeTxt(l){ if(l._lineSettled==='won') return '✓'; if(l._lineSettled==='lost') return '✗'; if(l._lineSettled==='push') return 'push'; var e=l._lineEdge; if(e==null||l._pre) return ''; var r=Math.round(e*10)/10; return (r>=0?'covering by ':'needs ')+Math.abs(r); }
 function shortStatus(p){ // tip time before, clock during, Final after
   if(p._pre) return p._date?tipTime(p._date):String(p._status||'').replace(/^.*- /,'').replace(/ E[SD]T$/,'');
   if(p.state==='post') return 'Final';
@@ -318,6 +352,8 @@ function parlayHeader(pl){
   return '<div class="phd">'+ring+'<div class="pi"><div class="pn">'+esc(pl.name||'Parlay')+'</div><div class="po"><b>'+esc(pl.odds||'')+'</b> · '+sub+'</div></div></div>';
 }
 function legRow(l){ var s=legStat(l);
+  if(l.kind&&l.kind!=='prop'){ var rt = l._pre ? '<span class="lc">'+esc(shortStatus(l))+'</span>' : '<span class="lv">'+esc(lineValTxt(l))+'</span><span class="lc'+(l._live?' live':'')+'">'+esc(lineEdgeTxt(l)||shortStatus(l))+'</span>';
+    return '<div class="pleg '+(s.st||'')+(isSweat(l)?' sweat':'')+'"><span class="ld" style="background:'+s.color+'"></span><span class="ln">'+esc(l.disp||l.label||'')+'<span class="ll">'+esc(l._score||'')+'</span></span>'+rt+'</div>'; }
   var icon=s.st==='won'?'✓':s.st==='lost'?'✗':(s.v!=null&&over(l)&&l._live?'+'+(needed(l)-s.v):'');
   var right = l._pre ? '<span class="lc">'+esc(shortStatus(l))+'</span>'
     : '<span class="lv">'+(s.v==null?'–':s.v)+'</span><span class="lc'+(l._live?' live':'')+'">'+esc(icon||(l._live?String(l._status||'').replace(/^(\w+ )?/,''):shortStatus(l)))+'</span>';
@@ -331,9 +367,10 @@ function parlayCorner(pl){ // overlay: header + one dot per leg + the leg in foc
   var legs=orderedLegs(pl); var live=legs.filter(function(l){ return l._live && !settled(l); });
   var focus = live.length ? live[focusTick%live.length] : (legs.filter(function(l){return !settled(l);})[0]||legs[0]);
   var rail='<div class="rail">'+legs.map(function(l){ var s=legStat(l); var t=s.st==='won'?'✓':s.st==='lost'?'✗':''; return '<i class="'+(l===focus?'on':'')+'" style="background:'+s.color+'" title="'+esc(l.disp)+'">'+t+'</i>'; }).join('')+'</div>';
-  var f=''; if(focus){ var s=legStat(focus); var v=s.v;
-    var right = focus._pre ? esc(shortStatus(focus)) : ('<span class="fv">'+(v==null?'–':v)+'</span> '+(s.st==='won'?'✓':s.st==='lost'?'✗':(over(focus)&&v!=null?'+'+(needed(focus)-v):''))+' <span class="fc">'+esc(shortStatus(focus))+'</span>');
-    f='<div class="focus"><span class="fn">'+esc(focus.disp||focus.player)+'<span class="ll">'+esc(focus.label||'')+'</span></span>'+right+'</div>'; }
+  var f=''; if(focus){ var s=legStat(focus); var v=s.v; var right, nm;
+    if(focus.kind&&focus.kind!=='prop'){ nm=esc(focus.disp||focus.label||'')+'<span class="ll">'+esc(focus._score||'')+'</span>'; right = focus._pre ? esc(shortStatus(focus)) : ('<span class="fv">'+esc(lineValTxt(focus))+'</span> <span class="fc">'+esc(lineEdgeTxt(focus)||shortStatus(focus))+'</span>'); }
+    else { nm=esc(focus.disp||focus.player)+'<span class="ll">'+esc(focus.label||'')+'</span>'; right = focus._pre ? esc(shortStatus(focus)) : ('<span class="fv">'+(v==null?'–':v)+'</span> '+(s.st==='won'?'✓':s.st==='lost'?'✗':(over(focus)&&v!=null?'+'+(needed(focus)-v):''))+' <span class="fc">'+esc(shortStatus(focus))+'</span>'); }
+    f='<div class="focus"><span class="fn">'+nm+'</span>'+right+'</div>'; }
   return '<div class="pcard '+(pl._settled||'')+'">'+parlayHeader(pl)+rail+f+'</div>';
 }
 function cardFor(it){ return it.legs?parlayCorner(it):cornerChip(it); }
@@ -362,6 +399,7 @@ function confetti(id){ var c=$('conf-'+id); if(!c) return; var cols=['#ffcc00','
 
 // ---------- evaluation ----------
 function evalProp(p){
+  if(p.kind&&p.kind!=='prop') return evalLine(p);
   if(!p.team||!p.lg){ p._status=''; p._score=''; p._live=false; return Promise.resolve(); }
   return findGame(p.lg,p.team).then(function(g){
     if(!g){ p._status='No game today'; p._score=''; p._live=false; return; }
@@ -429,6 +467,7 @@ function pumpRise(){ if(riseBusy) return; var it=riseQ.shift(); if(!it) return; 
   clearTimeout(riseT); riseT=setTimeout(function(){ r.classList.remove('show'); setTimeout(function(){ riseBusy=false; pumpRise(); }, 420); }, it.dur);
 }
 function showRise(p){
+  if(p.kind&&p.kind!=='prop'){ var tg=(p.kind==='total'?'Total':p.kind==='ml'?'Moneyline':'Spread')+' · '+(p._status||''); enqueueRise('<div class="gface">'+({bk:'🏀',fb:'🏈',hk:'🏒',bb:'⚾',sc:'⚽'}[p.sport]||'📣')+'</div><div class="rb"><div class="tag">'+esc(tg)+'</div><div class="top"><span class="nm">'+esc(p.disp||p.label||'')+'</span><span class="delta" style="color:'+(p._lineEdge>0?'var(--green)':'var(--red)')+'">'+esc(lineValTxt(p))+'</span></div><div class="tot">'+esc(p._score||'')+' · '+esc(lineEdgeTxt(p))+'</div></div>','game',5500,(p.disp||p.label)+' '+lineValTxt(p)+' · '+lineEdgeTxt(p)); return; }
   var isProp=props.indexOf(p)>=0;
   if(CORNER && !isQuiet() && isProp){ // persistent-chip mode: flash in place
     rotI=props.indexOf(p); render();
