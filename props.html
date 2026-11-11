@@ -1,0 +1,221 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prop Tracker</title>
+<style>
+  :root{--line:#232d41;--muted:#9aa7c2;--gold:#ffcc00;--green:#2ec47a;--red:#e5533c;--sans:'Segoe UI',system-ui,Roboto,Arial,sans-serif}
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:transparent;font-family:var(--sans);overflow:hidden;color:#eef3fb}
+  #pp{width:100%;height:100%;background:linear-gradient(180deg,#0e1726,#0a0f1a);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 20px 55px -18px #000;font-size:min(3.6vw,15px)}
+  .hd{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border-bottom:1px solid var(--line);background:linear-gradient(90deg,rgba(255,204,0,.12),transparent);flex:none}
+  .hd .t{font-weight:800;letter-spacing:.09em;font-size:.74em;color:var(--gold)}
+  .hd .nav{font-size:.72em;color:var(--muted);font-weight:700}
+  .list{flex:1;overflow:hidden;padding:7px 9px;display:flex;flex-direction:column;gap:7px}
+  .chip{display:flex;align-items:center;gap:11px;background:#141d31;border:1px solid var(--line);border-radius:11px;padding:8px 11px;flex:none;position:relative;overflow:hidden}
+  .chip.hit{background:linear-gradient(90deg,rgba(255,204,0,.22),rgba(46,196,122,.12));border-color:var(--gold)}
+  .chip.bust{opacity:.6}
+  .ring{position:relative;width:46px;height:46px;flex:none}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;transition:transform .25s}
+  .ring .val.pop{transform:scale(1.45)}
+  .info{flex:1;min-width:0}
+  .info .nm{font-weight:700;font-size:.98em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .info .ln{font-size:.8em;color:var(--muted);margin-top:1px}
+  .info .ln b{color:#eef3fb}
+  .info .gm{font-size:.78em;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:7px}
+  .info .gm .clk{color:#cdd7ee;font-weight:700}
+  .info .gm .clk.live{color:var(--green)}
+  .info .gm .scr{color:#6f7d9b;font-size:.86em}
+  .need{font-size:.82em;font-weight:700;text-align:right;flex:none;min-width:48px}
+  .need .big{font-size:1.15em}
+  .trophy{font-size:1.5em;flex:none;animation:pop .5s}
+  @keyframes pop{0%{transform:scale(0) rotate(-20deg)}60%{transform:scale(1.4) rotate(10deg)}100%{transform:scale(1)}}
+  .conf{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+  .conf i{position:absolute;top:-10px;width:6px;height:9px;opacity:.9;animation:fall 1.1s linear forwards}
+  @keyframes fall{to{transform:translateY(80px) rotate(360deg);opacity:0}}
+  .msg{padding:22px;text-align:center;color:var(--muted);font-size:.9em}
+  .pulse{animation:pulse 1.3s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,204,0,.5)}50%{box-shadow:0 0 0 4px rgba(255,204,0,0)}}
+  /* rise-up change card (bottom-left) */
+  #rise{position:fixed;left:14px;bottom:14px;width:min(70vw,340px);background:linear-gradient(180deg,#16203a,#0e1526);border:1px solid var(--gold);border-radius:14px;box-shadow:0 18px 50px -14px #000;display:flex;align-items:center;gap:12px;padding:11px 13px;transform:translateY(160%);opacity:0;transition:transform .5s cubic-bezier(.2,1.1,.3,1),opacity .4s;z-index:50}
+  #rise.show{transform:translateY(0);opacity:1}
+  #rise .face{width:52px;height:52px;border-radius:50%;flex:none;background:#223049 center/cover;border:2px solid var(--gold)}
+  #rise .rb{flex:1;min-width:0}
+  #rise .rb .top{display:flex;align-items:baseline;gap:8px}
+  #rise .rb .nm{font-weight:800;font-size:1em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #rise .rb .delta{color:var(--green);font-weight:800;font-size:1.05em;flex:none}
+  #rise .rb .tot{font-size:.84em;color:var(--muted);margin-top:1px}
+  #rise .rb .tot b{color:#eef3fb}
+  #rise .rb .play{font-size:.8em;color:#cdd7ee;margin-top:3px;line-height:1.25;max-height:2.5em;overflow:hidden}
+  #rise .rring{flex:none}
+  #rise.hit{border-color:var(--gold);background:linear-gradient(180deg,#2a2410,#16203a)}
+</style></head>
+<body>
+<div id="pp"><div class="msg">Loading your props…</div></div>
+<div id="rise"></div>
+<script>
+'use strict';
+var ESPN='https://site.web.api.espn.com/apis/site/v2/sports/';
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+
+// --- decrypt props.json with the on-device key (same AES-GCM as the dashboard) ---
+function getKey(){ try{ return localStorage.getItem('w2w.key.priv')||''; }catch(e){ return ''; } }
+function loadProps(){
+  var key=getKey(); if(!key||!window.crypto||!crypto.subtle) return Promise.resolve([]);
+  var b=function(s){return Uint8Array.from(atob(s),function(c){return c.charCodeAt(0);});};
+  return fetch('props.json?'+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(p){
+    return crypto.subtle.importKey('raw',b(key),'AES-GCM',false,['decrypt']).then(function(k){ return crypto.subtle.decrypt({name:'AES-GCM',iv:b(p.iv)},k,b(p.ct)); });
+  }).then(function(buf){ var a=JSON.parse(new TextDecoder().decode(buf)); return Array.isArray(a)?a:(a.props||[]); }).catch(function(){ return []; });
+}
+
+// --- stat extraction from ESPN box score ---
+var STAT_MAP={ points:['PTS'], pts:['PTS'], rebounds:['REB','TOT'], reb:['REB'], assists:['AST'], ast:['AST'],
+  steals:['STL'], blocks:['BLK'], turnovers:['TO'], threes:['3PT'], '3pm':['3PT'],
+  goals:['G'], assists_nhl:['A'], shots:['SOG','S','SH'], saves:['SV'], points_nhl:['PTS','P'],
+  hits:['H'], runs:['R'], rbis:['RBI'], rbi:['RBI'], 'home runs':['HR'], hr:['HR'], strikeouts:['K','SO'], 'total bases':['TB'],
+  'passing yards':['YDS'], 'rushing yards':['YDS'], 'receiving yards':['YDS'], receptions:['REC'], rec:['REC'],
+  'pass tds':['TD'], 'rush tds':['TD'], 'rec tds':['TD'], tackles:['TOT','TCKL'] };
+var GROUP_HINT={ 'passing yards':'passing','pass tds':'passing','rushing yards':'rushing','rush tds':'rushing','receiving yards':'receiving','rec tds':'receiving','receptions':'receiving','rec':'receiving' };
+function num(v){ if(v==null) return null; v=String(v); if(v.indexOf('-')>0 && /^\d+-\d+$/.test(v)) return parseInt(v.split('-')[0],10); var n=parseFloat(v.replace(/[^0-9.\-]/g,'')); return isNaN(n)?null:n; }
+function statFromBox(d, playerName, stat){
+  var bs=d.boxscore||{}; var want=String(stat||'').toLowerCase().trim();
+  var labelsWanted=STAT_MAP[want]||[want.toUpperCase()];
+  var groupHint=GROUP_HINT[want];
+  var found=null, lname=playerName.toLowerCase();
+  (bs.players||[]).forEach(function(tm){
+    (tm.statistics||[]).forEach(function(grp){
+      if(groupHint && String(grp.name||grp.type||'').toLowerCase().indexOf(groupHint)<0) return;
+      var labels=grp.labels||grp.names||[];
+      (grp.athletes||[]).forEach(function(a){
+        var nm=((a.athlete||{}).displayName||(a.athlete||{}).shortName||'').toLowerCase();
+        if(nm.indexOf(lname)<0 && lname.indexOf(nm)<0) return;
+        for(var i=0;i<labelsWanted.length;i++){ var li=labels.indexOf(labelsWanted[i]); if(li>=0){ var v=num((a.stats||[])[li]); if(v!=null){ found=v; return; } } }
+      });
+    });
+  });
+  return found;
+}
+
+var CDN_LG={'basketball/nba':'nba','football/nfl':'nfl','hockey/nhl':'nhl','baseball/mlb':'mlb','basketball/mens-college-basketball':'mens-college-basketball'};
+function headshotFrom(d, playerName){ var lname=playerName.toLowerCase(), hs='', aid='';
+  (((d.boxscore||{}).players)||[]).forEach(function(tm){ (tm.statistics||[]).forEach(function(grp){ (grp.athletes||[]).forEach(function(a){
+    var at=a.athlete||{}, nm=(at.displayName||at.shortName||'').toLowerCase();
+    if(nm.indexOf(lname)<0 && lname.indexOf(nm)<0) return;
+    if(at.headshot){ hs=(typeof at.headshot==='string')?at.headshot:at.headshot.href||''; }
+    if(at.id) aid=at.id;
+  }); }); });
+  return {hs:hs, id:aid};
+}
+function lastPlayFor(d, playerName){ var parts=playerName.toLowerCase().split(' '); var last=parts[parts.length-1];
+  var plays=d.plays||[]; for(var i=plays.length-1;i>=0;i--){ var t=plays[i].text||''; if(t.toLowerCase().indexOf(last)>=0) return t; } return ''; }
+
+// --- resolve the player's game from the league scoreboard (follows them to today's game) ---
+var sbCache={};
+function scoreboard(lg){ if(sbCache[lg] && Date.now()-sbCache[lg].t<20000) return Promise.resolve(sbCache[lg].e);
+  return fetch(ESPN+lg+'/scoreboard').then(function(r){return r.json();}).then(function(d){ var e=d.events||[]; sbCache[lg]={t:Date.now(),e:e}; return e; }).catch(function(){ return []; }); }
+function findGame(lg, team){ return scoreboard(lg).then(function(evs){
+  for(var i=0;i<evs.length;i++){ var c=(evs[i].competitions&&evs[i].competitions[0])||{}; var cs=c.competitors||[];
+    for(var j=0;j<cs.length;j++){ var tm=cs[j].team||{}; if(tm.abbreviation===team || (tm.displayName||'').indexOf(team)>=0){ return {id:evs[i].id, state:evs[i].status.type.state, status:evs[i].status.type.shortDetail, cs:cs}; } } }
+  return null; }); }
+
+var summaryCache={};
+function summary(lg,id){ if(summaryCache[id] && Date.now()-summaryCache[id].t<10000) return Promise.resolve(summaryCache[id].d);
+  return fetch(ESPN+lg+'/summary?event='+id).then(function(r){return r.json();}).then(function(d){ summaryCache[id]={t:Date.now(),d:d}; return d; }).catch(function(){ return null; }); }
+
+// --- state ---
+var props=[], vals={}, pageTop=0, pollT=null;
+var PAGE=4; // visible chips at once
+
+function needed(p){ return Math.floor(p.line)+1; } // over hits at this integer
+function statusOf(p, v){ // returns {prog, hit, bust, state}
+  var line=p.line, over=(p.dir||'o')==='o';
+  if(v==null) return {prog:0, hit:false, bust:false};
+  if(over){ var need=needed(p); var hit=v>line; return {prog:Math.min(1, v/need), hit:hit, bust:false}; }
+  else { var bust=v>line; var prog=Math.max(0, 1 - v/(Math.floor(line)+1)); return {prog:bust?0:prog, hit:false, bust:bust}; }
+}
+function ringColor(prog){ var h=Math.round(prog*120); return 'hsl('+h+',72%,48%)'; }
+
+function chipHTML(p){
+  var v=vals[p.id], st=statusOf(p,v);
+  var C=46, R=19, circ=2*Math.PI*R, off=circ*(1-st.prog);
+  var color = st.bust? 'var(--red)' : st.hit? 'var(--gold)' : ringColor(st.prog);
+  var ring='<div class="ring"><svg width="'+C+'" height="'+C+'" viewBox="0 0 '+C+' '+C+'">'+
+    '<circle cx="23" cy="23" r="'+R+'" fill="none" stroke="#1e283c" stroke-width="5"/>'+
+    '<circle cx="23" cy="23" r="'+R+'" fill="none" stroke="'+color+'" stroke-width="5" stroke-linecap="round" stroke-dasharray="'+circ.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'"/></svg>'+
+    '<div class="val" id="val-'+p.id+'">'+(v==null?'–':v)+'</div></div>';
+  var remain = v==null? '' : ((p.dir||'o')==='o' ? (v>p.line? 'HIT' : '+'+(needed(p)-v)+' to go') : (v>p.line?'BUST':(Math.floor(p.line)-v>=0?(Math.floor(p.line)-v)+' left':'on line')));
+  var right = st.hit? '<div class="trophy">🏆</div>' : '<div class="need"><div class="big">'+esc(remain)+'</div></div>';
+  var label = p.label || ((p.dir||'o')+p.line+' '+(p.statLabel||p.stat));
+  var clk = p._status ? '<span class="clk'+(p._live?' live':'')+'">'+esc(p._status)+'</span>' : '';
+  var scr = p._score ? '<span class="scr">'+esc(p._score)+'</span>' : '';
+  var gm = (clk||scr) ? '<div class="gm">'+clk+scr+'</div>' : '';
+  return '<div class="chip'+(st.hit?' hit pulse':'')+(st.bust?' bust':'')+'" data-id="'+esc(p.id)+'">'+(st.hit?'<div class="conf" id="conf-'+p.id+'"></div>':'')+ring+
+    '<div class="info"><div class="nm">'+esc(p.disp||p.player)+'</div><div class="ln"><b>'+esc(label)+'</b></div>'+gm+'</div>'+right+'</div>';
+}
+
+function render(){
+  var el=$('pp');
+  if(!props.length){ el.innerHTML='<div class="msg">No props set.<br><span style="font-size:.85em">Tell Mike which props to track and they\'ll show here.</span></div>'; return; }
+  var total=props.length;
+  if(pageTop>Math.max(0,total-PAGE)) pageTop=Math.max(0,total-PAGE);
+  var slice=props.slice(pageTop, pageTop+PAGE);
+  var nav = total>PAGE ? '<span class="nav">◂ '+(pageTop+1)+'–'+Math.min(total,pageTop+PAGE)+' of '+total+' ▸</span>' : '<span class="nav">'+total+' prop'+(total>1?'s':'')+'</span>';
+  el.innerHTML='<div class="hd"><span class="t">🎯 PROP TRACKER</span>'+nav+'</div><div class="list">'+slice.map(chipHTML).join('')+'</div>';
+}
+
+function confetti(id){ var c=$('conf-'+id); if(!c) return; var cols=['#ffcc00','#2ec47a','#4f9bff','#e5533c','#fff']; var h=''; for(var i=0;i<16;i++){ h+='<i style="left:'+(5+Math.random()*90)+'%;background:'+cols[i%5]+';animation-delay:'+(Math.random()*.4).toFixed(2)+'s"></i>'; } c.innerHTML=h; }
+
+function poll(){
+  clearTimeout(pollT);
+  if(!props.length){ render(); pollT=setTimeout(poll,30000); return; }
+  Promise.all(props.map(function(p){
+    if(!p.team||!p.lg){ p._status=''; p._score=''; p._live=false; return Promise.resolve(); }
+    return findGame(p.lg,p.team).then(function(g){
+      if(!g){ p._status='No game today'; p._score=''; p._live=false; return; }
+      p._live=(g.state==='in');
+      p._status=g.status||(g.state==='post'?'Final':'');
+      p._score=(g.cs||[]).map(function(c){return (c.team||{}).abbreviation+' '+(c.score!=null?c.score:'');}).join(' – ');
+      if(g.state==='pre'){ vals[p.id]=0; return; }
+      return summary(p.lg,g.id).then(function(d){ if(!d) return; var v=statFromBox(d,p.player,p.stat);
+        if(v!=null){ var old=vals[p.id]; vals[p.id]=v;
+          if(old!=null && v>old){ p._delta=v-old; p._newVal=v; var h=headshotFrom(d,p.player); p._face=h.hs||(CDN_LG[p.lg]&&h.id?'https://a.espncdn.com/i/headshots/'+CDN_LG[p.lg]+'/players/full/'+h.id+'.png':''); p._play=lastPlayFor(d,p.player); }
+          else if(old!=null && v!==old){ p._changed=true; }
+        }
+      });
+    });
+  })).then(function(){
+    render();
+    props.forEach(function(p){
+      if(p._delta){ showRise(p); p._changed=true; p._delta=0; }
+      if(p._changed){ var vEl=$('val-'+p.id); if(vEl){ vEl.classList.add('pop'); setTimeout(function(){vEl.classList.remove('pop');},260);} p._changed=false; }
+      var st=statusOf(p,vals[p.id]); if(st.hit && !p._celebrated){ p._celebrated=true; confetti(p.id);} if(!st.hit) p._celebrated=false;
+    });
+    var anyLive=props.some(function(p){ return p._live; });
+    pollT=setTimeout(poll, anyLive?12000:45000);
+  });
+}
+var riseT=null;
+function showRise(p){
+  var r=$('rise'); if(!r) return;
+  var st=statusOf(p, p._newVal);
+  var C=44,R=18,circ=2*Math.PI*R,off=circ*(1-st.prog);
+  var color=st.hit?'var(--gold)':ringColor(st.prog);
+  var face=p._face? '<div class="face" style="background-image:url(&quot;'+esc(p._face)+'&quot;)"></div>' : '<div class="face"></div>';
+  var ring='<div class="rring"><svg width="'+C+'" height="'+C+'" viewBox="0 0 '+C+' '+C+'" style="transform:rotate(-90deg)"><circle cx="22" cy="22" r="'+R+'" fill="none" stroke="#1e283c" stroke-width="4.5"/><circle cx="22" cy="22" r="'+R+'" fill="none" stroke="'+color+'" stroke-width="4.5" stroke-linecap="round" stroke-dasharray="'+circ.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'"/></svg></div>';
+  var sl=p.statLabel||p.stat;
+  r.className=st.hit?'hit':'';
+  r.innerHTML=face+'<div class="rb"><div class="top"><span class="nm">'+esc(p.disp||p.player)+'</span><span class="delta">'+(st.hit?'🏆 HIT!':'+'+p._delta+' '+esc(sl))+'</span></div><div class="tot"><b>'+p._newVal+'</b> '+esc(sl)+' · '+(st.hit?'prop hit!':('+'+(needed(p)-p._newVal)+' to go'))+'</div>'+(p._play?'<div class="play">'+esc(p._play)+'</div>':'')+'</div>'+ring;
+  void r.offsetWidth; r.classList.add('show');
+  clearTimeout(riseT); riseT=setTimeout(function(){ r.classList.remove('show'); }, st.hit?9000:6500);
+}
+
+document.addEventListener('keydown',function(e){
+  var k=e.keyCode||e.which;
+  if((k===39||k===40) && props.length>PAGE){ pageTop=Math.min(props.length-PAGE, pageTop+PAGE); render(); e.preventDefault(); }
+  else if((k===37||k===38) && props.length>PAGE){ pageTop=Math.max(0, pageTop-PAGE); render(); e.preventDefault(); }
+});
+window.PROPS={ reload:function(){ loadProps().then(function(a){ props=a||[]; poll(); }); }, next:function(){if(props.length>PAGE){pageTop=Math.min(props.length-PAGE,pageTop+PAGE);render();}}, prev:function(){if(props.length>PAGE){pageTop=Math.max(0,pageTop-PAGE);render();}} };
+
+loadProps().then(function(a){ props=a||[]; poll(); });
+</script>
+</body></html>

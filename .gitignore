@@ -1,2 +1,5 @@
 __pycache__/
 *.pyc
+tools/props_plain.json
+tools/set_props.py
+tools/build_private.py

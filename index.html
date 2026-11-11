@@ -1394,7 +1394,8 @@ else {
     $s('spDays').innerHTML='<span class="lbl">WHEN</span>'+[['live','🔴 Live now'],['today','Today'],['tomorrow','Tomorrow'],['week','Upcoming (7 days)']].map(function(d){return '<button class="chipb focusable'+(dayMode===d[0]?' on':'')+'" data-day="'+d[0]+'">'+d[1]+'</button>';}).join('')+
       '<button class="chipb focusable'+(noSpoil?' on':'')+'" data-ns="1" style="margin-left:2vw">🙈 No spoilers'+(noSpoil?': ON':'')+'</button>'+
       '<button class="chipb focusable'+(starMode?' on':'')+'" data-starmode="1" style="margin-left:2vw">⭐ '+(starMode?'Done picking':'Star games')+'</button>'+
-      '<button class="chipb focusable" data-gamecast="1">🎮 Gamecast'+(getStars().length?' ('+getStars().length+')':'')+'</button>';
+      '<button class="chipb focusable" data-gamecast="1">🎮 Gamecast'+(getStars().length?' ('+getStars().length+')':'')+'</button>'+
+      '<button class="chipb focusable" data-props="1">🎯 Prop tracker</button>';
     var bn=$s('spBanner'); if(!bn){ bn=document.createElement('div'); bn.id='spBanner'; var dd=$s('spDays'); dd.parentNode.insertBefore(bn, dd.nextSibling); }
     bn.innerHTML='⭐ <b>Star mode:</b> press OK on each game you want in the Gamecast panel tonight. Press <b>⭐ Done picking</b> when finished. ('+getStars().length+' starred)';
     var have={}; games.forEach(function(g){ if(g.apps.length) have[g.lg[0]]=(have[g.lg[0]]||0)+1;});
@@ -1446,6 +1447,7 @@ else {
       saveLg(); render(); var f=document.querySelector('[data-lg="'+k+'"]'); if(f) f.focus(); return; }
     if(e.target.closest('[data-starmode]')){ starMode=!starMode; $s('sp').classList.toggle('starmode',starMode); render(); var sm=document.querySelector('[data-starmode]'); if(sm) sm.focus(); return; }
     if(e.target.closest('[data-gamecast]')){ location.href='gamecast.html'; return; }
+    if(e.target.closest('[data-props]')){ location.href='props.html'; return; }
     var g=e.target.closest('[data-g]'); if(g){ var gm=games.filter(function(x){return x.id===g.dataset.g;})[0];
       if(starMode){ if(gm){ var on=toggleStar(gm); var cardEl=g; cardEl.classList.toggle('starred',on); cardEl.querySelector('.starbadge,.pickhint').outerHTML=on?'<span class="starbadge">★</span>':'<span class="pickhint">☆</span>'; spToast(on?'★ Starred for Gamecast':'☆ Removed'); bars(); cardEl.focus(); } return; }
       if(gm&&gm.apps.length) launchApp(gm.apps[0],gm);
