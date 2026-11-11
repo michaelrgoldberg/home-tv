@@ -205,10 +205,16 @@ function poll(){ clearTimeout(pollT); load().then(function(){ var live=games.som
 document.addEventListener('keydown',function(e){
   var k=e.keyCode||e.which;
   if(expanded){ if(k===8||k===4||k===27){ expanded=false; render(); e.preventDefault(); } return; }
-  if(k===39){ if(games.length>1){ idx=(idx+1)%games.length; cur=games[idx]; render(); e.preventDefault(); } }
-  else if(k===37){ if(games.length>1){ idx=(idx-1+games.length)%games.length; cur=games[idx]; render(); e.preventDefault(); } }
+  if(k===39){ if(games.length>1){ idx=(idx+1)%games.length; cur=games[idx]; render(); resetCycle(); e.preventDefault(); } }
+  else if(k===37){ if(games.length>1){ idx=(idx-1+games.length)%games.length; cur=games[idx]; render(); resetCycle(); e.preventDefault(); } }
   else if(k===13||k===23||k===66){ if(cur){ expanded=true; fetchSummary(cur); e.preventDefault(); } }
 });
+// auto-cycle through starred games at a set interval (0 = manual only). Manual ◂▸ resets it.
+var GC_CYCLE=parseInt((location.search.match(/[?&]cycle=(\d+)/)||[])[1]||0,10);
+try{ if(!GC_CYCLE) GC_CYCLE=parseInt(localStorage.getItem('w2w.gcCycle')||'0',10)||0; }catch(e){}
+var cycleT=null;
+function resetCycle(){ clearTimeout(cycleT); if(GC_CYCLE>0){ cycleT=setTimeout(function tick(){ if(!expanded&&games.length>1){ idx=(idx+1)%games.length; cur=games[idx]; render(); } cycleT=setTimeout(tick, GC_CYCLE*1000); }, GC_CYCLE*1000); } }
+resetCycle();
 // Back returns to the dashboard (collapse an expanded game first)
 window.W2W_BACK=function(){ if(expanded){ expanded=false; render(); return true; } try{ history.back(); }catch(e){ location.href='./'; } return true; };
 window.GC={ next:function(){if(!expanded&&games.length){idx=(idx+1)%games.length;cur=games[idx];render();}},

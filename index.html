@@ -1360,6 +1360,11 @@ else {
   function getPropMode(){ try{ return JSON.parse(localStorage.getItem('w2w.propMode')||'null') || PROP_MODES[0]; }catch(e){ return PROP_MODES[0]; } }
   function propModeLabel(){ var c=getPropMode(); for(var i=0;i<PROP_MODES.length;i++){ if(PROP_MODES[i].m===c.m && (PROP_MODES[i].sec||0)===(c.sec||0) && (PROP_MODES[i].n||0)===(c.n||0)) return PROP_MODES[i].label; } return c.label||'Cycle 10s'; }
   function cyclePropMode(){ var c=getPropMode(), idx=0; for(var i=0;i<PROP_MODES.length;i++){ if(PROP_MODES[i].label===propModeLabel()){ idx=i; break; } } var nx=PROP_MODES[(idx+1)%PROP_MODES.length]; try{ localStorage.setItem('w2w.propMode', JSON.stringify(nx)); }catch(e){} }
+  // Gamecast auto-switch interval (0 = manual with ◂▸ only)
+  var GC_CYCLES=[0,10,20,30];
+  function getGcCycle(){ try{ return parseInt(localStorage.getItem('w2w.gcCycle')||'0',10)||0; }catch(e){ return 0; } }
+  function gcCycleLabel(){ var s=getGcCycle(); return s? ('Auto '+s+'s') : 'Manual'; }
+  function cycleGcCycle(){ var s=getGcCycle(), i=GC_CYCLES.indexOf(s); var nx=GC_CYCLES[(i+1)%GC_CYCLES.length]; try{ localStorage.setItem('w2w.gcCycle', String(nx)); }catch(e){} }
   function toggleStar(g){ var a=getStars(), id=g.id, lgp=(g.lg&&g.lg[2])||'', i=-1;
     a.forEach(function(s,k){ if(String(s.id)===String(id)) i=k; });
     if(i>=0) a.splice(i,1); else a.push({lg:lgp, id:id});
@@ -1400,6 +1405,7 @@ else {
       '<button class="chipb focusable'+(noSpoil?' on':'')+'" data-ns="1" style="margin-left:2vw">🙈 No spoilers'+(noSpoil?': ON':'')+'</button>'+
       '<button class="chipb focusable'+(starMode?' on':'')+'" data-starmode="1" style="margin-left:2vw">⭐ '+(starMode?'Done picking':'Star games')+'</button>'+
       '<button class="chipb focusable" data-gamecast="1">🎮 Gamecast'+(getStars().length?' ('+getStars().length+')':'')+'</button>'+
+      '<button class="chipb focusable" data-gccycle="1">🔁 Switch: '+gcCycleLabel()+'</button>'+
       '<button class="chipb focusable" data-props="1">🎯 Prop tracker</button>'+
       '<button class="chipb focusable" data-propmode="1" style="margin-left:2vw">🪧 Prop card: '+propModeLabel()+'</button>';
     var bn=$s('spBanner'); if(!bn){ bn=document.createElement('div'); bn.id='spBanner'; var dd=$s('spDays'); dd.parentNode.insertBefore(bn, dd.nextSibling); }
@@ -1455,6 +1461,7 @@ else {
     if(e.target.closest('[data-gamecast]')){ location.href='gamecast.html'; return; }
     if(e.target.closest('[data-props]')){ location.href='props.html'; return; }
     if(e.target.closest('[data-propmode]')){ cyclePropMode(); bars(); var b2=document.querySelector('[data-propmode]'); if(b2) b2.focus(); return; }
+    if(e.target.closest('[data-gccycle]')){ cycleGcCycle(); bars(); var b3=document.querySelector('[data-gccycle]'); if(b3) b3.focus(); return; }
     var g=e.target.closest('[data-g]'); if(g){ var gm=games.filter(function(x){return x.id===g.dataset.g;})[0];
       if(starMode){ if(gm){ var on=toggleStar(gm); var cardEl=g; cardEl.classList.toggle('starred',on); cardEl.querySelector('.starbadge,.pickhint').outerHTML=on?'<span class="starbadge">★</span>':'<span class="pickhint">☆</span>'; spToast(on?'★ Starred for Gamecast':'☆ Removed'); bars(); cardEl.focus(); } return; }
       if(gm&&gm.apps.length) launchApp(gm.apps[0],gm);
