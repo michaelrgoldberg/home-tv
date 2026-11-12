@@ -15,6 +15,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
 public class MainActivity extends Activity {
+  static volatile boolean resumed = false;
   WebView w; String home;
   @Override protected void onCreate(Bundle b) {
     super.onCreate(b);
@@ -65,8 +66,8 @@ public class MainActivity extends Activity {
     return super.dispatchKeyEvent(e);
   }
   void front() { try { Intent i = new Intent(this, MainActivity.class); i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_SINGLE_TOP); startActivity(i); } catch (Exception e) {} }
-  @Override protected void onResume() { super.onResume(); w.onResume(); w.resumeTimers(); w.requestFocus(); }
-  @Override protected void onPause() { w.onPause(); super.onPause(); }
+  @Override protected void onResume() { super.onResume(); w.onResume(); w.resumeTimers(); w.requestFocus(); resumed = true; if (AlertService.self != null) AlertService.self.setHomeFront(true); }
+  @Override protected void onPause() { w.onPause(); super.onPause(); resumed = false; if (AlertService.self != null) AlertService.self.setHomeFront(false); }
 }
 
 class Client extends WebViewClient {
@@ -84,11 +85,13 @@ class Bridge {
   Bridge(MainActivity a) { this.a = a; }
   android.media.AudioManager am() { return (android.media.AudioManager) a.getSystemService(android.content.Context.AUDIO_SERVICE); }
   void key(int code) { try { am().dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, code)); am().dispatchMediaKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, code)); } catch (Exception e) {} }
-  @android.webkit.JavascriptInterface public int version() { return 7; }
+  @android.webkit.JavascriptInterface public int version() { return 8; }
   @android.webkit.JavascriptInterface public void nativeHome() { GcAccessibilityService.graceUntil = System.currentTimeMillis() + 90000L;
     try { Intent i = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setPackage("com.amazon.tv.launcher").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); a.startActivity(i); }
     catch (Exception e) { try { a.startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception e2) {} } }
   @android.webkit.JavascriptInterface public void setAlertPrefs(boolean alerts, boolean banners) { a.getSharedPreferences("cfg", android.content.Context.MODE_PRIVATE).edit().putBoolean("alerts", alerts).putBoolean("banners", banners).apply(); if (AlertService.self != null) AlertService.self.setAlertPrefs(alerts, banners); }
+  @android.webkit.JavascriptInterface public void setTicker(String m) { a.getSharedPreferences("cfg", android.content.Context.MODE_PRIVATE).edit().putString("ticker", m).apply(); if (AlertService.self != null) AlertService.self.setTicker(m); }
+  @android.webkit.JavascriptInterface public void setGamecastSize(String sz) { a.getSharedPreferences("cfg", android.content.Context.MODE_PRIVATE).edit().putString("gcSize", sz).apply(); if (AlertService.self != null) AlertService.self.setGamecastSize(sz); }
   @android.webkit.JavascriptInterface public String lastAppLabel() { return GcAccessibilityService.lastAppLabel(a); }
   @android.webkit.JavascriptInterface public boolean returnToApp() { return GcAccessibilityService.returnToLastApp(a); }
   @android.webkit.JavascriptInterface public void homeGuard(boolean on) { a.getSharedPreferences("cfg", android.content.Context.MODE_PRIVATE).edit().putBoolean("homeGuard", on).apply(); }

@@ -54,6 +54,8 @@ public class AlertService extends Service {
   View bug;             // non-focusable persistent scorebug
   WebView propCard;     // non-focusable persistent prop-tracker card (bottom-left)
   WebView gamecast;     // focusable gamecast panel (left), D-pad switches games
+  WebView ticker;       // non-focusable full-width score ticker along the bottom (off / all / mine / props)
+  volatile boolean homeFront = false;  // welcome screen in front -> it has its own ticker, so hide ours
   TextView bugText; ImageView bugLogo;
   ServerSocket server;
   volatile boolean running = false;
@@ -80,7 +82,7 @@ public class AlertService extends Service {
     else if ("gamecast.toggle".equals(act)) h.post(new Runnable(){ public void run(){ toggleGamecast(); } });
     else if ("gamecast.show".equals(act)) h.post(new Runnable(){ public void run(){ showGamecast(); } });
     else if ("gamecast.hide".equals(act)) h.post(new Runnable(){ public void run(){ hideGamecast(); } });
-    if (!running) { running = true; new Thread(new Server()).start(); }
+    if (!running) { running = true; new Thread(new Server()).start(); h.postDelayed(new Runnable(){ public void run(){ syncTicker(); } }, 3000); }
     return START_STICKY;
   }
 
@@ -90,7 +92,40 @@ public class AlertService extends Service {
   boolean muted() { return muteUntil > System.currentTimeMillis(); }
   // persistent switches from the dashboard / Gamecast settings: alerts=all game alerts, banners=top banner + scorebug only
   boolean bannersOn() { SharedPreferences sp = getSharedPreferences("cfg", MODE_PRIVATE); return sp.getBoolean("alerts", true) && sp.getBoolean("banners", true); }
-  void setAlertPrefs(boolean alerts, boolean banners) { getSharedPreferences("cfg", MODE_PRIVATE).edit().putBoolean("alerts", alerts).putBoolean("banners", banners).apply(); if (!(alerts && banners)) { clearBug(); h.post(new Runnable(){ public void run(){ dismissCard(); } }); } }
+  void setAlertPrefs(boolean alerts, boolean banners) { getSharedPreferences("cfg", MODE_PRIVATE).edit().putBoolean("alerts", alerts).putBoolean("banners", banners).apply(); if (!(alerts && banners)) { clearBug(); h.post(new Runnable(){ public void run(){ dismissCard(); } }); }
+    tvOverlay("{\"displayFixedNotifications\":" + (alerts && banners) + ",\"displayNotifications\":" + alerts + "}"); }
+  // TvOverlay (separate app on this TV, port 5001) shows the laptop watcher's top-right score; keep it in step with our switches
+  void tvOverlay(final String json) { new Thread(new Runnable() { public void run() { try {
+    java.net.HttpURLConnection c = (java.net.HttpURLConnection) new URL("http://127.0.0.1:5001/set/notifications").openConnection();
+    c.setRequestMethod("POST"); c.setDoOutput(true); c.setConnectTimeout(2000); c.setReadTimeout(2000); c.setRequestProperty("Content-Type", "application/json");
+    OutputStream o = c.getOutputStream(); o.write(json.getBytes("UTF-8")); o.close(); c.getResponseCode(); c.disconnect(); } catch (Exception e) {} } }).start(); }
+
+  // ---------- view settings: Gamecast size, bottom ticker ----------
+  SharedPreferences cfg() { return getSharedPreferences("cfg", MODE_PRIVATE); }
+  int[] gcDims() { String s = cfg().getString("gcSize", "m"); if ("s".equals(s)) return new int[]{dp(310), dp(330)}; if ("l".equals(s)) return new int[]{dp(460), dp(468)}; return new int[]{dp(360), dp(400)}; }
+  void setGamecastSize(String s) { cfg().edit().putString("gcSize", s).apply(); h.post(new Runnable(){ public void run(){
+    if (gamecast == null) return; try { WindowManager.LayoutParams p = (WindowManager.LayoutParams) gamecast.getLayoutParams(); int[] d = gcDims(); p.width = d[0]; p.height = d[1]; wm.updateViewLayout(gamecast, p); } catch (Exception e) {} } }); }
+  boolean tickerWanted() { String m = cfg().getString("ticker", "off"); return m.length() > 0 && !"off".equals(m); }
+  void setTicker(String m) { cfg().edit().putString("ticker", m).apply(); h.post(new Runnable(){ public void run(){ syncTicker(); } }); }
+  void setHomeFront(boolean on) { homeFront = on; h.post(new Runnable(){ public void run(){ syncTicker(); } }); }
+  int tickerH() { return dp(44); }
+  void syncTicker() { homeFront = MainActivity.resumed; if (tickerWanted() && !homeFront) showTicker(); else hideTicker(); placePropCard(); }
+  void showTicker() {
+    if (ticker != null) return;
+    String base = baseUrl(); if (base.length() == 0) return;
+    try {
+      WebView wv = makeWeb(base + "props.html?ticker=1&t=" + (System.currentTimeMillis() / 300000L));
+      wv.setFocusable(false);
+      WindowManager.LayoutParams p = overlayParams(false);
+      p.flags |= WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
+      p.gravity = Gravity.BOTTOM | Gravity.START; p.x = 0; p.y = 0;
+      p.width = ViewGroup.LayoutParams.MATCH_PARENT; p.height = tickerH();
+      ticker = wv; wm.addView(ticker, p);
+    } catch (Exception e) { android.util.Log.e("HOMETV", "ticker fail", e); ticker = null; }
+  }
+  void hideTicker() { if (ticker != null) { try { wm.removeView(ticker); } catch (Exception e) {} try { ticker.destroy(); } catch (Exception e) {} ticker = null; } }
+  int propY() { return dp(14) + (ticker != null ? tickerH() + dp(4) : 0); }
+  void placePropCard() { if (propCard == null) return; try { WindowManager.LayoutParams p = (WindowManager.LayoutParams) propCard.getLayoutParams(); if (p.y != propY()) { p.y = propY(); wm.updateViewLayout(propCard, p); } } catch (Exception e) {} }
 
   GradientDrawable bgCard() { GradientDrawable g = new GradientDrawable(); g.setColor(0xF00B1020); g.setCornerRadius(dp(14)); g.setStroke(dp(2), 0xFFFFCC00); return g; }
 
@@ -160,7 +195,7 @@ public class AlertService extends Service {
       });
       WindowManager.LayoutParams p = overlayParams(false);
       p.flags |= WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED;
-      p.gravity = Gravity.BOTTOM | Gravity.START; p.x = dp(14); p.y = dp(14);
+      p.gravity = Gravity.BOTTOM | Gravity.START; p.x = dp(14); p.y = propY();
       p.width = dp(250); p.height = dp(300);
       propCard = wv; wm.addView(propCard, p);
       android.util.Log.i("HOMETV", "propcard shown");
@@ -180,6 +215,8 @@ public class AlertService extends Service {
     @android.webkit.JavascriptInterface public boolean propsShown() { return propCard != null; }
     @android.webkit.JavascriptInterface public boolean gamecastShown() { return gamecast != null; }
     @android.webkit.JavascriptInterface public void setAlertPrefs(boolean alerts, boolean banners) { AlertService.this.setAlertPrefs(alerts, banners); }
+    @android.webkit.JavascriptInterface public void setTicker(String m) { AlertService.this.setTicker(m); }
+    @android.webkit.JavascriptInterface public void setGamecastSize(String s) { AlertService.this.setGamecastSize(s); }
   }
   WebView makeWeb(String url) {
     WebView wv = new WebView(this);
@@ -212,7 +249,7 @@ public class AlertService extends Service {
       p.flags |= WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED;
       // top-left so it never covers the prop/parlay card that lives bottom-left
       p.gravity = Gravity.START | Gravity.TOP; p.x = dp(14); p.y = dp(20);
-      p.width = dp(360); p.height = dp(400);
+      int[] gd = gcDims(); p.width = gd[0]; p.height = gd[1];
       gamecast = wv; wm.addView(gamecast, p); wv.requestFocus();
       android.util.Log.i("HOMETV", "gamecast shown");
     } catch (Exception e) { android.util.Log.e("HOMETV", "gamecast fail", e); gamecast = null; }
@@ -341,6 +378,7 @@ public class AlertService extends Service {
         else if (path.startsWith("/gamecast/toggle")) h.post(new Runnable(){ public void run(){ toggleGamecast(); } });
         else if (path.startsWith("/gamecast/show")) h.post(new Runnable(){ public void run(){ showGamecast(); } });
         else if (path.startsWith("/gamecast/hide")) h.post(new Runnable(){ public void run(){ hideGamecast(); } });
+        else if (path.startsWith("/ticker/")) { final String m = path.substring(8).replaceAll("[^a-z]", ""); setTicker(m.length() > 0 ? m : "off"); }
         else if (path.startsWith("/bug/clear")) clearBug();
         else if (path.startsWith("/bug")) { try { JSONObject o = new JSONObject(b); showBug(o.optString("text"), o.optString("logo")); } catch (Exception e) {} }
         OutputStream o = s.getOutputStream();
@@ -351,5 +389,5 @@ public class AlertService extends Service {
     }
   }
 
-  @Override public void onDestroy() { running = false; try { if (server != null) server.close(); } catch (Exception e) {} dismissCard(); clearBug(); hidePropCard(); hideGamecast(); if (cur == this) cur = null; super.onDestroy(); }
+  @Override public void onDestroy() { running = false; try { if (server != null) server.close(); } catch (Exception e) {} dismissCard(); clearBug(); hidePropCard(); hideGamecast(); hideTicker(); if (cur == this) cur = null; super.onDestroy(); }
 }

@@ -19,7 +19,8 @@ public class GcAccessibilityService extends AccessibilityService {
   // Home button: from an app -> welcome screen; double-press on the welcome screen -> back to the last app.
   private static final java.util.Set<String> IGNORE = new java.util.HashSet<String>(java.util.Arrays.asList(
       "com.android.systemui", "android", "com.amazon.tv.launcher", "com.amazon.vizzini", "com.amazon.tv.settings.v2",
-      "com.amazon.device.software.ota", "com.amazon.tv.notificationcenter", "com.amazon.tv.quicksettings.ui"));
+      "com.amazon.device.software.ota", "com.amazon.tv.notificationcenter", "com.amazon.tv.quicksettings.ui",
+      "com.amazon.ftv.profilepicker", "com.tabdeveloper.tvoverlay", "com.spocky.projengmenu", "com.amazon.tv.oobe", "com.amazon.ftv.screensaver"));
   private String curFg = null;
   private long seqStart = 0; private int seqCount = 0; private String seqOrigin = null;
 
