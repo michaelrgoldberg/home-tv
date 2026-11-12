@@ -97,6 +97,29 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 .grow{display:block;background:#121f38;border:.18vw solid #243352;border-radius:.9vw;padding:.9vw 1.1vw;margin:.8vw 0;outline:none;cursor:pointer}
 .grow:focus{border-color:#ffcc00;background:#1a2a4a}
 .grow>b{display:block;font-size:1.35vw;margin-bottom:.2vw}.grow span b{font-size:inherit}
+#gmPage{position:fixed;inset:0;background:#070b14;z-index:55;display:none;padding:1.6vw 3vw 2vw;overflow-y:auto}
+#gmPage.show{display:block}
+.gmhead{display:flex;align-items:baseline;gap:1.4vw;margin-bottom:.8vw}
+.gmhead h2{margin:0;font-size:2vw}
+.gmsub{color:#9aa7c2;font-size:1.02vw}
+.gmbar{display:flex;flex-wrap:wrap;gap:.5vw;margin:.4vw 0}
+.gmbar .lbl2{color:#6f7d9b;font-size:.95vw;font-weight:800;letter-spacing:.08em;align-self:center;width:7.5vw}
+.gmchip{background:#121a33;border:.16vw solid #33406b;color:#fff;border-radius:2vw;padding:.4vw 1.1vw;font-size:1.05vw;font-weight:700;outline:none;cursor:pointer}
+.gmchip:focus{border-color:#ffcc00}
+.gmchip.on{background:#ffcc00;color:#111;border-color:#ffcc00}
+.gmgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:1vw;margin-top:1vw}
+.gmc{background:#101930;border:.18vw solid #223052;border-radius:1vw;padding:1vw 1.1vw;outline:none;cursor:pointer;display:flex;flex-direction:column;gap:.35vw;min-height:9.5vw}
+.gmc:focus{border-color:#ffcc00;background:#182544;transform:scale(1.02)}
+.gmc .top{display:flex;align-items:center;gap:.6vw}
+.gmc .em{font-size:1.9vw}
+.gmc .sv{margin-left:auto;font-size:.8vw;font-weight:900;border-radius:.4vw;padding:.12vw .5vw}
+.gmc .sv.nf{background:#d90b10;color:#fff}.gmc .sv.pv{background:#1a98ff;color:#04223a}
+.gmc b{font-size:1.18vw;line-height:1.2}
+.gmc .meta{color:#ffcc00;font-size:.95vw;font-weight:700}
+.gmc .d{color:#9fb0d6;font-size:.95vw;line-height:1.35}
+.gmc .soon{color:#2ec47a;font-weight:800;font-size:.9vw}
+.gmfoot{color:#6f7d9b;font-size:1vw;margin-top:1.4vw}
+@media (max-width:900px){.gmgrid{grid-template-columns:repeat(2,1fr)}}
 .grow span{color:#cdd7ee;font-size:1.02vw;line-height:1.4}
 #privBtn{position:absolute;top:1.1vw;right:19vw;z-index:9;font-size:1vw;padding:.35vw .9vw;border-radius:2vw;background:rgba(10,15,30,.55);color:#cdd7ee;border:.14vw solid rgba(255,255,255,.25);cursor:pointer;outline:none}
 #privBtn:focus{border-color:#ffcc00;color:#fff;box-shadow:0 0 0 .18vw rgba(255,204,0,.35)}
@@ -244,13 +267,15 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
   </div>
   <div class="go"><button class="gobtn focusable" id="goWatch">🎬&nbsp; What to Watch</button><button class="gobtn focusable" id="goSp" style="background:#c62828;color:#fff">🏟️&nbsp; Sports</button><button class="gobtn focusable" id="goAmb" style="background:#ff8a3d;color:#2a1200">🌅&nbsp; Ambient</button><button class="gobtn focusable" id="goSleep" style="background:#b9a6ff;color:#16102e">🌙&nbsp; Sleep</button><button class="gobtn focusable" id="goGames" style="background:#2ec47a;color:#06130c">🎮&nbsp; Games</button><button class="gobtn focusable" id="goGH" style="background:#fff;color:#1a3a8f">🏠&nbsp; Google Home</button></div>
 </div>
-<div id="gmenu" class="pvdlg"><div class="pvbox">
-  <h3>🎮 Games</h3>
-  <div class="psub">Both are included with what you already pay for — no ads, no purchases. Phones become the controllers.</div>
-  <div class="grow focusable" tabindex="0" data-game="netflix"><b>Netflix Games</b><span>Open Netflix → <b>Games</b> row at the top → pick a game → scan the QR with a phone. One phone per player.</span></div>
-  <div class="grow focusable" tabindex="0" data-game="prime"><b>Prime Video · GameNight</b><span>Open Prime Video → <b>Games</b> tab. Party games like Clue, Taboo and Ticket to Ride; everyone's phone is a controller. Big titles stream too (those want a Bluetooth gamepad).</span></div>
-  <div class="psub" style="margin-top:.6vw">OK opens the app · Back closes</div>
-</div></div>
+<div id="gmPage">
+  <div class="gmhead"><h2>🎮 Games</h2><span class="gmsub">Included with Netflix and Prime — no ads, no purchases. 📱 = phones are the controllers · 🎮 = needs a Bluetooth gamepad.</span></div>
+  <div class="gmbar" id="gmSvc"></div>
+  <div class="gmbar" id="gmPly"></div>
+  <div class="gmbar" id="gmTyp"></div>
+  <div class="gmgrid" id="gmGrid"></div>
+  <div class="gmfoot">OK = how to play &amp; open the app · Back = welcome screen · The Prime list rotates monthly — tell Claude "refresh the games list".</div>
+</div>
+<div id="gdet" class="pvdlg"><div class="pvbox" id="gdetBox"></div></div>
 <script src="device.js"></script>
 <script>
 // Personal settings (names, location, schedules) are NOT in this public file.
@@ -684,11 +709,77 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
 
   // ---------- open / close ----------
   function openWatch(){ home.classList.add('hide'); try{if(window.renderRails)renderRails();}catch(e){} try{history.pushState({w:1},'');}catch(e){} var f=document.querySelector('#grid .card')||document.querySelector('[data-kind]'); if(f) f.focus(); }
+  // ---------- Games catalog: every playable TV game across Netflix and Prime, one menu ----------
+  function esc(s){return String(s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  var GAMES=[
+    {t:'LEGO Party!',svc:'nf',em:'🧱',type:'party',pl:'1–4',rating:'E',ctrl:'phone',d:'Mario-Party-style board romp with LEGO minigames. Great with the kids.'},
+    {t:'Pictionary: Game Night',svc:'nf',em:'🎨',type:'party',pl:'2–8 · teams',rating:'E',ctrl:'phone',d:'Draw on your phone, everyone guesses on the TV.'},
+    {t:'Boggle Party',svc:'nf',em:'🔤',type:'word',pl:'1–8',rating:'E',ctrl:'phone',d:'Find words in the letter grid together — fast rounds.'},
+    {t:'Scrabble Shake-Up',svc:'nf',em:'🧩',type:'word',pl:'2–6',rating:'E',ctrl:'phone',soon:'arrives Nov 17',d:'Everyone plays at once; a new twist every turn.'},
+    {t:'Scattergories Party',svc:'nf',em:'⏱️',type:'word',pl:'2–8 · teams',rating:'E',ctrl:'phone',soon:'arrives Nov 17',d:'Shout words that fit the category before the clock runs out.'},
+    {t:'Codenames Party',svc:'nf',em:'🕵️',type:'board',pl:'4+ · teams',rating:'E10',ctrl:'phone',d:'The classic word-clue spy game, team vs team.'},
+    {t:'Tetris Time Warp',svc:'nf',em:'🟪',type:'puzzle',pl:'1–4',rating:'E',ctrl:'phone',d:'Tetris with eras — battle or co-op through Tetris history.'},
+    {t:'Overcooked! All You Can Eat',svc:'nf',em:'🍳',type:'coop',pl:'1–4',rating:'E',ctrl:'phone',d:'Chaotic co-op cooking. Loud, hilarious, family favorite.'},
+    {t:'The Jackbox Party Essentials',svc:'nf',em:'🤣',type:'party',pl:'3–8 + audience',rating:'T',ctrl:'phone',d:'Quiplash-style bluff and joke games. Teens and up.'},
+    {t:'Party Crashers: Fool Your Friends',svc:'nf',em:'🎭',type:'party',pl:'4–8',rating:'T',ctrl:'phone',d:'Social-deduction bluffing — find the impostor.'},
+    {t:'GIFTED (Netflix is a Joke)',svc:'nf',em:'🎤',type:'trivia',pl:'2–8',rating:'T',ctrl:'phone',d:'Comedy quiz hosted by stand-ups. Adult humor.'},
+    {t:'Clue',svc:'pv',em:'🔎',type:'board',pl:'2–6',rating:'E10',ctrl:'phone',d:'The murder-mystery board classic, phones as your detective pads.'},
+    {t:'Ticket to Ride',svc:'pv',em:'🚂',type:'board',pl:'2–5',rating:'E',ctrl:'phone',d:'Build train routes across the map — the board-game hit.'},
+    {t:'Taboo',svc:'pv',em:'🙊',type:'party',pl:'4+ · teams',rating:'E10',ctrl:'phone',d:'Describe the word without saying the forbidden ones.'},
+    {t:'Courtroom Chaos',svc:'pv',em:'⚖️',type:'party',pl:'3–8',rating:'T',ctrl:'phone',d:'Improv courtroom arguments — everyone pleads on their phone.'},
+    {t:'Sushi Go!',svc:'pv',em:'🍣',type:'board',pl:'2–5',rating:'E',ctrl:'phone',soon:'coming soon',d:'Quick card-drafting — pick the best sushi combos.'},
+    {t:'Madden NFL 27',svc:'pv',em:'🏈',type:'sports',pl:'1–2',rating:'E',ctrl:'pad',d:'Full Madden, streamed instantly — nothing to install.'},
+    {t:'NBA THE RUN',svc:'pv',em:'🏀',type:'sports',pl:'1–2',rating:'E',ctrl:'pad',d:'Arcade 3-on-3 basketball.'},
+    {t:'Disney Epic Mickey: Rebrushed',svc:'pv',em:'🖌️',type:'adventure',pl:'1',rating:'E10',ctrl:'pad',d:'Beautiful Disney platformer — paint and thinner reshape the world.'},
+    {t:'Mixtape',svc:'pv',em:'📼',type:'adventure',pl:'1',rating:'T',ctrl:'pad',d:'Story adventure about one last night with a mixtape soundtrack.'},
+    {t:'Police Simulator: Patrol Officers',svc:'pv',em:'🚓',type:'sim',pl:'1–2',rating:'E10',ctrl:'pad',d:'Walk a beat, write tickets, keep the peace.'},
+    {t:'Kingdom Come: Deliverance II',svc:'pv',em:'⚔️',type:'adventure',pl:'1',rating:'M',ctrl:'pad',d:'Huge medieval RPG. Mature — not one for the kids.'}
+  ];
+  var TYPE_LABEL={party:'Party',word:'Word',trivia:'Trivia',board:'Board & cards',puzzle:'Puzzle',coop:'Co-op',sports:'Sports',adventure:'Adventure',sim:'Simulation'};
+  var gmF={svc:'all',ply:'any',typ:'all'};
+  var GSV=[['all','All'],['nf','Netflix'],['pv','Prime Video']];
+  var GPL=[['any','Any players'],['solo','Solo OK'],['two','2 players'],['party','Party 3+'],['kids','👧 Kid-safe']];
+  var GTY=[['all','All types'],['party','🎉 Party'],['word','🔤 Word & trivia'],['board','🎲 Board & cards'],['coop','🍳 Co-op & puzzle'],['adventure','🗺 Adventure & sim'],['sports','🏈 Sports']];
+  function gmChipRow(el,label,list,cur,key){ el.innerHTML='<span class="lbl2">'+label+'</span>'+list.map(function(o){ return '<button class="gmchip focusable'+(cur===o[0]?' on':'')+'" data-gmf="'+key+':'+o[0]+'">'+o[1]+'</button>'; }).join(''); }
+  function gmMatch(g){
+    if(gmF.svc!=='all'&&g.svc!==gmF.svc) return false;
+    if(gmF.typ!=='all'){ var t=gmF.typ; var grp={coop:['coop','puzzle'],word:['word','trivia'],adventure:['adventure','sim'],board:['board'],party:['party'],sports:['sports']}[t]||[t]; if(grp.indexOf(g.type)<0) return false; }
+    if(gmF.ply==='solo'&&!/^1/.test(g.pl)) return false;
+    if(gmF.ply==='two'&&!/2/.test(g.pl)) return false;
+    if(gmF.ply==='party'&&!/[3-9]\+?|teams|audience|[–-][4-9]/.test(g.pl)) return false;
+    if(gmF.ply==='kids'&&(g.rating==='T'||g.rating==='M')) return false;
+    return true; }
+  function gmCard(g,i){ return '<div class="gmc focusable" tabindex="0" data-gmi="'+i+'"><div class="top"><span class="em">'+g.em+'</span><span class="sv '+g.svc+'">'+(g.svc==='nf'?'NETFLIX':'PRIME')+'</span></div><b>'+esc(g.t)+'</b>'+
+    '<span class="meta">👥 '+esc(g.pl)+' · '+(g.ctrl==='phone'?'📱 phones':'🎮 gamepad')+' · '+g.rating+'</span>'+(g.soon?'<span class="soon">🗓 '+esc(g.soon)+'</span>':'')+'<span class="d">'+esc(g.d)+'</span></div>'; }
+  function gmRender(){
+    gmChipRow(document.getElementById('gmSvc'),'WHERE',GSV,gmF.svc,'svc');
+    gmChipRow(document.getElementById('gmPly'),'PLAYERS',GPL,gmF.ply,'ply');
+    gmChipRow(document.getElementById('gmTyp'),'TYPE',GTY,gmF.typ,'typ');
+    var out=[]; GAMES.forEach(function(g,i){ if(gmMatch(g)) out.push(gmCard(g,i)); });
+    document.getElementById('gmGrid').innerHTML=out.length?out.join(''):'<div style="grid-column:1/-1;color:#7f8db0;font-size:1.1vw">Nothing fits those filters.</div>'; }
+  function gmDetail(i){ var g=GAMES[i]; if(!g) return; var app=g.svc==='nf'?'Netflix':'Prime Video';
+    document.getElementById('gdetBox').innerHTML='<h3>'+g.em+' '+esc(g.t)+'</h3>'+
+      '<div class="psub">'+esc(TYPE_LABEL[g.type]||g.type)+' · 👥 '+esc(g.pl)+' · rated '+g.rating+(g.rating==='M'?' (adults)':'')+' · on <b>'+app+'</b>'+(g.soon?' · '+esc(g.soon):'')+'</div>'+
+      '<p style="font-size:1.1vw;color:#dfe7f6">'+esc(g.d)+'</p>'+
+      '<p style="font-size:1.02vw;color:#9fb0d6">'+(g.ctrl==='phone'
+        ?'How it plays: open '+app+(g.svc==='nf'?' → <b>Games</b> row at the top':' → <b>Games</b> tab')+' → find <b>'+esc(g.t)+'</b> → everyone scans the QR on the TV and plays from their phone.'
+        :'How it plays: open '+app+' → <b>Games</b> tab → find <b>'+esc(g.t)+'</b>. Streams instantly from the cloud; pair a Bluetooth gamepad to play.')+'</p>'+
+      '<div class="grow focusable" tabindex="0" data-game="'+(g.svc==='nf'?'netflix':'prime')+'"><b>▶ Open '+app+'</b></div>'+
+      '<div class="psub" style="margin-top:.4vw">Back closes</div>';
+    document.getElementById('gdet').classList.add('show'); var f=document.querySelector('#gdet .grow'); if(f) f.focus(); }
+  window.W2W_GM={ open:function(){ document.getElementById('gmPage').classList.add('show'); gmRender(); try{history.pushState({gm:1},'');}catch(e){} var f=document.querySelector('#gmGrid .gmc')||document.querySelector('.gmchip'); if(f) f.focus(); },
+    isOpen:function(){ return document.getElementById('gmPage').classList.contains('show'); },
+    close:function(){ var d=document.getElementById('gdet'); if(d.classList.contains('show')){ d.classList.remove('show'); var f=document.querySelector('#gmGrid .gmc'); if(f) f.focus(); return true; }
+      var pg=document.getElementById('gmPage'); if(!pg.classList.contains('show')) return false; pg.classList.remove('show'); var gb=document.getElementById('goGames'); if(gb) gb.focus(); return true; } };
+  window.addEventListener('popstate',function(){ var d=document.getElementById('gdet'); if(d) d.classList.remove('show'); var pg=document.getElementById('gmPage'); if(pg) pg.classList.remove('show'); });
+  document.getElementById('gmPage').addEventListener('click',function(e){ e.stopPropagation();
+    var c=e.target.closest('[data-gmf]'); if(c){ var kv=c.dataset.gmf.split(':'); gmF[kv[0]]=kv[1]; gmRender(); var again=document.querySelector('[data-gmf="'+c.dataset.gmf+'"]'); if(again) again.focus(); return; }
+    var card=e.target.closest('[data-gmi]'); if(card){ gmDetail(+card.dataset.gmi); return; } });
+  document.getElementById('gdet').addEventListener('click',function(e){ e.stopPropagation();
+    var gr=e.target.closest('[data-game]'); if(gr){ var pk=gr.dataset.game==='netflix'?'com.netflix.ninja':'com.amazon.firebat';
+      location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LEANBACK_LAUNCHER;package='+pk+';launchFlags=0x10008000;end'; } });
   home.addEventListener('click',function(e){e.stopPropagation(); if(e.target.closest&&e.target.closest('#priv')){ return; }
-  var gr=e.target.closest&&e.target.closest('[data-game]'); if(gr){ var pk=gr.dataset.game==='netflix'?'com.netflix.ninja':'com.amazon.firebat';
-    location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LEANBACK_LAUNCHER;package='+pk+';launchFlags=0x10008000;end'; return; }
-  if(e.target.closest&&e.target.closest('#gmenu')){ return; }
-  if(e.target.closest&&e.target.closest('#goGames')){ document.getElementById('gmenu').classList.add('show'); var gf=document.querySelector('#gmenu .grow'); if(gf) gf.focus(); return; } if(e.target.closest&&e.target.closest('#goBack')){ try{ if(window.TV&&TV.returnToApp) TV.returnToApp(); }catch(x){} return; } if(e.target.closest&&e.target.closest('#privBtn')){ openPriv(); return; } if(e.target.closest&&e.target.closest('#goNative')){ try{ if(window.TV&&TV.nativeHome){ TV.nativeHome(); return; } }catch(x){} location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.HOME;package=com.amazon.tv.launcher;launchFlags=0x10000000;end'; return; } if(e.target.closest&&e.target.closest('#goGH')){ location.href='intent://home.google.com/u/0/home#Intent;scheme=https;package=com.amazon.cloud9;S.browser_fallback_url=https%3A%2F%2Fhome.google.com%2Fu%2F0%2Fhome;end'; return; } if(e.target.closest&&e.target.closest('#goAmb')){ W2W_AMB.open(); return; } if(e.target.closest&&e.target.closest('#goSp')){ W2W_SP.open(); return; } if(e.target.closest&&e.target.closest('#goSleep')){ W2W_SLEEP.open(); return; } openWatch();});
+  if(e.target.closest&&e.target.closest('#goGames')){ W2W_GM.open(); return; } if(e.target.closest&&e.target.closest('#goBack')){ try{ if(window.TV&&TV.returnToApp) TV.returnToApp(); }catch(x){} return; } if(e.target.closest&&e.target.closest('#privBtn')){ openPriv(); return; } if(e.target.closest&&e.target.closest('#goNative')){ try{ if(window.TV&&TV.nativeHome){ TV.nativeHome(); return; } }catch(x){} location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.HOME;package=com.amazon.tv.launcher;launchFlags=0x10000000;end'; return; } if(e.target.closest&&e.target.closest('#goGH')){ location.href='intent://home.google.com/u/0/home#Intent;scheme=https;package=com.amazon.cloud9;S.browser_fallback_url=https%3A%2F%2Fhome.google.com%2Fu%2F0%2Fhome;end'; return; } if(e.target.closest&&e.target.closest('#goAmb')){ W2W_AMB.open(); return; } if(e.target.closest&&e.target.closest('#goSp')){ W2W_SP.open(); return; } if(e.target.closest&&e.target.closest('#goSleep')){ W2W_SLEEP.open(); return; } openWatch();});
   window.addEventListener('popstate',function(ev){ if(ev.state&&ev.state.w) return; if(!document.getElementById('detail').classList.contains('show') && !document.getElementById('picker').classList.contains('show')) home.classList.remove('hide'); });
   window.W2W_HOME_OPEN=function(){return !home.classList.contains('hide');};
   window.W2W_GOHOME=function(){ home.classList.remove('hide'); tick(); var b=document.getElementById('goWatch'); if(b) b.focus(); };
@@ -1293,7 +1384,7 @@ function closeOverlays(){
 window.addEventListener('popstate',function(){closeOverlays();});
 window.W2W_BACK=function(){
   if(window.W2W_PRIV&&W2W_PRIV.isOpen()){ W2W_PRIV.close(); var pb=document.getElementById('privBtn'); if(pb) pb.focus(); return true; } // Back closes the privacy panel, never the app
-  var gme=document.getElementById('gmenu'); if(gme&&gme.classList.contains('show')){ gme.classList.remove('show'); var gb=document.getElementById('goGames'); if(gb) gb.focus(); return true; }
+  if(window.W2W_GM&&W2W_GM.close()) return true;
   if(window.W2W_SLEEP&&W2W_SLEEP.isOpen()){ var wasRun=W2W_SLEEP.running(); W2W_SLEEP.close(); if(!wasRun){ var z=document.getElementById('goSleep'); if(z) z.focus(); } return true; }
   if(window.W2W_SP&&W2W_SP.isOpen()){ W2W_SP.close(); var s=document.getElementById('goSp'); if(s) s.focus(); return true; }
   if(window.W2W_AMB&&W2W_AMB.isOpen()){ W2W_AMB.close(); var m=document.getElementById('goAmb'); if(m&&W2W_HOME_OPEN()) m.focus(); return true; }
