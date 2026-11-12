@@ -70,6 +70,8 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #home .top{display:flex;justify-content:space-between;align-items:flex-start;position:relative}
 #goNative{position:absolute;top:1.1vw;left:2.2vw;z-index:9;font-size:1vw;padding:.35vw .9vw;border-radius:2vw;background:rgba(10,15,30,.55);color:#cdd7ee;border:.14vw solid rgba(255,255,255,.25);cursor:pointer;outline:none}
 #goNative:focus{border-color:#ffcc00;color:#fff;box-shadow:0 0 0 .18vw rgba(255,204,0,.35)}
+#goBack{position:absolute;top:1.1vw;left:11vw;z-index:9;font-size:1vw;padding:.35vw .9vw;border-radius:2vw;background:rgba(10,15,30,.55);color:#cdd7ee;border:.14vw solid rgba(255,255,255,.25);cursor:pointer;outline:none}
+#goBack:focus{border-color:#ffcc00;color:#fff;box-shadow:0 0 0 .18vw rgba(255,204,0,.35)}
 #privBtn{position:absolute;top:2.5vw;right:2.2vw;z-index:9;font-size:1vw;padding:.35vw .9vw;border-radius:2vw;background:rgba(10,15,30,.55);color:#cdd7ee;border:.14vw solid rgba(255,255,255,.25);cursor:pointer;outline:none}
 #privBtn:focus{border-color:#ffcc00;color:#fff;box-shadow:0 0 0 .18vw rgba(255,204,0,.35)}
 #privBtn.active{border-color:#e5533c;color:#ffb3a7}
@@ -195,6 +197,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
   <div id="tk" tabindex="0"><span class="lab">SCORES</span><div class="win"><div class="run" id="tkRun"></div></div></div>
   <div class="credit" id="bgCredit"></div>
   <button id="goNative" class="focusable" title="Open the Hisense / Fire TV home screen">⌂ Hisense Home</button>
+  <button id="goBack" class="focusable" style="display:none" title="Return to the app you were in">↩ Back</button>
   <button id="privBtn" class="focusable" title="Privacy: hide props, calendar or earnings">🔒 Privacy</button>
   <div id="priv" role="dialog" aria-label="Privacy"><div class="pbox"><h2>🔒 Privacy</h2><div class="psub">Hide things from the screen when someone else is in the room. OK flips a switch · Back closes.</div><div id="privRows"></div></div></div>
   <div class="top">
@@ -265,6 +268,9 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
     if(k==='*'){ var all=PRIV_ROWS.every(function(x){return o[x[0]];}); PRIV_ROWS.forEach(function(x){ o[x[0]]=!all; }); } else { o[k]=!o[k]; }
     setPriv(o); var again=document.querySelector('[data-priv="'+k+'"]'); if(again) again.focus(); });
   setTimeout(paintPriv, 0);
+  // ↩ Back to <last app> (app v2.6+): label refreshes whenever the welcome screen comes back into view
+  function paintBack(){ var b=document.getElementById('goBack'); if(!b) return; var lab=''; try{ if(window.TV&&TV.lastAppLabel) lab=TV.lastAppLabel()||''; }catch(e){} b.style.display=lab?'':'none'; if(lab) b.textContent='↩ Back to '+lab; }
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden) paintBack(); }); setTimeout(paintBack, 600);
   var TK_SPEED=1; try{ TK_SPEED=parseFloat(localStorage.getItem('w2w.tkSpeed'))||1; }catch(e){} if(!(TK_SPEED>=0.4&&TK_SPEED<=3)) TK_SPEED=1;
   function pad(n){return ('0'+n).slice(-2);}
   function iso(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
@@ -636,7 +642,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
 
   // ---------- open / close ----------
   function openWatch(){ home.classList.add('hide'); try{if(window.renderRails)renderRails();}catch(e){} try{history.pushState({w:1},'');}catch(e){} var f=document.querySelector('#grid .card')||document.querySelector('[data-kind]'); if(f) f.focus(); }
-  home.addEventListener('click',function(e){e.stopPropagation(); if(e.target.closest&&e.target.closest('#priv')){ return; } if(e.target.closest&&e.target.closest('#privBtn')){ openPriv(); return; } if(e.target.closest&&e.target.closest('#goNative')){ try{ if(window.TV&&TV.nativeHome){ TV.nativeHome(); return; } }catch(x){} location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.HOME;package=com.amazon.tv.launcher;launchFlags=0x10000000;end'; return; } if(e.target.closest&&e.target.closest('#goGH')){ location.href='https://home.google.com/u/0/home'; return; } if(e.target.closest&&e.target.closest('#goAmb')){ W2W_AMB.open(); return; } if(e.target.closest&&e.target.closest('#goSp')){ W2W_SP.open(); return; } if(e.target.closest&&e.target.closest('#goSleep')){ W2W_SLEEP.open(); return; } openWatch();});
+  home.addEventListener('click',function(e){e.stopPropagation(); if(e.target.closest&&e.target.closest('#priv')){ return; } if(e.target.closest&&e.target.closest('#goBack')){ try{ if(window.TV&&TV.returnToApp) TV.returnToApp(); }catch(x){} return; } if(e.target.closest&&e.target.closest('#privBtn')){ openPriv(); return; } if(e.target.closest&&e.target.closest('#goNative')){ try{ if(window.TV&&TV.nativeHome){ TV.nativeHome(); return; } }catch(x){} location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.HOME;package=com.amazon.tv.launcher;launchFlags=0x10000000;end'; return; } if(e.target.closest&&e.target.closest('#goGH')){ location.href='https://home.google.com/u/0/home'; return; } if(e.target.closest&&e.target.closest('#goAmb')){ W2W_AMB.open(); return; } if(e.target.closest&&e.target.closest('#goSp')){ W2W_SP.open(); return; } if(e.target.closest&&e.target.closest('#goSleep')){ W2W_SLEEP.open(); return; } openWatch();});
   window.addEventListener('popstate',function(ev){ if(ev.state&&ev.state.w) return; if(!document.getElementById('detail').classList.contains('show') && !document.getElementById('picker').classList.contains('show')) home.classList.remove('hide'); });
   window.W2W_HOME_OPEN=function(){return !home.classList.contains('hide');};
   window.W2W_GOHOME=function(){ home.classList.remove('hide'); tick(); var b=document.getElementById('goWatch'); if(b) b.focus(); };
