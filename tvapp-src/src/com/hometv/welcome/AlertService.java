@@ -82,7 +82,7 @@ public class AlertService extends Service {
     else if ("gamecast.toggle".equals(act)) h.post(new Runnable(){ public void run(){ toggleGamecast(); } });
     else if ("gamecast.show".equals(act)) h.post(new Runnable(){ public void run(){ showGamecast(); } });
     else if ("gamecast.hide".equals(act)) h.post(new Runnable(){ public void run(){ hideGamecast(); } });
-    if (!running) { running = true; new Thread(new Server()).start(); h.postDelayed(new Runnable(){ public void run(){ syncTicker(); } }, 3000); }
+    if (!running) { running = true; new Thread(new Server()).start(); h.postDelayed(new Runnable(){ public void run(){ syncTicker(); } }, 3000); h.postDelayed(homeWatch, 4000); }
     return START_STICKY;
   }
 
@@ -100,6 +100,67 @@ public class AlertService extends Service {
     c.setRequestMethod("POST"); c.setDoOutput(true); c.setConnectTimeout(2000); c.setReadTimeout(2000); c.setRequestProperty("Content-Type", "application/json");
     OutputStream o = c.getOutputStream(); o.write(json.getBytes("UTF-8")); o.close(); c.getResponseCode(); c.disconnect(); } catch (Exception e) {} } }).start(); }
 
+  // ---------- Home guard without accessibility (older Fire OS, e.g. the projector Fire Stick) ----------
+  // Watches which app is in front (usage access) and brings the welcome screen back whenever the Amazon home shows up.
+  String hwFg = null; long hwSeqStart = 0; int hwSeq = 0; String hwOrigin = null; long hwLast = 0;
+  final Runnable homeWatch = new Runnable() { public void run() {
+    long delay = 250;
+    try {
+      android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+      if (GcAccessibilityService.alive || !pm.isInteractive()) delay = 2000;
+      else {
+        android.app.usage.UsageStatsManager um = (android.app.usage.UsageStatsManager) getSystemService("usagestats");
+        long now = System.currentTimeMillis();
+        android.app.usage.UsageEvents ev = um.queryEvents(Math.max(hwLast, now - 10000), now + 1000);
+        android.app.usage.UsageEvents.Event e = new android.app.usage.UsageEvents.Event();
+        String pkg = null, cls = null;
+        while (ev.hasNextEvent()) { ev.getNextEvent(e); if (e.getEventType() == android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND) { pkg = e.getPackageName(); cls = e.getClassName(); hwLast = e.getTimeStamp() + 1; } }
+        if (pkg != null) onFg(pkg, cls == null ? "" : cls);
+      }
+    } catch (Exception ex) { delay = 3000; }
+    h.postDelayed(this, delay);
+  } };
+  void onFg(String pkg, String cls) {
+    if (pkg.equals("com.amazon.tv.launcher")) { if (cls.contains("HomeActivity")) hwHome(); return; }
+    if (pkg.equals(getPackageName())) { if (cls.endsWith("MainActivity")) hwFg = pkg; return; }
+    if (GcAccessibilityService.ignored(pkg)) return;
+    hwFg = pkg; cfg().edit().putString("lastApp", pkg).apply();
+  }
+  void hwHome() {
+    if (System.currentTimeMillis() < GcAccessibilityService.graceUntil) return;
+    if (!cfg().getBoolean("homeGuard", true)) return;
+    long now = android.os.SystemClock.uptimeMillis();
+    if (now - hwSeqStart > 1600) { hwSeqStart = now; hwSeq = 1; hwOrigin = hwFg; } else hwSeq++;
+    if (hwSeq >= 2 && getPackageName().equals(hwOrigin) && GcAccessibilityService.returnToLastApp(this)) { hwSeqStart = 0; return; }
+    showCover();
+    try { startActivity(new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT | Intent.FLAG_ACTIVITY_SINGLE_TOP)); } catch (Exception ex) {}
+  }
+  // Android holds new screens ~5 s after Home; an overlay may appear at once, so hide the Amazon home behind one until ours opens.
+  View cover;
+  final Runnable coverTimeout = new Runnable() { public void run() { hideCover(); } };
+  void showCover() {
+    if (cover != null) return;
+    try {
+      LinearLayout box = new LinearLayout(this) {
+        @Override public boolean dispatchKeyEvent(KeyEvent e) {   // swallow the remote while we wait; OK = back to the last app
+          if (e.getAction() == KeyEvent.ACTION_UP && (e.getKeyCode() == KeyEvent.KEYCODE_DPAD_CENTER || e.getKeyCode() == KeyEvent.KEYCODE_ENTER)) { hideCover(); GcAccessibilityService.returnToLastApp(AlertService.this); }
+          if (e.getKeyCode() == KeyEvent.KEYCODE_BACK && e.getAction() == KeyEvent.ACTION_UP) hideCover();
+          return true; }
+      };
+      box.setOrientation(LinearLayout.VERTICAL); box.setGravity(Gravity.CENTER);
+      GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFF0E1A33, 0xFF060A14}); box.setBackground(bg);
+      TextView t = new TextView(this); t.setText("\u2302  Home"); t.setTextColor(Color.WHITE); t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30); t.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL)); t.setGravity(Gravity.CENTER);
+      TextView s2 = new TextView(this); String app = GcAccessibilityService.lastAppLabel(this);
+      s2.setText("Opening your home screen\u2026" + (app.length() > 0 ? "\nPress OK to go back to " + app : "")); s2.setTextColor(0xFF9FB0D6); s2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15); s2.setGravity(Gravity.CENTER); s2.setPadding(0, dp(10), 0, 0);
+      box.addView(t); box.addView(s2);
+      WindowManager.LayoutParams p = overlayParams(true);
+      p.width = ViewGroup.LayoutParams.MATCH_PARENT; p.height = ViewGroup.LayoutParams.MATCH_PARENT; p.gravity = Gravity.TOP | Gravity.START; p.x = 0; p.y = 0;
+      cover = box; wm.addView(cover, p); box.setFocusable(true); box.requestFocus();
+      h.removeCallbacks(coverTimeout); h.postDelayed(coverTimeout, 9000);
+    } catch (Exception e) { cover = null; }
+  }
+  void hideCover() { h.removeCallbacks(coverTimeout); if (cover != null) { try { wm.removeView(cover); } catch (Exception e) {} cover = null; } }
+
   // ---------- view settings: Gamecast size, bottom ticker ----------
   SharedPreferences cfg() { return getSharedPreferences("cfg", MODE_PRIVATE); }
   int[] gcDims() { String s = cfg().getString("gcSize", "m"); if ("s".equals(s)) return new int[]{dp(310), dp(330)}; if ("l".equals(s)) return new int[]{dp(460), dp(468)}; return new int[]{dp(360), dp(400)}; }
@@ -107,7 +168,7 @@ public class AlertService extends Service {
     if (gamecast == null) return; try { WindowManager.LayoutParams p = (WindowManager.LayoutParams) gamecast.getLayoutParams(); int[] d = gcDims(); p.width = d[0]; p.height = d[1]; wm.updateViewLayout(gamecast, p); } catch (Exception e) {} } }); }
   boolean tickerWanted() { String m = cfg().getString("ticker", "off"); return m.length() > 0 && !"off".equals(m); }
   void setTicker(String m) { cfg().edit().putString("ticker", m).apply(); h.post(new Runnable(){ public void run(){ syncTicker(); } }); }
-  void setHomeFront(boolean on) { homeFront = on; h.post(new Runnable(){ public void run(){ syncTicker(); } }); }
+  void setHomeFront(boolean on) { homeFront = on; if (on) h.postDelayed(new Runnable(){ public void run(){ hideCover(); } }, 400); h.post(new Runnable(){ public void run(){ syncTicker(); } }); }
   int tickerH() { return dp(44); }
   void syncTicker() { homeFront = MainActivity.resumed; if (tickerWanted() && !homeFront) showTicker(); else hideTicker(); placePropCard(); }
   void showTicker() {
@@ -389,5 +450,5 @@ public class AlertService extends Service {
     }
   }
 
-  @Override public void onDestroy() { running = false; try { if (server != null) server.close(); } catch (Exception e) {} dismissCard(); clearBug(); hidePropCard(); hideGamecast(); hideTicker(); if (cur == this) cur = null; super.onDestroy(); }
+  @Override public void onDestroy() { running = false; h.removeCallbacks(homeWatch); try { if (server != null) server.close(); } catch (Exception e) {} dismissCard(); clearBug(); hidePropCard(); hideGamecast(); hideTicker(); if (cur == this) cur = null; super.onDestroy(); }
 }

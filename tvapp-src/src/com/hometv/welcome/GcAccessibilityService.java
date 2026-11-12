@@ -21,6 +21,10 @@ public class GcAccessibilityService extends AccessibilityService {
       "com.android.systemui", "android", "com.amazon.tv.launcher", "com.amazon.vizzini", "com.amazon.tv.settings.v2",
       "com.amazon.device.software.ota", "com.amazon.tv.notificationcenter", "com.amazon.tv.quicksettings.ui",
       "com.amazon.ftv.profilepicker", "com.tabdeveloper.tvoverlay", "com.spocky.projengmenu", "com.amazon.tv.oobe", "com.amazon.ftv.screensaver"));
+  public static volatile boolean alive = false;  // false on devices whose Fire OS won't run accessibility services
+  @Override protected void onServiceConnected() { alive = true; }
+  @Override public void onDestroy() { alive = false; super.onDestroy(); }
+  static boolean ignored(String pkg) { return IGNORE.contains(pkg); }
   private String curFg = null;
   private long seqStart = 0; private int seqCount = 0; private String seqOrigin = null;
 
