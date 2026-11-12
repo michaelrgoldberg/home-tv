@@ -106,7 +106,9 @@
   body.corner.focused.legsopen #pp:after{content:"▴▾ pick leg · OK details · hold OK pin · Back close"}
   body.corner.focused.popopen #pp:after{display:none}
   body.corner.focused .pop{bottom:4px}
+  body.corner.swap #pp,body.corner.popopen #pp .scroll{visibility:hidden}
   body.corner .pcard .plegs{max-height:150px;overflow:auto}
+  .plegs.more{-webkit-mask-image:linear-gradient(180deg,#000 80%,rgba(0,0,0,.2));mask-image:linear-gradient(180deg,#000 80%,rgba(0,0,0,.2))}
   .pleg.lsel{background:rgba(255,204,0,.16);outline:1px solid rgba(255,204,0,.6)}
   .pop{position:fixed;left:0;bottom:4px;width:100%;background:linear-gradient(180deg,#1a2642,#0e1526);border:1px solid var(--gold);border-radius:12px;padding:9px 11px;z-index:70;font-size:12px;box-shadow:0 18px 50px -14px #000;opacity:var(--ov)}
   .pop .ph{font-weight:800;margin-bottom:5px}
@@ -457,6 +459,7 @@ function render(){
     document.body.classList.toggle('legsopen', !!openId); document.body.classList.toggle('popopen', !!pop);
     el.innerHTML='<div class="scroll"><div class="list">'+shown.map(cardFor).join('')+'</div></div>'+(pop?legPopover(pop):'');
     var ls=document.querySelector('.pleg.lsel'); if(ls) ls.scrollIntoView({block:'nearest'});
+    [].forEach.call(document.querySelectorAll('.plegs'),function(pl){ var u=function(){ pl.classList.toggle('more', pl.scrollHeight-pl.scrollTop-pl.clientHeight>4); }; pl.onscroll=u; u(); });
     return;
   }
   if(!props.length && !parlays.length){ el.innerHTML='<div class="msg">No props set.<br><span style="font-size:.85em">Tell Mike which props to track and they\'ll show here.</span></div>'; return; }
@@ -532,8 +535,9 @@ function enqueueRise(html, cls, dur, logText){
   pumpRise();
 }
 function pumpRise(){ if(riseBusy) return; if(CORNER && typeof focused!=='undefined' && focused) return; /* browsing: hold until the remote is handed back */ var it=riseQ.shift(); if(!it) return; var r=$('rise'); if(!r) return;
-  riseBusy=true; r.className=it.cls+((CORNER && !isQuiet())?' top':''); r.innerHTML=it.html; void r.offsetWidth; r.classList.add('show');
-  clearTimeout(riseT); riseT=setTimeout(function(){ r.classList.remove('show'); setTimeout(function(){ riseBusy=false; pumpRise(); }, 420); }, it.dur);
+  var swap=CORNER && !isQuiet(); // cards on screen: the pop-up takes their place for a moment instead of covering them
+  riseBusy=true; r.className=it.cls; r.innerHTML=it.html; if(swap) document.body.classList.add('swap'); void r.offsetWidth; r.classList.add('show');
+  clearTimeout(riseT); riseT=setTimeout(function(){ r.classList.remove('show'); setTimeout(function(){ document.body.classList.remove('swap'); riseBusy=false; pumpRise(); }, 420); }, it.dur);
 }
 function showRise(p){
   if(isMuted(p.id)||privProps()) return;

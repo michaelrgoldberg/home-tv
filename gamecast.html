@@ -130,6 +130,10 @@
   .set .it b{display:block;color:#fff;font-size:1.05em}
   .set .it.on{border-color:var(--gold);background:rgba(255,204,0,.14);color:#ffe9a8}
   .set .hint{font-size:.62em;color:#5e6b88;margin-top:5px}
+#sitbox{padding-bottom:14px}
+  #sitbox.more{-webkit-mask-image:linear-gradient(180deg,#000 82%,rgba(0,0,0,.15));mask-image:linear-gradient(180deg,#000 82%,rgba(0,0,0,.15))}
+  .last{background:#0b1220}
+  .last .more{color:var(--gold);font-weight:700;flex:none;visibility:hidden}
   .key{margin-top:6px;font-size:.78em;color:#cdd7ee;display:flex;flex-direction:column;gap:3px}
   .key b{color:#fff}.key .lab{color:var(--muted);font-size:.9em;margin-right:5px}
 </style></head>
@@ -300,7 +304,7 @@ function render(){
   if(expanded){
     var sum=sumCache[g.id]||{};
     var tabs=tabsFor(g); if(tab>=tabs.length) tab=0; var t=tabs[tab];
-    var tabbar='<div class="tabs">'+tabs.map(function(x,i){ var lab=x==='plays'?'PLAYS':x==='away'?('BOX · '+g.away.ab):x==='home'?('BOX · '+g.home.ab):x==='team'?'TEAM':'SHOTS'; return '<span class="'+(i===tab?'on':'')+'">'+esc(lab)+'</span>'; }).join('')+'<span class="hint">'+((t==='away'||t==='home')?'▴▾ pick · OK player':'◂ ▸ tabs · ▴ ▾ scroll')+'</span></div>';
+    var tabbar='<div class="tabs">'+tabs.map(function(x,i){ var lab=x==='plays'?'PLAYS':x==='away'?('BOX · '+g.away.ab):x==='home'?('BOX · '+g.home.ab):x==='team'?'TEAM':'SHOTS'; return '<span class="'+(i===tab?'on':'')+'">'+esc(lab)+'</span>'; }).join('')+'</div>';
     var body;
     if(t==='plays'){
       var sp=(sum.scoring||[]).slice(-7).reverse().map(function(p){ return '<div class="pl"><b>'+esc(p.ab||'')+'</b><span>'+esc(trunc(p.text,54))+'</span>'+(p.score?'<span class="sc">'+esc(p.score)+'</span>':'')+'</div>'; }).join('')||'<div style="color:#9aa7c2">No scoring plays yet</div>';
@@ -311,8 +315,8 @@ function render(){
     else { body=boxScore(g,sum,t); }
     el.innerHTML=head+teamRow(g.away,aLose,g)+teamRow(g.home,hLose,g)+metaRow(g)+tabbar+
       '<div class="sit" id="sitbox" style="overflow:auto;position:relative">'+body+(card?playerCard():'')+'</div>'+
-      '<div class="last"><span class="txt">'+(sum.loading?'Loading…':(g.state==='in'?'Live · updates every 15s':''))+'</span><span class="nav">Back · minimize</span></div>';
-    var sb=$('sitbox'); if(sb){ var selEl=sb.querySelector('.br.sel'); if(selEl&&!card){ var r=selEl.getBoundingClientRect(), b=sb.getBoundingClientRect(); if(r.top<b.top+30||r.bottom>b.bottom) selEl.scrollIntoView({block:'center'}); scrollPos=sb.scrollTop; } else sb.scrollTop=scrollPos; }
+      '<div class="last"><span class="txt">'+(sum.loading?'Loading…':(card?'▴▾ scroll · OK or Back close':((t==='away'||t==='home')?'▴▾ player · OK card · ◂▸ tabs':'◂▸ tabs · ▴▾ scroll')))+'</span><span class="more" id="moreTag">▾ more</span><span class="nav">Back</span></div>';
+    var sb=$('sitbox'); if(sb){ var upd=function(){ var m=sb.scrollHeight-sb.scrollTop-sb.clientHeight>4; sb.classList.toggle('more',m); var mt=$('moreTag'); if(mt) mt.style.visibility=m?'visible':'hidden'; }; sb.onscroll=upd; setTimeout(upd,0); var selEl=sb.querySelector('.br.sel'); if(selEl&&!card){ var r=selEl.getBoundingClientRect(), b=sb.getBoundingClientRect(); if(r.top<b.top+30||r.bottom>b.bottom) selEl.scrollIntoView({block:'center'}); scrollPos=sb.scrollTop; } else sb.scrollTop=scrollPos; }
   } else if(splitPair()){ renderSplit(); } else {
     el.innerHTML=head+teamRow(g.away,aLose,g)+teamRow(g.home,hLose,g)+metaRow(g)+'<div class="sit">'+sitHTML(g)+wpBar(g)+'</div>'+(setOpen?settingsStrip(g):'')+footer(g);
   }

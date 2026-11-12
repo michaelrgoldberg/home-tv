@@ -528,7 +528,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
     if(!me){ me=(c.competitors||[])[0]; op=(c.competitors||[])[1]; }
     var sc=function(x){var s=x&&x.score; return s==null?null:(typeof s==='object'?s.displayValue:s);};
     var st=(c.status||e.status||{}).type||{}; var nets=[]; (c.broadcasts||[]).forEach(function(b){ var n=(b.media&&b.media.shortName)||(b.names&&b.names[0]); if(n) nets.push(n);});
-    return {date:new Date(e.date), state:st.state, detail:st.shortDetail||st.detail||'', home:me&&me.homeAway==='home', my:sc(me), op:sc(op), opTeam:(op||{}).team||{}, win:me&&me.winner, nets:nets}; }
+    return {id:String(e.id||''), date:new Date(e.date), state:st.state, detail:st.shortDetail||st.detail||'', home:me&&me.homeAway==='home', my:sc(me), op:sc(op), myId:String(((me||{}).team||{}).id||''), opTeam:(op||{}).team||{}, win:me&&me.winner, nets:nets}; }
   function mtLoad(){
     var teams=(CFG.teams||[]); if(!teams.length) return;
     Promise.all(teams.map(function(t){ var path=t[0], ab=t[1];
@@ -541,7 +541,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
           var lg=mtGame(posts[posts.length-1],abbr);
           return {id:String(tm.id||''), lg:path, name:tm.name||tm.displayName||ab, logo:tm.logo||'', rec:tm.recordSummary||'', stand:tm.standingSummary||'', last:lg, next:ng}; });
       }); })).then(function(rows){ var now=Date.now(); MT=rows.filter(function(x,i){ if(!x||!x.name) return false; var mode=(teams[i]||[])[2]||'auto'; if(mode==='hide') return false; if(mode==='always') return true;
-        var soon=x.next&&(x.next.state==='in'||(x.next.date-now)<21*864e5), recent=x.last&&(now-x.last.date)<10*864e5; return soon||recent; }); mtRender();
+        var soon=x.next&&(x.next.state==='in'||(x.next.date-now)<21*864e5), recent=x.last&&(now-x.last.date)<10*864e5; return soon||recent; }); mtRender(); mtLiveFill();
         var lgs={}; MT.forEach(function(t){lgs[t.lg]=1;});
         Object.keys(lgs).forEach(function(lg){ fetch('https://site.api.espn.com/apis/v2/sports/'+lg+'/standings').then(function(r){return r.json();}).then(function(j){
           var all=[]; (j.children||[]).forEach(function(ch){ ((ch.standings||{}).entries||[]).forEach(function(e){ var s={}; (e.stats||[]).forEach(function(x){s[x.name]=x;}); all.push({id:String(e.team.id),conf:ch.name,seed:(s.playoffSeed||{}).displayValue,pct:+((s.winPercent||{}).value||0),streak:(s.streak||{}).displayValue}); }); });
@@ -554,6 +554,13 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
           mtRender(); }).catch(function(){}); });
       });
   }
+  // the team-schedule feed has no live score: fill it from the scoreboard while a game is on
+  function mtLiveFill(){ var live=MT.filter(function(t){ return t.next&&t.next.state==='in'; }); if(!live.length) return; var lgs={}; live.forEach(function(t){ lgs[t.lg]=1; });
+    Object.keys(lgs).forEach(function(lg){ fetch('https://site.web.api.espn.com/apis/site/v2/sports/'+lg+'/scoreboard').then(function(r){return r.json();}).then(function(j){
+      (j.events||[]).forEach(function(e){ live.forEach(function(t){ if(t.lg!==lg||String(e.id)!==t.next.id) return; var c=(e.competitions||[])[0]||{}; var st=(e.status||{}).type||{};
+        (c.competitors||[]).forEach(function(x){ var id=String((x.team||{}).id||''); if(id===t.next.myId||id===t.id) t.next.my=x.score; else t.next.op=x.score; });
+        t.next.detail=st.shortDetail||t.next.detail; if(st.state&&st.state!=='in') t.next.state=st.state; }); });
+      mtRender(); }).catch(function(){}); }); }
   function mtLogo(t){var l=(t.logos||[])[0]; return (l&&l.href)||t.logo||'';}
   function mtRender(){
     var box=document.getElementById('mt'); if(!MT.length){box.style.display='none';return;} box.style.display='block';
@@ -561,6 +568,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
     var anyLive=false;
     document.getElementById('mtRows').innerHTML=MT.map(function(t){
       var L=t.last, N=t.next, v0='', v1='';
+      if(N&&N.state==='in'){ if(N.my==null) N.my='–'; if(N.op==null) N.op='–'; }
       if(N&&N.state==='in'){ anyLive=true;
         v0=v1='<span class="live">LIVE</span>'+(ns?'<span class="d">'+(N.home?'vs ':'@ ')+'</span><img src="'+mtLogo(N.opTeam)+'"><span>'+(N.opTeam.abbreviation||'')+'</span>':'<span class="s">'+N.my+'</span><span class="d">–</span><span class="s">'+N.op+'</span><img src="'+mtLogo(N.opTeam)+'"><span class="d">'+(N.opTeam.abbreviation||'')+' · '+N.detail+'</span>');
       } else {
@@ -572,6 +580,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
     }).join('');
     var dots=document.querySelectorAll('#mt .dots i'); if(dots.length){dots[0].className=mtView?'':'on'; dots[1].className=mtView?'on':'';}
     clearTimeout(mtLoad._t); mtLoad._t=setTimeout(mtLoad, anyLive?30000:10*60000);
+    clearTimeout(mtLiveFill._t); if(anyLive) mtLiveFill._t=setTimeout(mtLiveFill, 15000);
   }
   setInterval(function(){ if(!MT.length) return; mtView=1-mtView; document.querySelectorAll('#mt .slot').forEach(function(s){ var v=s.querySelectorAll('.v'); if(v.length<2) return; v[0].classList.toggle('off',mtView===1); v[1].classList.toggle('off',mtView===0); }); var dots=document.querySelectorAll('#mt .dots i'); if(dots.length){dots[0].className=mtView?'':'on'; dots[1].className=mtView?'on':'';} },10000);
 
