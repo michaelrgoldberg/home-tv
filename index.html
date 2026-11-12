@@ -1399,6 +1399,8 @@ else {
 <div class="bar" id="spLg"></div>
 <div id="spBody"><div class="empty">Loading games…</div></div>
 <script src="follow.js"></script>
+<script src="viewopts.js"></script>
+<script>setTimeout(function(){ try{ W2W_VIEW.sync(); }catch(e){} }, 2000);</script>
 </div>
 <script>
 (function(){
@@ -1503,6 +1505,15 @@ else {
       '<button class="chipb focusable'+(getNotify().games?' on':'')+'" data-gamealerts="1">📣 Game alerts'+(getNotify().games?': ON':': off')+'</button>'+
       '<button class="chipb focusable'+((getNotify().games&&lsGet('w2w.banners',true)!==false)?' on':'')+'" data-banner="1">🏷 Top banner'+((getNotify().games&&lsGet('w2w.banners',true)!==false)?': ON':': off')+'</button>'+
       '<button class="chipb focusable" data-opac="1">🌗 Dim: '+opacLabel()+'</button>';
+    var vw=$s('spView'); if(!vw){ vw=document.createElement('div'); vw.id='spView'; vw.className='bar'; ov.parentNode.insertBefore(vw, ov.nextSibling); }
+    vw.style.display=ovOpen?'':'none';
+    var V=window.W2W_VIEW, tk=V?V.ticker():'off';
+    vw.innerHTML=V?('<span class="lbl">LIVE SCORES</span>'+
+      '<button class="chipb focusable'+(tk!=='off'?' on':'')+'" data-vticker="1">📰 Bottom ticker: '+V.tickerLabel()+'</button>'+
+      (tk!=='off'?'<button class="chipb focusable" data-vspeed="1">⏩ Ticker speed: '+V.speedLabel()+'</button>':'')+
+      '<button class="chipb focusable" data-vsize="1">📐 Gamecast size: '+V.sizeLabel()+'</button>'+
+      '<button class="chipb focusable" data-vmulti="1">🔢 Gamecast shows: '+V.multiLabel()+'</button>'+
+      (V.nativeOk()?'':'<span class="lbl" style="margin-left:1vw;opacity:.7">ticker &amp; size need TV app 2.7</span>')):'';
     var bn=$s('spBanner'); if(!bn){ bn=document.createElement('div'); bn.id='spBanner'; var dd=$s('spOv'); dd.parentNode.insertBefore(bn, dd.nextSibling); }
     bn.innerHTML='⭐ <b>Star mode:</b> press OK on a game to cycle <b>★ key moments → 🔔 every score → off</b>. Hold OK on any game to jump to its Gamecast. Press <b>⭐ Done picking</b> when finished. ('+getStars().length+' followed)';
     var have={}; games.forEach(function(g){ if(g.apps.length) have[g.lg[0]]=(have[g.lg[0]]||0)+1;});
@@ -1566,6 +1577,12 @@ else {
     if(e.target.closest('[data-gamealerts]')){ toggleGameAlerts(); bars(); var b5=document.querySelector('[data-gamealerts]'); if(b5) b5.focus(); return; }
     if(e.target.closest('[data-ovmenu]')){ ovOpen=!ovOpen; bars(); var b6=document.querySelector(ovOpen?'[data-gccycle]':'[data-ovmenu]'); if(b6) b6.focus(); return; }
     if(e.target.closest('[data-banner]')){ toggleBanner(); bars(); var b8=document.querySelector('[data-banner]'); if(b8) b8.focus(); return; }
+    var vb=e.target.closest('[data-vticker],[data-vspeed],[data-vsize],[data-vmulti]'); if(vb&&window.W2W_VIEW){ var V=W2W_VIEW, key, msg;
+      if(vb.dataset.vticker){ key='vticker'; var m=V.cycleTicker(); msg={off:'Ticker off',all:'📰 Ticker: every game today, across the bottom while you watch',mine:'📰 Ticker: just the games you follow tonight',props:'📰 Ticker: your games plus live player props, ESPN-style'}[m]; }
+      else if(vb.dataset.vspeed){ key='vspeed'; V.cycleSpeed(); }
+      else if(vb.dataset.vsize){ key='vsize'; V.cycleSize(); msg='📐 Gamecast panel: '+V.sizeLabel(); }
+      else { key='vmulti'; V.cycleMulti(); msg='🔢 Gamecast shows '+V.multiLabel()+' at a time'; }
+      if(msg) spToast(msg); bars(); var bf=document.querySelector('[data-'+key+']')||document.querySelector('[data-vticker]'); if(bf) bf.focus(); return; }
     if(e.target.closest('[data-opac]')){ cycleOpac(); bars(); var b7=document.querySelector('[data-opac]'); if(b7) b7.focus(); return; }
     var g=e.target.closest('[data-g]'); if(g){ var gm=games.filter(function(x){return x.id===g.dataset.g;})[0];
       if(starMode){ if(gm){ var lv=toggleStar(gm); spToast(lv===1?'★ Following — key moments (end of quarter, halfway, close & late)':lv===2?'🔔 Following closely — every score':'☆ Removed'); render(); var again=document.querySelector('[data-g="'+gm.id+'"]'); if(again) again.focus(); } return; }

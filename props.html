@@ -166,6 +166,33 @@
   .focus .fn .ll{color:#9fb0d6;font-weight:400;margin-left:4px}
   .focus .fv{font-weight:800}
   .focus .fc{color:#9fb0d6;font-size:.9em;flex:none}
+
+  /* ---- bottom ticker overlay (?ticker=1): full-width bar drawn over whatever app is playing ---- */
+  body.ticker{margin:0;overflow:hidden;background:transparent}
+  body.ticker #pp,body.ticker #rise,body.ticker #hist{display:none!important}
+  #tk{position:fixed;inset:0;display:flex;align-items:stretch;background:linear-gradient(180deg,rgba(9,14,26,.94),rgba(5,8,16,.97));border-top:2px solid var(--gold);color:#eef3fb;font:700 18px/1 'Segoe UI',Roboto,Arial,sans-serif;opacity:var(--ov,1)}
+  #tk .tab{flex:none;display:flex;align-items:center;gap:6px;padding:0 12px;background:var(--gold);color:#111;font-weight:900;font-size:14px;letter-spacing:.06em}
+  #tk .lane{flex:1;min-width:0;overflow:hidden;position:relative;-webkit-mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 24px),transparent);mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 24px),transparent)}
+  #tk .track{position:absolute;top:0;bottom:0;left:0;display:flex;align-items:center;white-space:nowrap;will-change:transform}
+  #tk .track.static{left:24px}
+  #tk .seg{display:flex;align-items:center;gap:10px;padding-right:40px}
+  @keyframes tkmove{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  #tk .tl{font-size:12px;font-weight:900;color:#0a0f1a;background:#9fb0d6;border-radius:4px;padding:3px 6px;letter-spacing:.06em;margin-left:10px}
+  #tk .tg{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:8px;background:#121b2f;border:1px solid #232d41}
+  #tk .tg.mine{border-color:var(--gold);background:rgba(255,204,0,.10)}
+  #tk .tg.close{border-color:var(--amber);box-shadow:inset 3px 0 0 var(--amber)}
+  #tk .tg img{width:24px;height:24px;object-fit:contain}
+  #tk .tg .lose{opacity:.5}
+  #tk .tg em{font-style:normal;font-size:14px;color:#9fb0d6;margin-left:4px}
+  #tk .tg em.live{color:#ff6b57}
+  #tk .tp{display:flex;align-items:center;gap:6px;padding:3px 10px 3px 4px;border-radius:999px;background:#0f1a2c;border:1px solid #2a3756;font-size:16px}
+  #tk .tp .fc{width:28px;height:28px;border-radius:50%;background:#1a2540 center/cover;flex:none}
+  #tk .tp small{font-size:12px;color:#9fb0d6}
+  #tk .tp .ct b{font-size:19px}
+  #tk .tp .dt{width:12px;height:12px;border-radius:50%;flex:none}
+  #tk .tp.won{border-color:var(--green)}#tk .tp.lost{border-color:var(--red);opacity:.7}
+  #tk .tp.pl{padding-left:10px;border-color:#5b4a12}
+  #tk .msg{padding-left:24px;font-weight:600;font-size:16px;color:#cdd7ee;display:flex;align-items:center;height:100%}
 </style></head>
 <body>
 <div id="pp"><div class="msg">Loading your props…</div></div>
@@ -176,6 +203,7 @@
 'use strict';
 var ESPN='https://site.web.api.espn.com/apis/site/v2/sports/';
 var CORNER=/[?&]corner/.test(location.search); // compact mode for the floating overlay
+var TICKER=/[?&]ticker/.test(location.search); // full-width bottom ticker overlay
 function $(id){return document.getElementById(id);}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function lsGet(k,d){ try{ var v=localStorage.getItem(k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }
@@ -459,6 +487,7 @@ function getPropMode(){ var o=lsGet('w2w.propMode',{}); return {m:o.m||'cycle', 
 function cornerItems(){ return props.concat(parlays).filter(function(x){ return !isSnoozed(x.id); }); }
 function visCount(){ var pm=getPropMode(), n=cornerItems().length; if(pm.m==='all') return n||1; if(pm.m==='few') return Math.min(pm.n, n||1); return 1; }
 function render(){
+  if(TICKER){ renderTicker(); return; }
   var el=$('pp');
   if(privProps()){ el.innerHTML=CORNER?'':'<div class="msg">🔒 Props are hidden by Privacy.<br><span style="font-size:.85em">Welcome screen → 🔒 Privacy (top-right) to show them again.</span></div>'; return; }
   if(CORNER){
@@ -537,7 +566,7 @@ function poll(){
 // ---------- popups: queue, stacking, history ----------
 var riseT=null, riseQ=[], riseBusy=false, histLog=lsGet('w2w.notifyLog',[]);
 function logNote(text){ if(!text) return; histLog.unshift({t:Date.now(), x:text}); histLog=histLog.slice(0,12); lsSet('w2w.notifyLog',histLog); }
-function enqueueRise(html, cls, dur, logText){
+function enqueueRise(html, cls, dur, logText){ if(TICKER) return;
   logNote(logText);
   riseQ.push({html:html, cls:cls||'', dur:dur||6500, log:logText||''});
   // 3+ waiting -> collapse into one "N updates" card instead of a long serial stream
@@ -549,7 +578,7 @@ function pumpRise(){ if(riseBusy) return; if(CORNER && typeof focused!=='undefin
   riseBusy=true; r.className=it.cls; r.innerHTML=it.html; if(swap) document.body.classList.add('swap'); void r.offsetWidth; r.classList.add('show');
   clearTimeout(riseT); riseT=setTimeout(function(){ r.classList.remove('show'); setTimeout(function(){ document.body.classList.remove('swap'); riseBusy=false; pumpRise(); }, 420); }, it.dur);
 }
-function showRise(p){
+function showRise(p){ if(TICKER) return;
   if(isMuted(p.id)||privProps()) return;
   if(p.kind&&p.kind!=='prop'){ var tg=(p.kind==='total'?'Total':p.kind==='ml'?'Moneyline':'Spread')+' · '+(p._status||''); enqueueRise('<div class="gface">'+({bk:'🏀',fb:'🏈',hk:'🏒',bb:'⚾',sc:'⚽'}[p.sport]||'📣')+'</div><div class="rb"><div class="tag">'+esc(tg)+'</div><div class="top"><span class="nm">'+esc(p.disp||p.label||'')+'</span><span class="delta" style="color:'+(p._lineEdge>0?'var(--green)':'var(--red)')+'">'+esc(lineValTxt(p))+'</span></div><div class="tot">'+esc(p._score||'')+' · '+esc(lineEdgeTxt(p))+'</div></div>','game',5500,(p.disp||p.label)+' '+lineValTxt(p)+' · '+lineEdgeTxt(p)); return; }
   var isProp=props.indexOf(p)>=0;
@@ -575,7 +604,7 @@ function showRise(p){
   html=face+ring+html.slice(face.length);
   enqueueRise(html, st.hit?'hit':'', st.hit?9000:6500, (p.disp||p.player)+' +'+p._delta+' '+sl+' → '+p._newVal+(st.hit?' ✓ HIT':''));
 }
-function showParlayHit(pl){ if(privProps()) return;
+function showParlayHit(pl){ if(TICKER||privProps()) return;
   enqueueRise('<div class="gface" style="font-size:30px">🏆</div><div class="rb"><div class="tag" style="color:var(--gold)">Parlay hit</div><div class="top"><span class="nm">'+esc(pl.name||'Parlay')+'</span><span class="delta" style="color:var(--gold)">'+esc(pl.odds||'')+'</span></div><div class="tot">All '+pl.legs.length+' legs cleared</div></div>', 'hit', 12000, '🏆 '+(pl.name||'Parlay')+' '+(pl.odds||'')+' HIT');
 }
 function showGameRise(cs, scoreStr, tag, detail, sp, kind){
@@ -595,7 +624,7 @@ function hideHistory(){ var h=$('hist'); if(h) h.classList.remove('show'); }
 var gstate={}, gPollT=null;
 function closeThreshold(sp){ return {bk:5, fb:8, hk:1, sc:1, bb:2}[sp]||3; }
 function pollGames(){
-  clearTimeout(gPollT);
+  clearTimeout(gPollT); if(TICKER) return;
   var nf=getNotify(), st=getStarred();
   if(!nf.games || !st.length){ gPollT=setTimeout(pollGames, 60000); return; }
   var lgs=[]; st.forEach(function(s){ if(lgs.indexOf(s.lg)<0) lgs.push(s.lg); });
@@ -682,7 +711,86 @@ if(CORNER){ document.body.classList.add('corner'); summonUntil=Date.now()+25000;
     setTimeout(cyc, Math.max(4, pm.sec)*1000);
   })();
 }
+
+// ---------- bottom ticker ----------
+var TK_ALL=['football/nfl','basketball/nba','hockey/nhl','baseball/mlb','basketball/wnba','soccer/usa.1','football/college-football','basketball/mens-college-basketball'];
+var TK_NAME={'football/nfl':'NFL','basketball/nba':'NBA','hockey/nhl':'NHL','football/college-football':'NCAAF','basketball/mens-college-basketball':'NCAAM','baseball/mlb':'MLB','basketball/wnba':'WNBA','soccer/usa.1':'MLS'};
+var tkGames=[], tkT=null, tkAnim=false, tkPending=null, tkSig='';
+function tkMode(){ var m=lsGet('w2w.ticker','off'); if(m==='props'&&privProps()) m='mine'; return m; }
+function tkPx(){ return {slow:45, normal:75, fast:115}[lsGet('w2w.tkSpeed','normal')]||75; }
+function tkLoad(){
+  clearTimeout(tkT); var m=tkMode(); if(m==='off'){ tkGames=[]; renderTicker(); tkT=setTimeout(tkLoad,30000); return; }
+  var st=getStarred(), mine={}; st.forEach(function(x){ mine[String(x.id)]=1; });
+  var lgs = m==='all' ? TK_ALL.slice() : st.map(function(x){ return x.lg; }).filter(function(v,i,a){ return a.indexOf(v)===i; });
+  Promise.all(lgs.map(function(lg){ return scoreboard(lg).then(function(evs){ return {lg:lg,evs:evs}; }); })).then(function(res){
+    var out=[];
+    res.forEach(function(r){ r.evs.forEach(function(e){ var id=String(e.id); if(m!=='all' && !mine[id]) return; if(m==='all' && !mine[id] && ((e.status||{}).type||{}).state!=='in' && new Date(e.date).toDateString()!==new Date().toDateString()) return; if(m==='all' && !mine[id] && /college/.test(r.lg) && ((e.status||{}).type||{}).state==='post') return;
+      var c=(e.competitions&&e.competitions[0])||{}, cs=c.competitors||[]; if(cs.length<2) return;
+      var a=cs.filter(function(x){return x.homeAway==='away';})[0]||cs[1], h=cs.filter(function(x){return x.homeAway==='home';})[0]||cs[0];
+      var stt=e.status||{}, ty=stt.type||{}; var sp=sportFromLg(r.lg), per=stt.period||0, clk=parseClock(stt.displayClock||'');
+      var S=SPORT_PERIODS[sp], margin=Math.abs((+a.score||0)-(+h.score||0));
+      var close = ty.state==='in' && S && per>=S.n && clk<=180 && margin<=closeThreshold(sp);
+      out.push({id:id, lg:r.lg, state:ty.state, date:e.date, status:ty.state==='pre'?tipTime(e.date):(ty.shortDetail||''), a:a, h:h, mine:!!mine[id], close:close}); }); });
+    var ord={'in':0,'pre':1,'post':2};
+    out.sort(function(x,y){ return (y.mine-x.mine)||(m==='all'&&!x.mine?TK_ALL.indexOf(x.lg)-TK_ALL.indexOf(y.lg):0)||(ord[x.state]-ord[y.state])||(new Date(x.date)-new Date(y.date)); });
+    tkGames=out; renderTicker();
+    tkT=setTimeout(tkLoad, out.some(function(g){return g.state==='in';})?15000:60000);
+  }).catch(function(){ tkT=setTimeout(tkLoad,30000); });
+}
+function tkGameHTML(g){
+  var aL=g.state==='post'&&g.h.winner, hL=g.state==='post'&&g.a.winner;
+  var t=function(c,l){ var tm=c.team||{}; return (tm.logo?'<img src="'+esc(tm.logo)+'">':'')+'<span class="'+(l?'lose':'')+'">'+esc(tm.abbreviation||'')+(g.state==='pre'?'':' '+esc(c.score!=null?c.score:''))+'</span>'; };
+  return '<span class="tg'+(g.mine?' mine':'')+(g.close?' close':'')+'" data-k="g'+g.id+'">'+t(g.a,aL)+t(g.h,hL)+'<em class="'+(g.state==='in'?'live':'')+'">'+esc(g.status)+'</em></span>'; }
+function tkPropHTML(p){
+  var v=vals[p.id], set=settled(p), prob=(p._prob!=null?p._prob:0.5);
+  var color= set==='won'?'var(--green)':set==='lost'?'var(--red)':likeColor(prob, gameFrac(p));
+  var nm=(p.disp||p.player||'').split(' ').slice(-1)[0].toUpperCase();
+  if(p.kind&&p.kind!=='prop') return '<span class="tp'+(set?' '+set:'')+'" data-k="p'+esc(p.id)+'"><i class="dt" style="background:'+color+'"></i>'+esc(p.disp||p.label||'')+' <small>'+esc(lineEdgeTxt(p))+'</small></span>';
+  var need=over(p)?needed(p):p.line;
+  return '<span class="tp'+(set?' '+set:'')+'" data-k="p'+esc(p.id)+'">'+(p._face?'<i class="fc" style="background-image:url(&quot;'+esc(p._face)+'&quot;)"></i>':'')+
+    esc(nm)+(p.team?' <small>'+esc(p.team)+'</small>':'')+' <span class="ct"><b>'+(v==null?'–':v)+'</b>/'+esc(need)+'</span> <small>'+esc((p.statLabel||p.stat||'').toUpperCase())+'</small>'+
+    (set==='won'?' ✓':set==='lost'?' ✗':'<i class="dt" style="background:'+color+'"></i>')+'</span>'; }
+function tkParlayHTML(pl){ var won=pl._wonCount||0, n=pl.legs.length, pct=Math.round((pl._prob||0)*100);
+  return '<span class="tp pl'+(pl._settled?' '+pl._settled:'')+'" data-k="pl'+esc(pl.id)+'">🎟 '+esc(pl.name||'Parlay')+' <small>'+esc(pl.odds||'')+'</small> '+won+'/'+n+(pl._settled==='won'?' 🏆':pl._settled==='lost'?' ✗':' · '+pct+'%')+'</span>'; }
+function renderTicker(){
+  var root=$('tk'); if(!root){ root=document.createElement('div'); root.id='tk'; root.innerHTML='<div class="tab" id="tktab">LIVE</div><div class="lane"><div class="track" id="tktrack"></div></div>'; document.body.appendChild(root); }
+  var m=tkMode(); $('tktab').textContent={all:'SCORES',mine:'MY GAMES',props:'MY GAMES + PROPS'}[m]||'LIVE';
+  var html=[], keys=[];
+  var push=function(h){ html.push(h); var k=(h.match(/data-k="([^"]+)"/)||[])[1]; keys.push(k||h); };
+  if(m==='props'){
+    var items=props.concat(allLegs()); var used={};
+    tkGames.forEach(function(g){ push(tkGameHTML(g)); items.forEach(function(p){ if(p._gid===g.id && !used[p.id]){ used[p.id]=1; push(tkPropHTML(p)); } }); });
+    items.forEach(function(p){ if(!used[p.id] && fresh(p)) push(tkPropHTML(p)); });
+    parlays.forEach(function(pl){ push(tkParlayHTML(pl)); });
+  } else {
+    var lastLg=null;
+    tkGames.forEach(function(g){ if(m==='all' && !g.mine && g.lg!==lastLg){ push('<span class="tl" data-k="l'+g.lg+'">'+TK_NAME[g.lg]+'</span>'); lastLg=g.lg; } push(tkGameHTML(g)); });
+  }
+  if(!html.length){ html=['<span class="msg">'+(m==='all'?'No games today.':'No games you follow tonight — star some in Sports, or tell Claude "track the Knicks".')+'</span>']; keys=['empty']; }
+  tkApply(html.join(''), keys.join('|'));
+}
+function tkApply(html, sig){
+  var tr=$('tktrack'); if(!tr) return;
+  if(tkAnim && sig===tkSig){ // same games in the same order: patch scores in place so the scroll never jumps
+    var tmp=document.createElement('div'); tmp.innerHTML=html;
+    [].forEach.call(tmp.querySelectorAll('[data-k]'),function(n){ [].forEach.call(tr.querySelectorAll('[data-k="'+n.getAttribute('data-k')+'"]'),function(o){ if(o.innerHTML!==n.innerHTML){ o.innerHTML=n.innerHTML; o.className=n.className; } }); });
+    return; }
+  if(tkAnim){ tkPending=[html,sig]; return; } // new lineup: swap in at the end of this lap
+  tkDraw(html, sig);
+}
+function tkDraw(html, sig){
+  var tr=$('tktrack'), lane=tr.parentNode; tkSig=sig;
+  tr.style.animation='none'; tr.classList.remove('static'); tr.innerHTML='<span class="seg">'+html+'</span>';
+  var w=tr.firstChild.offsetWidth, L=lane.clientWidth;
+  if(w>L-30){ tr.innerHTML+='<span class="seg">'+html+'</span>'; void tr.offsetWidth; tr.style.animation='tkmove '+Math.max(8,w/tkPx()).toFixed(1)+'s linear infinite'; tkAnim=true; }
+  else { tr.classList.add('static'); tkAnim=false; }
+}
+function tkBoot(){ document.body.classList.add('ticker'); renderTicker();
+  $('tktrack').addEventListener('animationiteration',function(){ if(tkPending){ var p=tkPending; tkPending=null; tkAnim=false; tkDraw(p[0],p[1]); } });
+  window.addEventListener('storage',function(e){ if(!e.key || /^w2w\.(ticker|tkSpeed|starred|privacy|settingsRev|ovOpacity)$/.test(e.key)){ tkAnim=false; tkPending=null; tkSig=''; applyOpacity(); tkLoad(); } });
+  tkLoad(); }
 // boot: sync followed games (tell-Claude-to-track + prop/parlay games), then load
+if(TICKER) tkBoot();
 function boot(){ var p=(window.W2W_FOLLOW?W2W_FOLLOW.sync():Promise.resolve()); return p.catch(function(){}).then(reloadAll).then(function(){ clearTimeout(gPollT); pollGames(); }); }
 boot();
 setInterval(function(){ if(window.W2W_FOLLOW) W2W_FOLLOW.sync().then(function(r){ if(r&&r.added){ clearTimeout(gPollT); pollGames(); } }); }, 5*60*1000);
