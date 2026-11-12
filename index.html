@@ -1638,7 +1638,22 @@ else {
       if(msg) spToast(msg); bars(); var bf=document.querySelector('[data-'+key+']')||document.querySelector('[data-vticker]'); if(bf) bf.focus(); return; }
     if(e.target.closest('[data-opac]')){ cycleOpac(); bars(); var b7=document.querySelector('[data-opac]'); if(b7) b7.focus(); return; }
     var g=e.target.closest('[data-g]'); if(g){ var gm=games.filter(function(x){return x.id===g.dataset.g;})[0];
-      if(starMode){ if(gm){ var lv=toggleStar(gm); spToast(lv===1?'★ Following — key moments (end of quarter, halfway, close & late)':lv===2?'🔔 Following closely — every score':'☆ Removed'); render(); var again=document.querySelector('[data-g="'+gm.id+'"]'); if(again) again.focus(); } return; }
+      if(starMode){ if(gm){
+        // remember where the remote was: which strip the card sat in, and its position there
+        var cardEl=e.target.closest('[data-g]'), tonBox=cardEl&&cardEl.closest('.tonight');
+        var sibs=tonBox?[].slice.call(tonBox.querySelectorAll('[data-g]')):[], pos=sibs.indexOf(cardEl);
+        var lv=toggleStar(gm); spToast(lv===1?'★ Following — key moments (end of quarter, halfway, close & late)':lv===2?'🔔 Following closely — every score':'☆ Removed'); render();
+        var tgt=null, ton=document.querySelector('#sp .grid.tonight');
+        if(tonBox){ // was in Tonight·following: stay in that spot — same card if still followed, else its neighbor
+          var ns=ton?[].slice.call(ton.querySelectorAll('[data-g]')):[];
+          if(lv>0) tgt=ns.filter(function(x){ return x.dataset.g===String(gm.id); })[0];
+          if(!tgt && ns.length) tgt=ns[Math.max(0,Math.min(pos,ns.length-1))];
+          if(!tgt) tgt=document.querySelector('[data-starmode]'); // strip emptied out
+        } else { // was in the list below: stay on that same card down there, not its new copy up top
+          var all=[].slice.call(document.querySelectorAll('#sp [data-g="'+gm.id+'"]'));
+          tgt=all.filter(function(x){ return !x.closest('.tonight'); })[0]||all[0];
+        }
+        if(tgt) tgt.focus(); } return; }
       if(gm&&gm.apps.length) launchApp(gm.apps[0],gm);
       else if(gm&&isOTA(gm.nets)){ var onet=(gm.nets||[]).filter(function(n){return OTA.test(String(n).toLowerCase().trim());})[0]||'a local channel'; spToast('📡 This game is free over the air on <b>'+esc(onet)+'</b> — watch it with a TV antenna, no subscription. (Also on YouTube TV if you have it.)'); } }
   });

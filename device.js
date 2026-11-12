@@ -22,7 +22,7 @@
     if(ch) localStorage.setItem('w2w.privacy', JSON.stringify(pv)); }catch(e){}
   // one-time settings pushed to one screen from here (applied once per rev; the screen's own switches win afterwards)
   var PUSH = {
-    bedroom: { rev:'2026-11-12-quiet', set:{ 'w2w.notify':{ quiet:true, games:false, props:false }, 'w2w.banners':false } }
+    bedroom: { rev:'2026-11-12-loud', set:{ 'w2w.notify':{ quiet:false, games:true, props:true }, 'w2w.banners':true } }
   };
   try{ var pu=PUSH[id]; if(pu && localStorage.getItem('w2w.pushRev')!==pu.rev){
     Object.keys(pu.set).forEach(function(k){ localStorage.setItem(k, JSON.stringify(pu.set[k])); });
