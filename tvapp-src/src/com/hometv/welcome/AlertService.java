@@ -55,6 +55,10 @@ public class AlertService extends Service {
   WebView propCard;     // non-focusable persistent prop-tracker card (bottom-left)
   WebView gamecast;     // focusable gamecast panel (left), D-pad switches games
   WebView ticker;       // non-focusable full-width score ticker along the bottom (off / all / mine / props)
+  // Big-moment "jump": a short banner over whatever's playing; one tap of MENU switches to that game's app.
+  static volatile String jumpUri = null; static volatile long jumpUntil = 0;
+  View jumpBar;
+  static boolean jumpActive() { return jumpUri != null && System.currentTimeMillis() < jumpUntil; }
   volatile boolean homeFront = false;  // welcome screen in front -> it has its own ticker, so hide ours
   TextView bugText; ImageView bugLogo;
   ServerSocket server;
@@ -80,6 +84,7 @@ public class AlertService extends Service {
     else if ("propcard.show".equals(act)) h.post(new Runnable(){ public void run(){ showPropCard(); } });
     else if ("propcard.hide".equals(act)) h.post(new Runnable(){ public void run(){ hidePropCard(); } });
     else if ("gamecast.toggle".equals(act)) h.post(new Runnable(){ public void run(){ toggleGamecast(); } });
+    else if ("jump.go".equals(act)) { final String u = jumpUri; if (jumpActive() && u != null) { h.post(new Runnable(){ public void run(){ hideJump(); } }); openWatch(u); } }
     else if ("gamecast.show".equals(act)) h.post(new Runnable(){ public void run(){ showGamecast(); } });
     else if ("gamecast.hide".equals(act)) h.post(new Runnable(){ public void run(){ hideGamecast(); } });
     if (!running) { running = true; new Thread(new Server()).start(); h.postDelayed(new Runnable(){ public void run(){ syncTicker(); } }, 3000); h.postDelayed(homeWatch, 4000); }
@@ -159,6 +164,29 @@ public class AlertService extends Service {
       h.removeCallbacks(coverTimeout); h.postDelayed(coverTimeout, 9000);
     } catch (Exception e) { cover = null; }
   }
+  final Runnable jumpTimeout = new Runnable() { public void run() { hideJump(); } };
+  void showJump(String title, String uri) {
+    if (muted() || title == null || uri == null) return;
+    jumpUri = uri; jumpUntil = System.currentTimeMillis() + 12000;
+    h.post(new Runnable(){ public void run(){
+      hideJump2();
+      try {
+        LinearLayout box = new LinearLayout(AlertService.this); box.setOrientation(LinearLayout.HORIZONTAL); box.setGravity(Gravity.CENTER_VERTICAL);
+        GradientDrawable bg = new GradientDrawable(); bg.setColor(0xF0101A30); bg.setCornerRadius(dp(10)); bg.setStroke(dp(2), 0xFFE5533C); box.setBackground(bg);
+        box.setPadding(dp(14), dp(8), dp(14), dp(8));
+        TextView t = new TextView(AlertService.this); t.setText(title + (GcAccessibilityService.alive ? "   —   press \u2630 to watch" : "")); t.setTextColor(Color.WHITE);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15); t.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        box.addView(t);
+        WindowManager.LayoutParams p = overlayParams(false);
+        p.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL; p.x = 0; p.y = dp(tickerWanted() ? 52 : 16);
+        p.width = ViewGroup.LayoutParams.WRAP_CONTENT; p.height = ViewGroup.LayoutParams.WRAP_CONTENT;
+        jumpBar = box; wm.addView(jumpBar, p);
+        h.removeCallbacks(jumpTimeout); h.postDelayed(jumpTimeout, 12000);
+      } catch (Exception e) { jumpBar = null; }
+    } });
+  }
+  void hideJump() { jumpUri = null; jumpUntil = 0; h.post(new Runnable(){ public void run(){ hideJump2(); } }); }
+  void hideJump2() { h.removeCallbacks(jumpTimeout); if (jumpBar != null) { try { wm.removeView(jumpBar); } catch (Exception e) {} jumpBar = null; } }
   void hideCover() { h.removeCallbacks(coverTimeout); if (cover != null) { try { wm.removeView(cover); } catch (Exception e) {} cover = null; } }
 
   // ---------- view settings: Gamecast size, bottom ticker ----------
@@ -278,6 +306,8 @@ public class AlertService extends Service {
     @android.webkit.JavascriptInterface public void setAlertPrefs(boolean alerts, boolean banners) { AlertService.this.setAlertPrefs(alerts, banners); }
     @android.webkit.JavascriptInterface public void setTicker(String m) { AlertService.this.setTicker(m); }
     @android.webkit.JavascriptInterface public void setGamecastSize(String s) { AlertService.this.setGamecastSize(s); }
+    @android.webkit.JavascriptInterface public void showJump(String title, String uri) { AlertService.this.showJump(title, uri); }
+    @android.webkit.JavascriptInterface public boolean canJump() { return true; }
   }
   WebView makeWeb(String url) {
     WebView wv = new WebView(this);
@@ -440,6 +470,8 @@ public class AlertService extends Service {
         else if (path.startsWith("/gamecast/show")) h.post(new Runnable(){ public void run(){ showGamecast(); } });
         else if (path.startsWith("/gamecast/hide")) h.post(new Runnable(){ public void run(){ hideGamecast(); } });
         else if (path.startsWith("/ticker/")) { final String m = path.substring(8).replaceAll("[^a-z]", ""); setTicker(m.length() > 0 ? m : "off"); }
+        else if (path.startsWith("/jump/clear")) hideJump();
+        else if (path.startsWith("/jump")) { try { JSONObject o = new JSONObject(b); showJump(o.optString("title"), o.optString("uri")); } catch (Exception e) {} }
         else if (path.startsWith("/bug/clear")) clearBug();
         else if (path.startsWith("/bug")) { try { JSONObject o = new JSONObject(b); showBug(o.optString("text"), o.optString("logo")); } catch (Exception e) {} }
         OutputStream o = s.getOutputStream();
@@ -450,5 +482,5 @@ public class AlertService extends Service {
     }
   }
 
-  @Override public void onDestroy() { running = false; h.removeCallbacks(homeWatch); try { if (server != null) server.close(); } catch (Exception e) {} dismissCard(); clearBug(); hidePropCard(); hideGamecast(); hideTicker(); if (cur == this) cur = null; super.onDestroy(); }
+  @Override public void onDestroy() { running = false; h.removeCallbacks(homeWatch); try { if (server != null) server.close(); } catch (Exception e) {} dismissCard(); clearBug(); hidePropCard(); hideGamecast(); hideTicker(); hideJump2(); if (cur == this) cur = null; super.onDestroy(); }
 }

@@ -643,6 +643,10 @@ function hideHistory(){ var h=$('hist'); if(h) h.classList.remove('show'); }
 // ---------- followed-game alerts ----------
 var gstate={}, gPollT=null;
 function closeThreshold(sp){ return {bk:5, fb:8, hk:1, sc:1, bb:2}[sp]||3; }
+// RedZone-style jump: a native banner over the show; one tap of ☰ switches to the game (YouTube TV).
+function jumpUri(cs){ var nm=cs.map(function(x){ return (x.team||{}).displayName||''; }).filter(Boolean).join(' vs ');
+  return 'intent://tv.youtube.com/search?q='+encodeURIComponent(nm)+'#Intent;scheme=https;package=com.amazon.firetv.youtube.tv;launchFlags=0x10008000;end'; }
+function sendJump(title, cs){ try{ if(window.OV&&OV.showJump) OV.showJump(title, jumpUri(cs)); }catch(e){} }
 function pollGames(){
   clearTimeout(gPollT); if(TICKER) return;
   var nf=getNotify(), st=getStarred();
@@ -671,9 +675,13 @@ function pollGames(){
           if(period>g.period && g.period>=1){ showGameRise(cs,scoreStr,'End '+perLabel(sp,g.period),lastPlay,sp,''); g.half=false; }
           else if(period===g.period && !g.half && clk>0 && clk<=(sp==='bk'?360:450)){ showGameRise(cs,scoreStr,perLabel(sp,period)+' halfway',lastPlay,sp,''); g.half=true; }
         }
+        // RedZone-style switch offers
+        if(sp==='fb' && (c.situation||{}).isRedZone && (!g.rz||Date.now()>g.rz)){ g.rz=Date.now()+4*60000; sendJump('🔴 RED ZONE · '+scoreStr, cs); }
+        var S2=SPORT_PERIODS[sp];
+        if(S2 && period>S2.n && !g.ot){ g.ot=true; sendJump('⏱ OVERTIME · '+scoreStr, cs); showGameRise(cs,scoreStr,'Overtime',lastPlay,sp,'close'); }
         // close & late: one alert per game, regardless of cadence
         var S=SPORT_PERIODS[sp]; var late = S ? (period>=S.n && clk>0 && clk<=180) : (sp==='bb' ? period>=8 : period>=2 && clk<=600);
-        if(late && margin<=closeThreshold(sp) && !g.closed){ g.closed=true; showGameRise(cs,scoreStr,'Close game · '+(S?perLabel(sp,period)+' '+Math.floor(clk/60)+':'+('0'+(clk%60)).slice(-2):''),lastPlay,sp,'close'); }
+        if(late && margin<=closeThreshold(sp) && !g.closed){ g.closed=true; sendJump('🔥 CLOSE & LATE · '+scoreStr, cs); showGameRise(cs,scoreStr,'Close game · '+(S?perLabel(sp,period)+' '+Math.floor(clk/60)+':'+('0'+(clk%60)).slice(-2):''),lastPlay,sp,'close'); }
       }
       if(state==='post' && !g.finaled){ showGameRise(cs,scoreStr,'Final',lastPlay,sp,'final'); g.finaled=true; }
       if(period!==g.period) g.half=false;

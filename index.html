@@ -1640,6 +1640,11 @@ else {
       if(gs.length) out+='<h2>'+l[1]+'</h2><div class="grid">'+gs.map(card).join('')+'</div>'; });
     $s('spBody').innerHTML=out||'<div class="empty">'+(dayMode==='live'?'No games on right now. Try Today or Upcoming.':'No games found. Try Upcoming (7 days) or All sports.')+'</div>';
   }
+  function recapIntent(g){ var nm=(g.tms||[]).map(function(c){return (c.team||{}).displayName||(c.team||{}).shortDisplayName||'';}).filter(Boolean).join(' vs ');
+    var kind=/baseball/.test(g.lg[0])?' condensed game ':' full game highlights ';
+    var dt=g.date?new Date(g.date).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):'';
+    var q=nm+kind+dt;
+    return 'intent:#Intent;action=android.intent.action.SEARCH;package=org.smarttube.stable;component=org.smarttube.stable/com.liskovsoft.leanbackassistant.search.SearchableActivity;S.query='+encodeURIComponent(q)+';launchFlags=0x10008000;end'; }
   function launchApp(a,g){ var p=APPS[a]; if(!p) return;
     if(a==='yttv'&&g){ var q=g.tennis?g.q:g.tms.map(function(c){return (c.team||{}).displayName||'';}).join(' vs ');
       location.href='intent://tv.youtube.com/search?q='+encodeURIComponent(q)+'#Intent;scheme=https;package='+p[1]+';launchFlags=0x10008000;end'; return; }
@@ -1689,6 +1694,7 @@ else {
           tgt=all.filter(function(x){ return !x.closest('.tonight'); })[0]||all[0];
         }
         if(tgt) tgt.focus(); } return; }
+      if(gm&&gm.state==='post'&&!gm.tennis){ spToast('🎬 Condensed game — opening SmartTube; pick the official highlight reel'); location.href=recapIntent(gm); return; }
       if(gm&&gm.apps.length) launchApp(gm.apps[0],gm);
       else if(gm&&isOTA(gm.nets)){ var onet=(gm.nets||[]).filter(function(n){return OTA.test(String(n).toLowerCase().trim());})[0]||'a local channel'; spToast('📡 This game is free over the air on <b>'+esc(onet)+'</b> — watch it with a TV antenna, no subscription. (Also on YouTube TV if you have it.)'); } }
   });

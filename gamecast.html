@@ -199,7 +199,7 @@ function normalize(lg, e){
   var fin=FINAL_PERIOD[sp]; var late = fin ? (per>=fin && clk>0 && clk<=180) : false;
   var closeLate = state==='in' && late && margin<=({bk:5,fb:8,hk:1}[sp]||3);
   var hot = state==='in' && ( (sp==='fb'&&sit.isRedZone) || (sp==='bb'&&(sit.onSecond||sit.onThird)) || (sp==='hk'&&/power play|man adv/i.test((sit.lastPlay&&sit.lastPlay.text)||'')) );
-  return { lg:lg, id:e.id, sport:sp, league:lgLabel(lg), state:state, period:per, clock:clk,
+  return { lg:lg, id:e.id, date:e.date, sport:sp, league:lgLabel(lg), state:state, period:per, clock:clk,
     statusTxt:stt.shortDetail||stt.detail||stt.description||'', detail:stt.detail||'',
     away:team(away,false), home:team(home,true), sit:sit, last:(sit.lastPlay&&sit.lastPlay.text)||'', closeLate:closeLate, hot:hot, level:starLevel(String(e.id)) };
 }
@@ -291,13 +291,19 @@ function settingsList(g){
     {k:'alerts', t:'Game alerts', v:nf.games?'ON':'off (all)', next:function(){ nf.games=!nf.games; lsSet('w2w.notify',nf); syncNative(); }},
     {k:'banner', t:'Top banner', v:(nf.games&&ban)?'ON':'off', next:function(){ lsSet('w2w.banners',!ban); syncNative(); }},
     {k:'switch', t:'Switch games', v:GC_CYCLE?('Auto '+GC_CYCLE+'s'):'Manual', next:function(){ var i=GC_CYCLES.indexOf(GC_CYCLE); GC_CYCLE=GC_CYCLES[(i+1)%GC_CYCLES.length]; try{ localStorage.setItem('w2w.gcCycle',String(GC_CYCLE)); }catch(e){} resetCycle(); }},
+    (cur&&cur.state==='post'?{k:'recap', t:'🎬 Condensed recap', v:'SmartTube', next:function(){
+      var nm=[cur.away.name,cur.home.name].filter(Boolean).join(' vs ');
+      var kind=cur.sport==='bb'?' condensed game ':' full game highlights ';
+      var dt=cur.date?new Date(cur.date).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):'';
+      location.href='intent:#Intent;action=android.intent.action.SEARCH;package=org.smarttube.stable;component=org.smarttube.stable/com.liskovsoft.leanbackassistant.search.SearchableActivity;S.query='+encodeURIComponent(nm+kind+dt)+';launchFlags=0x10008000;end';
+    }}:null),
     {k:'multi', t:'Games at once', v:window.W2W_VIEW?W2W_VIEW.multiLabel():'1 game', next:function(){ if(window.W2W_VIEW) W2W_VIEW.cycleMulti(); }},
     {k:'size', t:'Panel size', v:window.W2W_VIEW?W2W_VIEW.sizeLabel():'Medium', next:function(){ if(window.W2W_VIEW) W2W_VIEW.cycleSize(); }},
     {k:'ticker', t:'Bottom ticker', v:window.W2W_VIEW?W2W_VIEW.tickerLabel():'Off', next:function(){ if(window.W2W_VIEW) W2W_VIEW.cycleTicker(); }},
     {k:'dim', t:'Dim', v:Math.round((parseFloat(lsGet('w2w.ovOpacity',1))||1)*100)+'%', next:function(){ var o=parseFloat(lsGet('w2w.ovOpacity',1))||1; var i=OPACS.indexOf(o); lsSet('w2w.ovOpacity', OPACS[(i+1)%OPACS.length]); applyOpacity(); }},
     {k:'game', t:'This game', v: lvl===2?'🔔 every score':'★ key moments', next:function(){ if(!g) return; var m=lsGet('w2w.starLevel',{}); if(lvl===2) delete m[String(g.id)]; else m[String(g.id)]=2; lsSet('w2w.starLevel',m); g.level=starLevel(String(g.id)); }},
     {k:'unfollow', t:'Unfollow', v:'✕ remove from panel', next:function(){ if(!g) return; var st=getStarred().filter(function(x){ return String(x.id)!==String(g.id); }); lsSet('w2w.starred',st); var auto=lsGet('w2w.autoStar',{}); auto[String(g.id)]=1; lsSet('w2w.autoStar',auto); setSel=0; load(); }}
-  ];
+  ].filter(Boolean);
 }
 function settingsStrip(g){ var L=settingsList(g); if(setSel>=L.length) setSel=0;
   return '<div class="set"><div class="row">'+L.map(function(it,i){ return '<span class="it'+(i===setSel?' on':'')+'">'+esc(it.t)+'<b>'+esc(it.v)+'</b></span>'; }).join('')+'</div><div class="hint">◂ ▸ choose · OK change · ▾ or Back close · the prop card follows these too</div></div>'; }

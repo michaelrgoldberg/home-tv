@@ -67,6 +67,7 @@ public class GcAccessibilityService extends AccessibilityService {
   private boolean longFired = false;
   private final Handler h = new Handler(Looper.getMainLooper());
 
+  private final Runnable singleTap = new Runnable() { public void run() { if (AlertService.jumpActive()) send("jump.go"); } };
   private void send(String action) {
     try {
       Intent i = new Intent(this, AlertService.class).setAction(action);
@@ -84,8 +85,8 @@ public class GcAccessibilityService extends AccessibilityService {
       if (longFired) { longFired = false; return true; }
       if (held >= HOLD_MS) { send("gamecast.toggle"); return true; }
       long now = e.getEventTime();
-      if (now - lastShortUp <= DOUBLE_MS) { lastShortUp = 0; send("propcard.toggle"); }
-      else { lastShortUp = now; }
+      if (now - lastShortUp <= DOUBLE_MS) { lastShortUp = 0; h.removeCallbacks(singleTap); send("propcard.toggle"); }
+      else { lastShortUp = now; h.removeCallbacks(singleTap); if (AlertService.jumpActive()) h.postDelayed(singleTap, DOUBLE_MS + 40); }
     }
     return true;
   }
