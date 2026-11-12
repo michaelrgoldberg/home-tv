@@ -1238,6 +1238,7 @@ function closeOverlays(){
 }
 window.addEventListener('popstate',function(){closeOverlays();});
 window.W2W_BACK=function(){
+  if(window.W2W_PRIV&&W2W_PRIV.isOpen()){ W2W_PRIV.close(); var pb=document.getElementById('privBtn'); if(pb) pb.focus(); return true; } // Back closes the privacy panel, never the app
   if(window.W2W_SLEEP&&W2W_SLEEP.isOpen()){ var wasRun=W2W_SLEEP.running(); W2W_SLEEP.close(); if(!wasRun){ var z=document.getElementById('goSleep'); if(z) z.focus(); } return true; }
   if(window.W2W_SP&&W2W_SP.isOpen()){ W2W_SP.close(); var s=document.getElementById('goSp'); if(s) s.focus(); return true; }
   if(window.W2W_AMB&&W2W_AMB.isOpen()){ W2W_AMB.close(); var m=document.getElementById('goAmb'); if(m&&W2W_HOME_OPEN()) m.focus(); return true; }
