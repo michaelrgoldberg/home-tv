@@ -89,6 +89,15 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #goNative:focus{border-color:#ffcc00;color:#fff;box-shadow:0 0 0 .18vw rgba(255,204,0,.35)}
 #goBack{position:absolute;top:1.1vw;left:11vw;z-index:9;font-size:1vw;padding:.35vw .9vw;border-radius:2vw;background:rgba(10,15,30,.55);color:#cdd7ee;border:.14vw solid rgba(255,255,255,.25);cursor:pointer;outline:none}
 #goBack:focus{border-color:#ffcc00;color:#fff;box-shadow:0 0 0 .18vw rgba(255,204,0,.35)}
+.pvdlg{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(3,6,14,.78);z-index:70}
+.pvdlg.show{display:flex}
+.pvbox{width:46vw;background:#0f1727;border:.18vw solid #2a3756;border-radius:1.2vw;padding:1.6vw 2vw;box-shadow:0 2vw 6vw rgba(0,0,0,.6)}
+.pvbox h3{margin:0 0 .4vw;font-size:1.7vw}
+.pvbox .psub{color:#9aa7c2;font-size:1.05vw}
+.grow{display:block;background:#121f38;border:.18vw solid #243352;border-radius:.9vw;padding:.9vw 1.1vw;margin:.8vw 0;outline:none;cursor:pointer}
+.grow:focus{border-color:#ffcc00;background:#1a2a4a}
+.grow>b{display:block;font-size:1.35vw;margin-bottom:.2vw}.grow span b{font-size:inherit}
+.grow span{color:#cdd7ee;font-size:1.02vw;line-height:1.4}
 #privBtn{position:absolute;top:1.1vw;right:19vw;z-index:9;font-size:1vw;padding:.35vw .9vw;border-radius:2vw;background:rgba(10,15,30,.55);color:#cdd7ee;border:.14vw solid rgba(255,255,255,.25);cursor:pointer;outline:none}
 #privBtn:focus{border-color:#ffcc00;color:#fff;box-shadow:0 0 0 .18vw rgba(255,204,0,.35)}
 #privBtn.active{border-color:#e5533c;color:#ffb3a7}
@@ -233,8 +242,15 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
     <div class="card2" id="cShab"><h3>This Shabbat</h3><div class="line dim">Loading…</div></div>
     <div class="card2" id="cOffice" style="display:none"><h3>Office</h3></div>
   </div>
-  <div class="go"><button class="gobtn focusable" id="goWatch">🎬&nbsp; What to Watch</button><button class="gobtn focusable" id="goSp" style="background:#c62828;color:#fff">🏟️&nbsp; Sports</button><button class="gobtn focusable" id="goAmb" style="background:#ff8a3d;color:#2a1200">🌅&nbsp; Ambient</button><button class="gobtn focusable" id="goSleep" style="background:#b9a6ff;color:#16102e">🌙&nbsp; Sleep</button><button class="gobtn focusable" id="goGH" style="background:#fff;color:#1a3a8f">🏠&nbsp; Google Home</button></div>
+  <div class="go"><button class="gobtn focusable" id="goWatch">🎬&nbsp; What to Watch</button><button class="gobtn focusable" id="goSp" style="background:#c62828;color:#fff">🏟️&nbsp; Sports</button><button class="gobtn focusable" id="goAmb" style="background:#ff8a3d;color:#2a1200">🌅&nbsp; Ambient</button><button class="gobtn focusable" id="goSleep" style="background:#b9a6ff;color:#16102e">🌙&nbsp; Sleep</button><button class="gobtn focusable" id="goGames" style="background:#2ec47a;color:#06130c">🎮&nbsp; Games</button><button class="gobtn focusable" id="goGH" style="background:#fff;color:#1a3a8f">🏠&nbsp; Google Home</button></div>
 </div>
+<div id="gmenu" class="pvdlg"><div class="pvbox">
+  <h3>🎮 Games</h3>
+  <div class="psub">Both are included with what you already pay for — no ads, no purchases. Phones become the controllers.</div>
+  <div class="grow focusable" tabindex="0" data-game="netflix"><b>Netflix Games</b><span>Open Netflix → <b>Games</b> row at the top → pick a game → scan the QR with a phone. One phone per player.</span></div>
+  <div class="grow focusable" tabindex="0" data-game="prime"><b>Prime Video · GameNight</b><span>Open Prime Video → <b>Games</b> tab. Party games like Clue, Taboo and Ticket to Ride; everyone's phone is a controller. Big titles stream too (those want a Bluetooth gamepad).</span></div>
+  <div class="psub" style="margin-top:.6vw">OK opens the app · Back closes</div>
+</div></div>
 <script src="device.js"></script>
 <script>
 // Personal settings (names, location, schedules) are NOT in this public file.
@@ -668,7 +684,11 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
 
   // ---------- open / close ----------
   function openWatch(){ home.classList.add('hide'); try{if(window.renderRails)renderRails();}catch(e){} try{history.pushState({w:1},'');}catch(e){} var f=document.querySelector('#grid .card')||document.querySelector('[data-kind]'); if(f) f.focus(); }
-  home.addEventListener('click',function(e){e.stopPropagation(); if(e.target.closest&&e.target.closest('#priv')){ return; } if(e.target.closest&&e.target.closest('#goBack')){ try{ if(window.TV&&TV.returnToApp) TV.returnToApp(); }catch(x){} return; } if(e.target.closest&&e.target.closest('#privBtn')){ openPriv(); return; } if(e.target.closest&&e.target.closest('#goNative')){ try{ if(window.TV&&TV.nativeHome){ TV.nativeHome(); return; } }catch(x){} location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.HOME;package=com.amazon.tv.launcher;launchFlags=0x10000000;end'; return; } if(e.target.closest&&e.target.closest('#goGH')){ location.href='intent://home.google.com/u/0/home#Intent;scheme=https;package=com.amazon.cloud9;S.browser_fallback_url=https%3A%2F%2Fhome.google.com%2Fu%2F0%2Fhome;end'; return; } if(e.target.closest&&e.target.closest('#goAmb')){ W2W_AMB.open(); return; } if(e.target.closest&&e.target.closest('#goSp')){ W2W_SP.open(); return; } if(e.target.closest&&e.target.closest('#goSleep')){ W2W_SLEEP.open(); return; } openWatch();});
+  home.addEventListener('click',function(e){e.stopPropagation(); if(e.target.closest&&e.target.closest('#priv')){ return; }
+  var gr=e.target.closest&&e.target.closest('[data-game]'); if(gr){ var pk=gr.dataset.game==='netflix'?'com.netflix.ninja':'com.amazon.firebat';
+    location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LEANBACK_LAUNCHER;package='+pk+';launchFlags=0x10008000;end'; return; }
+  if(e.target.closest&&e.target.closest('#gmenu')){ return; }
+  if(e.target.closest&&e.target.closest('#goGames')){ document.getElementById('gmenu').classList.add('show'); var gf=document.querySelector('#gmenu .grow'); if(gf) gf.focus(); return; } if(e.target.closest&&e.target.closest('#goBack')){ try{ if(window.TV&&TV.returnToApp) TV.returnToApp(); }catch(x){} return; } if(e.target.closest&&e.target.closest('#privBtn')){ openPriv(); return; } if(e.target.closest&&e.target.closest('#goNative')){ try{ if(window.TV&&TV.nativeHome){ TV.nativeHome(); return; } }catch(x){} location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.HOME;package=com.amazon.tv.launcher;launchFlags=0x10000000;end'; return; } if(e.target.closest&&e.target.closest('#goGH')){ location.href='intent://home.google.com/u/0/home#Intent;scheme=https;package=com.amazon.cloud9;S.browser_fallback_url=https%3A%2F%2Fhome.google.com%2Fu%2F0%2Fhome;end'; return; } if(e.target.closest&&e.target.closest('#goAmb')){ W2W_AMB.open(); return; } if(e.target.closest&&e.target.closest('#goSp')){ W2W_SP.open(); return; } if(e.target.closest&&e.target.closest('#goSleep')){ W2W_SLEEP.open(); return; } openWatch();});
   window.addEventListener('popstate',function(ev){ if(ev.state&&ev.state.w) return; if(!document.getElementById('detail').classList.contains('show') && !document.getElementById('picker').classList.contains('show')) home.classList.remove('hide'); });
   window.W2W_HOME_OPEN=function(){return !home.classList.contains('hide');};
   window.W2W_GOHOME=function(){ home.classList.remove('hide'); tick(); var b=document.getElementById('goWatch'); if(b) b.focus(); };
@@ -1273,6 +1293,7 @@ function closeOverlays(){
 window.addEventListener('popstate',function(){closeOverlays();});
 window.W2W_BACK=function(){
   if(window.W2W_PRIV&&W2W_PRIV.isOpen()){ W2W_PRIV.close(); var pb=document.getElementById('privBtn'); if(pb) pb.focus(); return true; } // Back closes the privacy panel, never the app
+  var gme=document.getElementById('gmenu'); if(gme&&gme.classList.contains('show')){ gme.classList.remove('show'); var gb=document.getElementById('goGames'); if(gb) gb.focus(); return true; }
   if(window.W2W_SLEEP&&W2W_SLEEP.isOpen()){ var wasRun=W2W_SLEEP.running(); W2W_SLEEP.close(); if(!wasRun){ var z=document.getElementById('goSleep'); if(z) z.focus(); } return true; }
   if(window.W2W_SP&&W2W_SP.isOpen()){ W2W_SP.close(); var s=document.getElementById('goSp'); if(s) s.focus(); return true; }
   if(window.W2W_AMB&&W2W_AMB.isOpen()){ W2W_AMB.close(); var m=document.getElementById('goAmb'); if(m&&W2W_HOME_OPEN()) m.focus(); return true; }
