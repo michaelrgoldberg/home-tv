@@ -4,7 +4,7 @@
 (function(){
   var PROFILES = {
     bedroom:   { name:'Goldberg Master Bedroom TV', short:'Master Bedroom TV', privacy:{} },
-    projector: { name:'Goldberg Projector',         short:'Projector',         privacy:{ calendar:true, earnings:true } }
+    projector: { name:'Goldberg Projector',         short:'Projector',         privacy:{ calendar:true, earnings:true, money:true } }
   };
   // Hisense 43" QD6QF reports model AFTOLCBC82; any other Fire TV device is the projector stick.
   function detect(){
@@ -16,6 +16,19 @@
     return 'bedroom'; // a laptop/phone browser previewing the page
   }
   var id=detect(), P=PROFILES[id];
-  try{ if(localStorage.getItem('w2w.privacy')==null) localStorage.setItem('w2w.privacy', JSON.stringify(P.privacy)); }catch(e){}
+  // privacy: this screen's default for any switch it hasn't set yet (so new switches get the right default too)
+  try{ var pv=JSON.parse(localStorage.getItem('w2w.privacy')||'null')||{}, ch=localStorage.getItem('w2w.privacy')==null;
+    Object.keys(P.privacy).forEach(function(k){ if(!(k in pv)){ pv[k]=P.privacy[k]; ch=true; } });
+    if(ch) localStorage.setItem('w2w.privacy', JSON.stringify(pv)); }catch(e){}
+  // one-time settings pushed to one screen from here (applied once per rev; the screen's own switches win afterwards)
+  var PUSH = {
+    bedroom: { rev:'2026-11-12-quiet', set:{ 'w2w.notify':{ quiet:true, games:false, props:false }, 'w2w.banners':false } }
+  };
+  try{ var pu=PUSH[id]; if(pu && localStorage.getItem('w2w.pushRev')!==pu.rev){
+    Object.keys(pu.set).forEach(function(k){ localStorage.setItem(k, JSON.stringify(pu.set[k])); });
+    localStorage.setItem('w2w.pushRev', pu.rev); localStorage.setItem('w2w.settingsRev', String(Date.now()));
+    var n=pu.set['w2w.notify'], b=pu.set['w2w.banners'];
+    if(n) setTimeout(function(){ ['TV','OV'].forEach(function(o){ try{ if(window[o]&&window[o].setAlertPrefs) window[o].setAlertPrefs(n.games!==false, b!==false); }catch(e){} }); }, 1500);
+  } }catch(e){}
   window.W2W_DEVICE={ id:id, name:P.name, short:P.short, defaults:P.privacy };
 })();

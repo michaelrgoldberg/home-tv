@@ -260,7 +260,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
   }
   var hebDate='', todayEv=[], usHol=[], jHol=[], candles=null, sunTimes=null, privateData=null;
   // ---------- privacy switches (shared with the overlays through localStorage) ----------
-  var PRIV_ROWS=[['props','🎯 Props & parlays','Hides the tracker, the overlay card and prop pop-ups'],['calendar','📅 Calendar events','Hides the family calendar lines in Today at home'],['earnings','💵 Earnings','Hides the money in the Office card']];
+  var PRIV_ROWS=[['props','🎯 Props & parlays','Hides the tracker, the overlay card and prop pop-ups'],['calendar','📅 Calendar events','Hides the family calendar lines in Today at home'],['earnings','💵 Earnings','Hides the money in the Office card'],['money','💰 Wager amounts','Hides stakes, payouts and your betting record (props still show)']];
   try{ document.getElementById('devName').textContent=W2W_DEVICE.name; document.title=W2W_DEVICE.name; if(W2W_DEVICE.id!=='bedroom'){ var gn=document.getElementById('goNative'); gn.textContent='⌂ Fire TV Home'; gn.title='Open the Fire TV home screen'; } }catch(e){}
   function getPriv(){ try{ return JSON.parse(localStorage.getItem('w2w.privacy')||'{}')||{}; }catch(e){ return {}; } }
   function setPriv(o){ try{ localStorage.setItem('w2w.privacy', JSON.stringify(o)); }catch(e){} paintPriv(); }
@@ -268,7 +268,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
   function paintPriv(){ try{ var pd=document.getElementById('privDev'); if(pd) pd.textContent='These switches are for this screen only ('+W2W_DEVICE.short+').'; }catch(e){}
  var o=getPriv(), any=PRIV_ROWS.some(function(r){return o[r[0]];}), all=PRIV_ROWS.every(function(r){return o[r[0]];});
     var b=document.getElementById('privBtn'); if(b){ b.classList.toggle('active',any); b.textContent=any?'🔒 Privacy ON':'🔒 Privacy'; }
-    var rows=document.getElementById('privRows'); if(rows){ rows.innerHTML=PRIV_ROWS.map(function(r){ return '<div class="prow focusable'+(o[r[0]]?' on':'')+'" tabindex="0" data-priv="'+r[0]+'"><div class="pt"><b>'+r[1]+'</b><span>'+r[2]+'</span></div><div class="sw"></div></div>'; }).join('')+'<div class="prow all focusable'+(all?' on':'')+'" tabindex="0" data-priv="*"><div class="pt"><b>👥 Guest mode · hide everything</b><span>All three at once</span></div><div class="sw"></div></div>'; }
+    var rows=document.getElementById('privRows'); if(rows){ rows.innerHTML=PRIV_ROWS.map(function(r){ return '<div class="prow focusable'+(o[r[0]]?' on':'')+'" tabindex="0" data-priv="'+r[0]+'"><div class="pt"><b>'+r[1]+'</b><span>'+r[2]+'</span></div><div class="sw"></div></div>'; }).join('')+'<div class="prow all focusable'+(all?' on':'')+'" tabindex="0" data-priv="*"><div class="pt"><b>👥 Guest mode · hide everything</b><span>Everything above at once</span></div><div class="sw"></div></div>'; }
     if(typeof house==='function') try{ house(); }catch(e){} }
   function openPriv(){ paintPriv(); document.getElementById('priv').classList.add('show'); var f=document.querySelector('#priv .prow'); if(f) f.focus(); }
   function closePriv(){ var p=document.getElementById('priv'); if(!p.classList.contains('show')) return false; p.classList.remove('show'); var b=document.getElementById('privBtn'); if(b) b.focus(); return true; }
@@ -1483,7 +1483,7 @@ else {
   function propModeLabel(){ var c=getPropMode(); for(var i=0;i<PROP_MODES.length;i++){ if(PROP_MODES[i].m===c.m && (PROP_MODES[i].sec||0)===(c.sec||0) && (PROP_MODES[i].n||0)===(c.n||0)) return PROP_MODES[i].label; } return c.label||'Cycle 10s'; }
   function cyclePropMode(){ var c=getPropMode(), idx=0; for(var i=0;i<PROP_MODES.length;i++){ if(PROP_MODES[i].label===propModeLabel()){ idx=i; break; } } var nx=PROP_MODES[(idx+1)%PROP_MODES.length]; try{ localStorage.setItem('w2w.propMode', JSON.stringify(nx)); }catch(e){} }
   // overlay notification settings: quiet = popups only (no persistent cards); games = alert on followed-game scores/periods
-  function getNotify(){ try{ var o=JSON.parse(localStorage.getItem('w2w.notify')||'{}'); return {quiet:!!o.quiet, games:(o.games!==false)}; }catch(e){ return {quiet:false, games:true}; } }
+  function getNotify(){ try{ var o=JSON.parse(localStorage.getItem('w2w.notify')||'{}'); return {quiet:!!o.quiet, games:(o.games!==false), props:(o.props!==false)}; }catch(e){ return {quiet:false, games:true, props:true}; } }
   function setNotify(o){ try{ localStorage.setItem('w2w.notify', JSON.stringify(o)); }catch(e){} }
   function toggleQuiet(){ var n=getNotify(); n.quiet=!n.quiet; setNotify(n); }
   function syncNative(){ var n=getNotify(), b=lsGet('w2w.banners',true)!==false; try{ if(window.TV&&TV.setAlertPrefs) TV.setAlertPrefs(n.games,b); }catch(e){} }
@@ -1552,6 +1552,7 @@ else {
     ov.innerHTML='<span class="lbl">OVERLAY</span>'+
       '<button class="chipb focusable" data-gccycle="1">🔁 Switch games: '+gcCycleLabel()+'</button>'+
       '<button class="chipb focusable" data-propmode="1">🪧 Prop card: '+propModeLabel()+'</button>'+
+      '<button class="chipb focusable'+(getNotify().props?' on':'')+'" data-ppops="1">🎯 Prop pop-ups: '+(getNotify().props?'on':'off')+'</button>'+
       '<button class="chipb focusable'+(getNotify().quiet?' on':'')+'" data-quiet="1">🔕 Quiet mode'+(getNotify().quiet?': popups only':': off')+'</button>'+
       '<button class="chipb focusable'+(getNotify().games?' on':'')+'" data-gamealerts="1">📣 Game alerts'+(getNotify().games?': ON':': off')+'</button>'+
       '<button class="chipb focusable'+((getNotify().games&&lsGet('w2w.banners',true)!==false)?' on':'')+'" data-banner="1">🏷 Top banner'+((getNotify().games&&lsGet('w2w.banners',true)!==false)?': ON':': off')+'</button>'+
@@ -1624,6 +1625,7 @@ else {
     if(e.target.closest('[data-props]')){ try{ if(JSON.parse(localStorage.getItem('w2w.privacy')||'{}').props){ spToast('🔒 Props are hidden by Privacy (welcome screen, top-right)'); return; } }catch(x){} try{ history.replaceState(history.state,'','#sports'); }catch(x){} location.href='props.html'; return; }
     if(e.target.closest('[data-propmode]')){ cyclePropMode(); bars(); var b2=document.querySelector('[data-propmode]'); if(b2) b2.focus(); return; }
     if(e.target.closest('[data-gccycle]')){ cycleGcCycle(); bars(); var b3=document.querySelector('[data-gccycle]'); if(b3) b3.focus(); return; }
+    if(e.target.closest('[data-ppops]')){ var nn=getNotify(); nn.props=!nn.props; setNotify(nn); spToast(nn.props?'🎯 Prop & parlay pop-ups on':'🎯 Prop & parlay pop-ups off — the card still shows with ☰ ☰'); bars(); var b5=document.querySelector('[data-ppops]'); if(b5) b5.focus(); return; }
     if(e.target.closest('[data-quiet]')){ toggleQuiet(); bars(); var b4=document.querySelector('[data-quiet]'); if(b4) b4.focus(); return; }
     if(e.target.closest('[data-gamealerts]')){ toggleGameAlerts(); bars(); var b5=document.querySelector('[data-gamealerts]'); if(b5) b5.focus(); return; }
     if(e.target.closest('[data-ovmenu]')){ ovOpen=!ovOpen; bars(); var b6=document.querySelector(ovOpen?'[data-gccycle]':'[data-ovmenu]'); if(b6) b6.focus(); return; }

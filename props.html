@@ -193,6 +193,8 @@
   #tk .tp.won{border-color:var(--green)}#tk .tp.lost{border-color:var(--red);opacity:.7}
   #tk .tp.pl{padding-left:10px;border-color:#5b4a12}
   #tk .msg{padding-left:24px;font-weight:600;font-size:16px;color:#cdd7ee;display:flex;align-items:center;height:100%}
+  .mny{color:#9fe0b8;font-weight:700;white-space:nowrap}.mny.won{color:var(--green)}.mny.lost{color:var(--red)}
+  .money{margin:2px 0 8px;padding:7px 10px;border-radius:10px;background:rgba(46,196,122,.08);border:1px solid rgba(46,196,122,.3);font-size:.9em;color:#dfe7f6}
 </style></head>
 <body>
 <div id="pp"><div class="msg">Loading your props…</div></div>
@@ -221,7 +223,7 @@ function loadProps(){
   var b=function(s){return Uint8Array.from(atob(s),function(c){return c.charCodeAt(0);});};
   return fetch('props.json?'+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(p){
     return crypto.subtle.importKey('raw',b(key),'AES-GCM',false,['decrypt']).then(function(k){ return crypto.subtle.decrypt({name:'AES-GCM',iv:b(p.iv)},k,b(p.ct)); });
-  }).then(function(buf){ var a=JSON.parse(new TextDecoder().decode(buf)); if(Array.isArray(a)) return {props:a, parlays:[]}; return {props:a.props||[], parlays:a.parlays||[]}; }).catch(function(){ return {props:[], parlays:[]}; });
+  }).then(function(buf){ var a=JSON.parse(new TextDecoder().decode(buf)); if(Array.isArray(a)) return {props:a, parlays:[]}; ledger=a.ledger||[]; return {props:a.props||[], parlays:a.parlays||[]}; }).catch(function(){ return {props:[], parlays:[]}; });
 }
 
 // --- stat extraction from ESPN box score ---
@@ -233,6 +235,8 @@ var STAT_MAP={ points:['PTS'], pts:['PTS'], rebounds:['REB','TOT'], reb:['REB'],
   'pass tds':['TD'], 'rush tds':['TD'], 'rec tds':['TD'], tackles:['TOT','TCKL'] };
 var GROUP_HINT={ 'passing yards':'passing','pass tds':'passing','rushing yards':'rushing','rush tds':'rushing','receiving yards':'receiving','rec tds':'receiving','receptions':'receiving','rec':'receiving' };
 function num(v){ if(v==null) return null; v=String(v); if(v.indexOf('-')>0 && /^\d+-\d+$/.test(v)) return parseInt(v.split('-')[0],10); var n=parseFloat(v.replace(/[^0-9.\-]/g,'')); return isNaN(n)?null:n; }
+function multiStat(d, players, stat){ var names=String(players||'').split(/\s+\+\s+/); if(names.length<2) return statFromBox(d,players,stat);
+  var sum=0, any=false; names.forEach(function(n){ var v=statFromBox(d,n,stat); if(v!=null){ sum+=v; any=true; } }); return any?sum:(d&&d.boxscore&&(d.boxscore.players||[]).length?0:null); }
 function statFromBox(d, playerName, stat){ // combo props ("points+rebounds") sum the parts
   var parts=String(stat||'').toLowerCase().split('+').map(function(s){return s.trim();}).filter(Boolean);
   if(parts.length>1){ var sum=0, any=false; for(var i=0;i<parts.length;i++){ var vv=singleStat(d,playerName,parts[i]); if(vv!=null){ sum+=vv; any=true; } } return any?sum:null; }
@@ -286,6 +290,20 @@ function summary(lg,id){ if(summaryCache[id] && Date.now()-summaryCache[id].t<10
 // --- settings ---
 function getNotify(){ var o=lsGet('w2w.notify',{}); return {quiet:!!o.quiet, games:(o.games!==false)}; }
 var summonUntil=0;
+function privMoney(){ return !!(lsGet('w2w.privacy',{})||{}).money; }
+function usd(n){ n=+n||0; return '$'+(Math.round(n*100)%100?n.toFixed(2):String(Math.round(n))); }
+function moneyTxt(pl){ if(privMoney()||!pl.stake) return ''; if(pl._settled==='won') return '💵 won '+usd(pl.toWin); if(pl._settled==='lost') return '−'+usd(pl.stake); return usd(pl.stake)+' → '+usd(pl.toWin); }
+// tonight's money plus the running record kept in the encrypted file (ledger: {date,name,stake,toWin,result})
+function moneySummary(){ if(privMoney()) return ''; var staked=0, toWin=0, won=0, lost=0, open=0;
+  parlays.concat(props).forEach(function(x){ if(!x.stake) return; staked+=x.stake; if(x._settled==='won'||(!x.legs&&settled(x)==='won')) won+=(+x.toWin||0); else if(x._settled==='lost'||(!x.legs&&settled(x)==='lost')) lost+=x.stake; else { open++; toWin+=(+x.toWin||0); } });
+  if(!staked && !ledger.length) return '';
+  var bd=bettingDay(), wk=new Date(Date.now()-7*864e5).toISOString().slice(0,10), net=function(f){ return ledger.filter(f).reduce(function(a,r){ return a+(r.result==='won'?(+r.toWin||0):r.result==='lost'?-(+r.stake||0):0); },0); };
+  var sg=function(n){ return (n>=0?'+':'−')+usd(Math.abs(n)); };
+  var tn=won-lost; var parts=[];
+  if(staked) parts.push('<b>Tonight</b> '+usd(staked)+' in'+(open?' · '+usd(toWin)+' to win':'')+(won||lost?' · <span style="color:'+(tn>=0?'var(--green)':'var(--red)')+'">'+sg(tn)+'</span> settled':''));
+  if(ledger.length){ var w=net(function(r){ return r.date>=wk && r.date<bd; })+tn, all=net(function(r){ return r.date<bd; })+tn; parts.push('<b>7 days</b> '+sg(w)+' · <b>All</b> '+sg(all)); }
+  return '<div class="money">'+parts.join(' &nbsp;|&nbsp; ')+'</div>'; }
+function propPops(){ return (lsGet('w2w.notify',{})||{}).props!==false; }
 function privProps(){ return !!(lsGet('w2w.privacy',{})||{}).props; }
 function isQuiet(){ return getNotify().quiet && Date.now()>summonUntil; } // a deliberate ☰ double-press shows the card even in quiet mode
 function getStarred(){ var a=lsGet('w2w.starred',[]); return Array.isArray(a)?a:[]; }
@@ -305,7 +323,7 @@ function isPinned(id){ return !!prefGet('w2w.pin')[id]; }
 function isSnoozed(id){ return prefGet('w2w.snooze')[id]===bettingDay(); }
 function isMuted(id){ return !!prefGet('w2w.mute')[id]; }
 // --- state ---
-var props=[], parlays=[], vals={}, pageTop=0, pollT=null;
+var props=[], parlays=[], vals={}, pageTop=0, pollT=null, ledger=[];
 var PAGE=4;
 
 function needed(p){ return Math.floor(p.line)+1; }
@@ -441,7 +459,8 @@ function parlayHeader(pl){
   var firstTip=''; pl.legs.forEach(function(l){ if(l._pre&&l._date){ if(!firstTip||new Date(l._date)<new Date(firstTip)) firstTip=l._date; } });
   var needs=pl.legs.filter(function(l){ return l._live && !settled(l); }).map(function(l){ var v=vals[l.id]; if(l.kind&&l.kind!=='prop') return (l.disp||'')+' '+(lineEdgeTxt(l)||''); return (l.disp||l.player).split(' ').pop()+(v!=null&&over(l)?' +'+(needed(l)-v):''); });
   var sub = set==='won'?'🏆 PARLAY HIT!' : set==='lost'?'✗ one leg missed' : anyStarted?(pl._wonCount+'/'+n+' done'+(needs.length?' · needs '+needs.slice(0,3).join(', ')+(needs.length>3?' +'+(needs.length-3):''):'')) : ('needs '+n+'/'+n+(firstTip?' · tips '+tipTime(firstTip):''));
-  return '<div class="phd">'+ring+'<div class="pi"><div class="pn">'+esc(pl.name||'Parlay')+'</div><div class="po"><b>'+esc(pl.odds||'')+'</b> · '+sub+'</div></div></div>';
+  var mt=moneyTxt(pl);
+  return '<div class="phd">'+ring+'<div class="pi"><div class="pn">'+esc(pl.name||'Parlay')+'</div><div class="po"><b>'+esc(pl.odds||'')+'</b>'+(mt?' <span class="mny'+(pl._settled?' '+pl._settled:'')+'">'+esc(mt)+'</span>':'')+' · '+sub+'</div></div></div>';
 }
 function legRow(l){ var s=legStat(l);
   if(l.kind&&l.kind!=='prop'){ var rt = l._pre ? '<span class="lc">'+esc(shortStatus(l))+'</span>' : '<span class="lv">'+esc(lineValTxt(l))+'</span><span class="lc'+(l._live?' live':'')+'">'+esc(lineEdgeTxt(l)||shortStatus(l))+'</span>';
@@ -505,7 +524,7 @@ function render(){
   if(!props.length && !parlays.length){ el.innerHTML='<div class="msg">No props set.<br><span style="font-size:.85em">Tell Mike which props to track and they\'ll show here.</span></div>'; return; }
   var pHtml = props.length ? '<div class="hd"><span class="t">🎯 PROP TRACKER</span><span class="nav">'+props.length+' prop'+(props.length>1?'s':'')+'</span></div><div class="list">'+props.map(chipHTML).join('')+'</div>' : '';
   var plHtml = parlays.length ? '<div class="hd" style="margin-top:4px"><span class="t">🎟️ PARLAYS</span><span class="nav">'+parlays.length+' parlay'+(parlays.length>1?'s':'')+'</span></div><div class="list">'+parlays.map(parlayCard).join('')+'</div>' : '';
-  el.innerHTML='<div class="scroll">'+pHtml+plHtml+'</div>';
+  el.innerHTML='<div class="scroll">'+moneySummary()+pHtml+plHtml+'</div>';
 }
 function confetti(id){ var c=$('conf-'+id); if(!c) return; var cols=['#ffcc00','#2ec47a','#4f9bff','#e5533c','#fff']; var h=''; for(var i=0;i<16;i++){ h+='<i style="left:'+(5+Math.random()*90)+'%;background:'+cols[i%5]+';animation-delay:'+(Math.random()*.4).toFixed(2)+'s"></i>'; } c.innerHTML=h; }
 
@@ -523,7 +542,7 @@ function evalProp(p){
     p._score=(g.cs||[]).map(function(c){return (c.team||{}).abbreviation+' '+(c.score!=null?c.score:'');}).join(' – ');
     if(g.state==='pre'){ vals[p.id]=0; p._prob=0.5; p._pre=true; return; }
     p._pre=false;
-    return summary(p.lg,g.id).then(function(d){ if(!d) return; var v=statFromBox(d,p.player,p.stat);
+    return summary(p.lg,g.id).then(function(d){ if(!d) return; var v=multiStat(d,p.player,p.stat);
       var h=headshotFrom(d,p.player); var face=h.hs||(CDN_LG[p.lg]&&h.id?'https://a.espncdn.com/i/headshots/'+CDN_LG[p.lg]+'/players/full/'+h.id+'.png':''); if(face) p._face=face;
       var pm=playerMeta(d,p.player); p._minPlayed=pm.min; p._pf=pm.pf; p._fouledOut=(p.sport==='bk' && pm.pf>=6); if(h.id) p._aid=h.id;
       if(v!=null){ var old=vals[p.id]; vals[p.id]=v;
@@ -557,7 +576,7 @@ function poll(){
     allLegs().forEach(function(l){ if(l._delta){ showRise(l); l._delta=0; } });
     parlays.forEach(function(pl){
       if(pl._settled==='won' && !pl._celebrated){ pl._celebrated=true; showParlayHit(pl); }
-      if(pl._settled==='lost' && !pl._mourned){ pl._mourned=true; var dead=pl.legs.filter(function(l){return settled(l)==='lost';})[0]; enqueueRise('<div class="gface">🎟️</div><div class="rb"><div class="tag" style="color:var(--red)">Parlay lost</div><div class="top"><span class="nm">'+esc(pl.name||'Parlay')+' '+esc(pl.odds||'')+'</span></div><div class="play">'+esc(dead?(dead.disp+' '+dead.label+' missed'):'')+'</div></div>','game',6500,'✗ '+(pl.name||'Parlay')+' lost'); }
+      if(pl._settled==='lost' && !pl._mourned){ pl._mourned=true; var dead=pl.legs.filter(function(l){return settled(l)==='lost';})[0]; if(propPops()) enqueueRise('<div class="gface">🎟️</div><div class="rb"><div class="tag" style="color:var(--red)">Parlay lost</div><div class="top"><span class="nm">'+esc(pl.name||'Parlay')+' '+esc(pl.odds||'')+'</span></div><div class="play">'+esc(dead?(dead.disp+' '+dead.label+' missed'):'')+'</div></div>','game',6500,'✗ '+(pl.name||'Parlay')+' lost'); }
     });
     var anyLive=items.some(function(p){ return p._live; });
     pollT=setTimeout(poll, anyLive?12000:45000);
@@ -579,7 +598,7 @@ function pumpRise(){ if(riseBusy) return; if(CORNER && typeof focused!=='undefin
   riseBusy=true; r.className=it.cls; r.innerHTML=it.html; if(swap) document.body.classList.add('swap'); void r.offsetWidth; r.classList.add('show');
   clearTimeout(riseT); riseT=setTimeout(function(){ r.classList.remove('show'); setTimeout(function(){ document.body.classList.remove('swap'); riseBusy=false; pumpRise(); }, 420); }, it.dur);
 }
-function showRise(p){ if(TICKER) return;
+function showRise(p){ if(TICKER||!propPops()) return;
   if(isMuted(p.id)||privProps()) return;
   if(p.kind&&p.kind!=='prop'){ var tg=(p.kind==='total'?'Total':p.kind==='ml'?'Moneyline':'Spread')+' · '+(p._status||''); enqueueRise('<div class="gface">'+({bk:'🏀',fb:'🏈',hk:'🏒',bb:'⚾',sc:'⚽'}[p.sport]||'📣')+'</div><div class="rb"><div class="tag">'+esc(tg)+'</div><div class="top"><span class="nm">'+esc(p.disp||p.label||'')+'</span><span class="delta" style="color:'+(p._lineEdge>0?'var(--green)':'var(--red)')+'">'+esc(lineValTxt(p))+'</span></div><div class="tot">'+esc(p._score||'')+' · '+esc(lineEdgeTxt(p))+'</div></div>','game',5500,(p.disp||p.label)+' '+lineValTxt(p)+' · '+lineEdgeTxt(p)); return; }
   var isProp=props.indexOf(p)>=0;
@@ -605,7 +624,7 @@ function showRise(p){ if(TICKER) return;
   html=face+ring+html.slice(face.length);
   enqueueRise(html, st.hit?'hit':'', st.hit?9000:6500, (p.disp||p.player)+' +'+p._delta+' '+sl+' → '+p._newVal+(st.hit?' ✓ HIT':''));
 }
-function showParlayHit(pl){ if(TICKER||privProps()) return;
+function showParlayHit(pl){ if(TICKER||privProps()||!propPops()) return;
   enqueueRise('<div class="gface" style="font-size:30px">🏆</div><div class="rb"><div class="tag" style="color:var(--gold)">Parlay hit</div><div class="top"><span class="nm">'+esc(pl.name||'Parlay')+'</span><span class="delta" style="color:var(--gold)">'+esc(pl.odds||'')+'</span></div><div class="tot">All '+pl.legs.length+' legs cleared</div></div>', 'hit', 12000, '🏆 '+(pl.name||'Parlay')+' '+(pl.odds||'')+' HIT');
 }
 function showGameRise(cs, scoreStr, tag, detail, sp, kind){
@@ -752,7 +771,7 @@ function tkPropHTML(p){
     esc(nm)+(p.team?' <small>'+esc(p.team)+'</small>':'')+' <span class="ct"><b>'+(v==null?'–':v)+'</b>/'+esc(need)+'</span> <small>'+esc((p.statLabel||p.stat||'').toUpperCase())+'</small>'+
     (set==='won'?' ✓':set==='lost'?' ✗':'<i class="dt" style="background:'+color+'"></i>')+'</span>'; }
 function tkParlayHTML(pl){ var won=pl._wonCount||0, n=pl.legs.length, pct=Math.round((pl._prob||0)*100);
-  return '<span class="tp pl'+(pl._settled?' '+pl._settled:'')+'" data-k="pl'+esc(pl.id)+'">🎟 '+esc(pl.name||'Parlay')+' <small>'+esc(pl.odds||'')+'</small> '+won+'/'+n+(pl._settled==='won'?' 🏆':pl._settled==='lost'?' ✗':' · '+pct+'%')+'</span>'; }
+  return '<span class="tp pl'+(pl._settled?' '+pl._settled:'')+'" data-k="pl'+esc(pl.id)+'">🎟 '+esc(pl.name||'Parlay')+' <small>'+esc(pl.odds||'')+(moneyTxt(pl)?' · '+esc(moneyTxt(pl)):'')+'</small> '+won+'/'+n+(pl._settled==='won'?' 🏆':pl._settled==='lost'?' ✗':' · '+pct+'%')+'</span>'; }
 function renderTicker(){
   var root=$('tk'); if(!root){ root=document.createElement('div'); root.id='tk'; root.innerHTML='<div class="tab" id="tktab">LIVE</div><div class="lane"><div class="track" id="tktrack"></div></div>'; document.body.appendChild(root); }
   var m=tkMode(); $('tktab').textContent={all:'SCORES',mine:'MY GAMES',props:'MY GAMES + PROPS'}[m]||'LIVE';
