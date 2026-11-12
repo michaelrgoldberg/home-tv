@@ -42,6 +42,12 @@
   /* rise-up popup card (bottom-left) */
   #rise{position:fixed;left:14px;bottom:14px;width:min(70vw,340px);background:linear-gradient(180deg,#16203a,#0e1526);border:1px solid var(--gold);border-radius:14px;box-shadow:0 18px 50px -14px #000;display:flex;align-items:center;gap:12px;padding:11px 13px;transform:translateY(160%);opacity:0;transition:transform .5s cubic-bezier(.2,1.1,.3,1),opacity .4s;z-index:50}
   #rise.show{transform:translateY(0);opacity:var(--ov)}
+  #rise.top{top:8px;bottom:auto;transform:translateY(-170%)}
+  #rise.top.show{transform:translateY(0)}
+  .pleg.flash{animation:legflash 1.1s ease-out 3}
+  .rail i.flash{animation:dotflash 1.1s ease-out 3}
+  @keyframes legflash{0%{background:rgba(46,196,122,.55)}100%{background:transparent}}
+  @keyframes dotflash{0%{box-shadow:0 0 0 0 rgba(255,255,255,.95)}100%{box-shadow:0 0 0 7px rgba(255,255,255,0)}}
   #rise .face{width:52px;height:52px;border-radius:50%;flex:none;background:#223049 center/cover;border:2px solid var(--gold)}
   #rise .rb{flex:1;min-width:0}
   #rise .rb .top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
@@ -381,7 +387,7 @@ function legRow(l){ var s=legStat(l);
   var icon=s.st==='won'?'✓':s.st==='lost'?'✗':(s.v!=null&&over(l)&&l._live?'+'+(needed(l)-s.v):'');
   var right = l._pre ? '<span class="lc">'+esc(shortStatus(l))+'</span>'
     : '<span class="lv">'+(s.v==null?'–':s.v)+'</span><span class="lc'+(l._live?' live':'')+'">'+esc(icon||(l._live?String(l._status||'').replace(/^(\w+ )?/,''):shortStatus(l)))+'</span>';
-  return '<div class="pleg '+(s.st||'')+(isSweat(l)?' sweat':'')+(legSelId===l.id?' lsel':'')+'" data-leg="'+esc(l.id)+'"><span class="ld" style="background:'+s.color+'"></span><span class="ln">'+(isPinned(l.id)?'📌 ':'')+(isMuted(l.id)?'🔇 ':'')+esc(l.disp||l.player)+(l.team?' <span class="tm">'+esc(l.team)+'</span>':'')+'<span class="ll">'+esc(l.label||'')+'</span></span>'+right+'</div>';
+  return '<div class="pleg '+(s.st||'')+(isSweat(l)?' sweat':'')+(legSelId===l.id?' lsel':'')+((l._flashUntil||0)>Date.now()?' flash':'')+'" data-leg="'+esc(l.id)+'"><span class="ld" style="background:'+s.color+'"></span><span class="ln">'+(isPinned(l.id)?'📌 ':'')+(isMuted(l.id)?'🔇 ':'')+esc(l.disp||l.player)+(l.team?' <span class="tm">'+esc(l.team)+'</span>':'')+'<span class="ll">'+esc(l.label||'')+'</span></span>'+right+'</div>';
 }
 function parlayCard(pl){ // full page: every leg listed, nothing clipped
   return '<div class="pcard '+(pl._settled||'')+'">'+parlayHeader(pl)+'<div class="plegs">'+orderedLegs(pl).map(legRow).join('')+'</div></div>';
@@ -390,8 +396,9 @@ var focusTick=0, openId=null, legSelId=null, pop=null;
 function parlayCorner(pl){
   if(openId===pl.id){ return '<div class="pcard '+(pl._settled||'')+'">'+parlayHeader(pl)+'<div class="plegs">'+orderedLegs(pl).map(legRow).join('')+'</div></div>'; } // overlay: header + one dot per leg + the leg in focus
   var legs=orderedLegs(pl); var live=legs.filter(function(l){ return l._live && !settled(l); });
-  var focus = live.length ? live[focusTick%live.length] : (legs.filter(function(l){return !settled(l);})[0]||legs[0]);
-  var rail='<div class="rail">'+legs.map(function(l){ var s=legStat(l); var t=s.st==='won'?'✓':s.st==='lost'?'✗':''; return '<i class="'+(l===focus?'on':'')+'" style="background:'+s.color+'" title="'+esc(l.disp)+'">'+t+'</i>'; }).join('')+'</div>';
+  var flashing=legs.filter(function(l){ return (l._flashUntil||0)>Date.now(); })[0];
+  var focus = flashing ? flashing : live.length ? live[focusTick%live.length] : (legs.filter(function(l){return !settled(l);})[0]||legs[0]);
+  var rail='<div class="rail">'+legs.map(function(l){ var s=legStat(l); var t=s.st==='won'?'✓':s.st==='lost'?'✗':''; return '<i class="'+(l===focus?'on':'')+((l._flashUntil||0)>Date.now()?' flash':'')+'" style="background:'+s.color+'" title="'+esc(l.disp)+'">'+t+'</i>'; }).join('')+'</div>';
   var f=''; if(focus){ var s=legStat(focus); var v=s.v; var right, nm;
     if(focus.kind&&focus.kind!=='prop'){ nm=esc(focus.disp||focus.label||'')+'<span class="ll">'+esc(focus._score||'')+'</span>'; right = focus._pre ? esc(shortStatus(focus)) : ('<span class="fv">'+esc(lineValTxt(focus))+'</span> <span class="fc">'+esc(lineEdgeTxt(focus)||shortStatus(focus))+'</span>'); }
     else { nm=esc(focus.disp||focus.player)+(focus.team?' <span class="tm">'+esc(focus.team)+'</span>':'')+'<span class="ll">'+esc(focus.label||'')+'</span>'; right = focus._pre ? esc(shortStatus(focus)) : ('<span class="fv">'+(v==null?'–':v)+'</span> '+(s.st==='won'?'✓':s.st==='lost'?'✗':(over(focus)&&v!=null?'+'+(needed(focus)-v):''))+' <span class="fc">'+esc(shortStatus(focus))+'</span>'); }
@@ -502,14 +509,19 @@ function enqueueRise(html, cls, dur, logText){
   if(riseQ.length>=3){ var lines=riseQ.map(function(q){ return q.log; }).filter(Boolean); riseQ=[{html:'<div class="gface">📣</div><div class="rb"><div class="tag" style="color:var(--muted)">'+lines.length+' updates</div>'+lines.slice(0,4).map(function(x){ return '<div class="line">'+esc(x)+'</div>'; }).join('')+(lines.length>4?'<div class="line" style="color:#6f7d9b">+'+(lines.length-4)+' more · ◂ for history</div>':'')+'</div>', cls:'stack', dur:7500}]; }
   pumpRise();
 }
-function pumpRise(){ if(riseBusy) return; var it=riseQ.shift(); if(!it) return; var r=$('rise'); if(!r) return;
-  riseBusy=true; r.className=it.cls; r.innerHTML=it.html; void r.offsetWidth; r.classList.add('show');
+function pumpRise(){ if(riseBusy) return; if(CORNER && typeof focused!=='undefined' && focused) return; /* browsing: hold until the remote is handed back */ var it=riseQ.shift(); if(!it) return; var r=$('rise'); if(!r) return;
+  riseBusy=true; r.className=it.cls+((CORNER && !isQuiet())?' top':''); r.innerHTML=it.html; void r.offsetWidth; r.classList.add('show');
   clearTimeout(riseT); riseT=setTimeout(function(){ r.classList.remove('show'); setTimeout(function(){ riseBusy=false; pumpRise(); }, 420); }, it.dur);
 }
 function showRise(p){
   if(isMuted(p.id)||privProps()) return;
   if(p.kind&&p.kind!=='prop'){ var tg=(p.kind==='total'?'Total':p.kind==='ml'?'Moneyline':'Spread')+' · '+(p._status||''); enqueueRise('<div class="gface">'+({bk:'🏀',fb:'🏈',hk:'🏒',bb:'⚾',sc:'⚽'}[p.sport]||'📣')+'</div><div class="rb"><div class="tag">'+esc(tg)+'</div><div class="top"><span class="nm">'+esc(p.disp||p.label||'')+'</span><span class="delta" style="color:'+(p._lineEdge>0?'var(--green)':'var(--red)')+'">'+esc(lineValTxt(p))+'</span></div><div class="tot">'+esc(p._score||'')+' · '+esc(lineEdgeTxt(p))+'</div></div>','game',5500,(p.disp||p.label)+' '+lineValTxt(p)+' · '+lineEdgeTxt(p)); return; }
   var isProp=props.indexOf(p)>=0;
+  if(CORNER && !isQuiet() && !isProp){ // parlay leg: flash its row / dot, bring its parlay forward, log it — no pop-up over the list
+    p._flashUntil=Date.now()+4500;
+    if(!focused){ var items=cornerItems(); for(var i=0;i<items.length;i++){ if(items[i].legs && items[i].legs.indexOf(p)>=0){ rotI=i; break; } } }
+    logNote((p.disp||p.player)+' +'+p._delta+' '+(p.statLabel||p.stat)+' → '+p._newVal+(statusOf(p,p._newVal).hit?' ✓':''));
+    render(); setTimeout(render, 4600); return; }
   if(CORNER && !isQuiet() && isProp){ // persistent-chip mode: flash in place
     rotI=props.indexOf(p); render();
     var chip=document.querySelector('#pp .cchip');
@@ -625,7 +637,7 @@ window.W2W_BACK=function(){ if(CORNER) return false; try{ history.back(); }catch
 function reloadAll(){ return loadProps().then(function(d){ d=pruneOld(d); props=d.props||[]; parlays=d.parlays||[]; poll(); }); }
 setInterval(function(){ var before=props.length+parlays.length; var d=pruneOld({props:props,parlays:parlays}); if(d.props.length+d.parlays.length!==before){ props=d.props; parlays=d.parlays; render(); } }, 60000); // 2 AM roll-over
 window.PROPS={ reload:reloadAll, history:showHistory, next:function(){}, prev:function(){}, summon:function(){ summonUntil=Date.now()+25000; render(); setTimeout(render, 25500); },
-  focus:function(on){ focused=!!on; document.body.classList.toggle('focused',focused); if(focused){ summonUntil=Date.now()+600000; } else { openId=null; summonUntil=Date.now()+25000; setTimeout(render,25500); } render(); } };
+  focus:function(on){ focused=!!on; document.body.classList.toggle('focused',focused); if(!focused) setTimeout(pumpRise, 400); if(focused){ summonUntil=Date.now()+600000; } else { openId=null; summonUntil=Date.now()+25000; setTimeout(render,25500); } render(); } };
 
 if(CORNER){ document.body.classList.add('corner'); summonUntil=Date.now()+25000; setTimeout(render, 25500); // opening the card is itself a summons
   (function cyc(){ var pm=getPropMode(); var vc=visCount(); var n=cornerItems().length; focusTick++;
