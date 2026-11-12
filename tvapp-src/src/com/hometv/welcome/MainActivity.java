@@ -47,7 +47,7 @@ public class MainActivity extends Activity {
       if (u.startsWith(base) || u.startsWith("about:")) return false;
       if (u.startsWith("https://www.youtube-nocookie.com") || u.startsWith("https://www.youtube.com/embed")) return false;
       Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(u)); i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-      try { i.setPackage("com.phlox.tvwebbrowser"); startActivity(i); } catch (Exception e) { i.setPackage(null); startActivity(i); }
+      try { i.setPackage("com.amazon.cloud9"); startActivity(i); } catch (Exception e) { try { i.setPackage("com.phlox.tvwebbrowser"); startActivity(i); } catch (Exception e2) { i.setPackage(null); startActivity(i); } }
       return true;
     } catch (Exception e) { return true; }
   }
