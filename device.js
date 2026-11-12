@@ -4,7 +4,7 @@
 (function(){
   var PROFILES = {
     bedroom:   { name:'Goldberg Master Bedroom TV', short:'Master Bedroom TV', privacy:{} },
-    projector: { name:'Goldberg Projector',         short:'Projector',         privacy:{ calendar:true, earnings:true, money:true } }
+    projector: { name:'Goldberg Projector',         short:'Projector',         privacy:{ props:true, calendar:true, earnings:true, money:true } }
   };
   // Hisense 43" QD6QF reports model AFTOLCBC82; any other Fire TV device is the projector stick.
   function detect(){
@@ -30,5 +30,16 @@
     var n=pu.set['w2w.notify'], b=pu.set['w2w.banners'];
     if(n) setTimeout(function(){ ['TV','OV'].forEach(function(o){ try{ if(window[o]&&window[o].setAlertPrefs) window[o].setAlertPrefs(n.games!==false, b!==false); }catch(e){} }); }, 1500);
   } }catch(e){}
+  // Auto re-lock: once no page on this screen has been open for ~an hour (done watching, TV asleep),
+  // the next wake flips this screen's private switches back on. Unlocking stays manual in 🔒 Privacy.
+  var RELOCK = { bedroom:{ props:true, money:true }, projector:{ props:true, calendar:true, earnings:true, money:true } };
+  try{
+    var now=Date.now(), last=+localStorage.getItem('w2w.lastSeen')||0;
+    if(last && now-last>60*60000){ var rl=RELOCK[id]||{}, pv2=JSON.parse(localStorage.getItem('w2w.privacy')||'{}')||{}, ch2=false;
+      Object.keys(rl).forEach(function(k){ if(!pv2[k]){ pv2[k]=true; ch2=true; } });
+      if(ch2){ localStorage.setItem('w2w.privacy', JSON.stringify(pv2)); localStorage.setItem('w2w.settingsRev', String(Date.now())); } }
+    localStorage.setItem('w2w.lastSeen', String(now));
+    setInterval(function(){ try{ localStorage.setItem('w2w.lastSeen', String(Date.now())); }catch(e){} }, 60000);
+  }catch(e){}
   window.W2W_DEVICE={ id:id, name:P.name, short:P.short, defaults:P.privacy };
 })();

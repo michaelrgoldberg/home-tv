@@ -31,6 +31,23 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #rails .rail h4{font-size:1.05vw;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:#9fb0d6;margin:.7vw 0 .5vw;display:flex;align-items:center;gap:.5vw}
 #rails .rail h4 .hint{font-size:.78vw;font-weight:400;letter-spacing:0;text-transform:none;color:#5f6d8a}
 #rails .strip{display:flex;gap:1vw;overflow-x:auto;padding-bottom:.3vw}
+#rails .rc[data-rail="recent"]{opacity:.5;filter:saturate(.55)}
+#rails .rc[data-rail="recent"]:focus{opacity:1;filter:none}
+.rc .seen{position:absolute;top:.4vw;left:.4vw;background:rgba(5,10,20,.78);color:#2ec47a;border-radius:.5vw;padding:.1vw .5vw;font-size:.82vw;font-weight:800;letter-spacing:.04em}
+#whp{position:fixed;inset:0;background:rgba(5,8,16,.97);z-index:60;display:none;padding:2.2vw 4vw 3vw;overflow-y:auto}
+#whp.show{display:block}
+#whp h1{font-size:1.9vw;margin:0}
+#whp .sub{color:#7f8db0;font-size:1.02vw;margin:.3vw 0 .6vw}
+#whp h4{font-size:1.08vw;letter-spacing:.09em;text-transform:uppercase;color:#9fb0d6;margin:1.5vw 0 .5vw}
+#whp .hrow{display:flex;align-items:center;gap:1.2vw;background:#121a33;border:.2vw solid transparent;border-radius:.8vw;padding:.5vw .9vw;margin:.45vw 0;outline:none;cursor:pointer}
+#whp .hrow:focus{border-color:#ffcc00;background:#1a2440}
+#whp .hrow img{width:3.2vw;border-radius:.4vw;flex:none}
+#whp .hrow .ht{flex:1;min-width:0;font-size:1.22vw;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#whp .hrow .ht small{display:block;font-weight:400;color:#9fb0d6;font-size:.92vw}
+#whp .hrow .when{color:#8d9bc0;font-size:1vw;white-space:nowrap}
+#whp .hrow.seenr{opacity:.55}
+#whp .hrow.seenr:focus{opacity:1}
+#whp .empty{color:#7f8db0;font-size:1.05vw}
 #rails .rc{position:relative;flex:0 0 auto;width:8.4vw;border-radius:.8vw;overflow:hidden;background:#141c33;border:.2vw solid transparent;outline:none;cursor:pointer}
 #rails .rc:focus{border-color:#ffcc00;transform:scale(1.04)}
 #rails .rc img{width:100%;height:12.4vw;object-fit:cover;display:block}
@@ -769,6 +786,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
 <div class="bar" id="bar1">
   <input id="wQ" class="focusable" type="search" placeholder="🔍 Search a title or actor" autocomplete="off" enterkeyhint="search">
   <button class="btn focusable" id="wQx" style="display:none">✕ Clear</button>
+  <button class="btn focusable" id="wHist">🕑 History</button>
   <span class="sep"></span>
   <span class="lbl">Show</span>
   <button class="btn focusable" data-kind="all">Both</button>
@@ -786,6 +804,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
 </div>
 <div class="bar" id="bar2"><span class="lbl">Apps</span></div>
 <div id="rails"></div>
+<div id="whp" tabindex="-1"><h1>🕑 Viewing history</h1><div class="sub">Everything you started from What to Watch. OK on a row for resume · finished · remove — Back closes.</div><div id="whpBody"></div></div>
 <div id="msg"></div>
 <div id="grid"></div>
 
@@ -891,7 +910,8 @@ function markFinished(k){ var e=null, w=getWatching().filter(function(x){ if(x.k
 function removeEntry(list,k){ sset(list, sget(list,[]).filter(function(x){return x.k!==k;})); }
 function railCard(e,list){ var img=e.poster?'<img loading="lazy" src="'+IMG+'w342'+e.poster+'" alt="">':e.pimg?'<img loading="lazy" src="'+e.pimg+'" alt="">':'<div class="noimg">'+esc(e.title)+'</div>';
   var app=e.svc?'<div class="pl">'+esc(svcName(e.svc))+'</div>':'';
-  return '<div class="rc focusable" tabindex="0" data-rail="'+list+'" data-rk="'+esc(e.k)+'">'+img+app+'<div class="cap">'+esc(e.title)+'</div></div>'; }
+  var badge=list==='recent'?'<div class="seen">✓ WATCHED</div>':'';
+  return '<div class="rc focusable" tabindex="0" data-rail="'+list+'" data-rk="'+esc(e.k)+'">'+img+badge+app+'<div class="cap">'+esc(e.title)+'</div></div>'; }
 function renderRails(){ var r=document.getElementById('rails'); if(!r) return; var w=getWatching(), rec=getRecent(), html='';
   if(w.length) html+='<div class="rail"><h4>▶ Continue watching <span class="hint">press OK for resume / finished / remove</span></h4><div class="strip">'+w.map(function(e){return railCard(e,'watching');}).join('')+'</div></div>';
   if(rec.length) html+='<div class="rail"><h4>🕑 Recently watched <span class="hint">press OK to watch again or remove</span></h4><div class="strip">'+rec.map(function(e){return railCard(e,'recent');}).join('')+'</div></div>';
@@ -904,10 +924,23 @@ function railMenu(list,k){ var e=sget(list,[]).filter(function(x){return x.k===k
   opts.push({v:'rm',l:'🗑 Remove from this list'});
   pick(opts, null, function(v){
     if(v==='play'){ relaunch(e); }
-    else if(v==='done'){ markFinished(k); renderRails(); focusRails(); }
-    else if(v==='rm'){ removeEntry(list,k); renderRails(); focusRails(); }
+    else if(v==='done'){ markFinished(k); renderRails(); if(histOpen()){ renderHistory(); var f1=document.querySelector('#whp .hrow'); (f1||document.getElementById('whp')).focus(); } else focusRails(); }
+    else if(v==='rm'){ removeEntry(list,k); renderRails(); if(histOpen()){ renderHistory(); var f2=document.querySelector('#whp .hrow'); (f2||document.getElementById('whp')).focus(); } else focusRails(); }
   }, e.title);
 }
+function fmtWhen(ts){ if(!ts) return ''; var d=new Date(ts), n=new Date(), one=864e5;
+  var diff=Math.round((new Date(n.getFullYear(),n.getMonth(),n.getDate())-new Date(d.getFullYear(),d.getMonth(),d.getDate()))/one);
+  if(diff<=0) return 'Today'; if(diff===1) return 'Yesterday';
+  return d.toLocaleDateString('en-US',{weekday:'short',month:'numeric',day:'numeric'}); }
+function histRow(e,list){ var img=e.poster?'<img loading="lazy" src="'+IMG+'w185'+e.poster+'" alt="">':e.pimg?'<img loading="lazy" src="'+e.pimg+'" alt="">':'';
+  return '<div class="rc hrow'+(list==='recent'?' seenr':'')+' focusable" tabindex="0" data-rail="'+list+'" data-rk="'+esc(e.k)+'">'+img+'<div class="ht">'+esc(e.title)+'<small>'+esc(e.svc?svcName(e.svc):'')+'</small></div><div class="when">'+(list==='recent'?'✓ watched · ':'▶ started · ')+fmtWhen(e.ts)+'</div></div>'; }
+function histOpen(){ var el=document.getElementById('whp'); return !!el&&el.classList.contains('show'); }
+function renderHistory(){ var w=getWatching(), r=getRecent();
+  document.getElementById('whpBody').innerHTML=
+    '<h4>▶ Continue watching ('+w.length+')</h4>'+(w.length?w.map(function(e){return histRow(e,'watching');}).join(''):'<div class="empty">Nothing in progress.</div>')+
+    '<h4>✓ Watched ('+r.length+')</h4>'+(r.length?r.map(function(e){return histRow(e,'recent');}).join(''):'<div class="empty">Nothing here yet — press OK on a Continue-watching title and mark it finished.</div>'); }
+function openHist(){ renderHistory(); var el=document.getElementById('whp'); el.classList.add('show'); var f=el.querySelector('.hrow'); (f||el).focus(); }
+function closeHist(){ document.getElementById('whp').classList.remove('show'); var b=document.getElementById('wHist'); if(b) b.focus(); }
 function focusRails(){ var f=document.querySelector('#rails .rc')||document.querySelector('#bar1 .focusable'); if(f) try{f.focus();}catch(e){} }
 
 var state = sget('state', null) || {kind:'all', rmin:7.0, rmax:10, sort:'imdb_desc', cat:null, off:{}};
@@ -1228,6 +1261,7 @@ function playTrailer(key){
 }
 function closeOverlays(){
   var was=false;
+  if(histOpen()){ closeHist(); return true; }
   if(window.W2W_PRIV&&W2W_PRIV.isOpen()){ W2W_PRIV.close(); return true; }
   if(window.W2W_SLEEP&&W2W_SLEEP.isOpen()){ history.back(); return true; }
   if(window.W2W_SP&&W2W_SP.isOpen()){ history.back(); return true; }
@@ -1296,6 +1330,7 @@ document.addEventListener('click',function(e){
     }, 'Pick a genre');
     return;
   }
+  if(b.id==='wHist'){ openHist(); return; }
   if(b.classList.contains('rc')){ railMenu(b.dataset.rail, b.dataset.rk); return; }
   if(b.classList.contains('card')){var t=titles[b.dataset.k]; lastCard=b.dataset.k; if(t) openDetail(t); return;}
   if(b.dataset.close){history.back(); return;}
