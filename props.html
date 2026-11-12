@@ -292,7 +292,7 @@ function getNotify(){ var o=lsGet('w2w.notify',{}); return {quiet:!!o.quiet, gam
 var summonUntil=0;
 function privMoney(){ return !!(lsGet('w2w.privacy',{})||{}).money; }
 function usd(n){ n=+n||0; return '$'+(Math.round(n*100)%100?n.toFixed(2):String(Math.round(n))); }
-function moneyTxt(pl){ if(privMoney()||!pl.stake) return ''; if(pl._settled==='won') return '💵 won '+usd(pl.toWin); if(pl._settled==='lost') return '−'+usd(pl.stake); return usd(pl.stake)+' → '+usd(pl.toWin); }
+function moneyTxt(pl){ if(privMoney()||!pl.stake) return ''; if(pl._settled==='won') return '💵 won '+usd(pl.toWin); if(pl._settled==='lost') return '−'+usd(pl.stake); return usd(pl.stake)+' to win '+usd(pl.toWin); }
 // tonight's money plus the running record kept in the encrypted file (ledger: {date,name,stake,toWin,result})
 function moneySummary(){ if(privMoney()) return ''; var staked=0, toWin=0, won=0, lost=0, open=0;
   parlays.concat(props).forEach(function(x){ if(!x.stake) return; staked+=x.stake; if(x._settled==='won'||(!x.legs&&settled(x)==='won')) won+=(+x.toWin||0); else if(x._settled==='lost'||(!x.legs&&settled(x)==='lost')) lost+=x.stake; else { open++; toWin+=(+x.toWin||0); } });
