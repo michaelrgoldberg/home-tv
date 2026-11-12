@@ -72,7 +72,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #goNative:focus{border-color:#ffcc00;color:#fff;box-shadow:0 0 0 .18vw rgba(255,204,0,.35)}
 #goBack{position:absolute;top:1.1vw;left:11vw;z-index:9;font-size:1vw;padding:.35vw .9vw;border-radius:2vw;background:rgba(10,15,30,.55);color:#cdd7ee;border:.14vw solid rgba(255,255,255,.25);cursor:pointer;outline:none}
 #goBack:focus{border-color:#ffcc00;color:#fff;box-shadow:0 0 0 .18vw rgba(255,204,0,.35)}
-#privBtn{position:absolute;top:2.5vw;right:2.2vw;z-index:9;font-size:1vw;padding:.35vw .9vw;border-radius:2vw;background:rgba(10,15,30,.55);color:#cdd7ee;border:.14vw solid rgba(255,255,255,.25);cursor:pointer;outline:none}
+#privBtn{position:absolute;top:1.1vw;right:19vw;z-index:9;font-size:1vw;padding:.35vw .9vw;border-radius:2vw;background:rgba(10,15,30,.55);color:#cdd7ee;border:.14vw solid rgba(255,255,255,.25);cursor:pointer;outline:none}
 #privBtn:focus{border-color:#ffcc00;color:#fff;box-shadow:0 0 0 .18vw rgba(255,204,0,.35)}
 #privBtn.active{border-color:#e5533c;color:#ffb3a7}
 #priv{display:none;position:fixed;inset:0;background:rgba(3,6,14,.78);z-index:60;align-items:center;justify-content:center}
@@ -89,6 +89,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #priv .prow.all{border-top:.1vw solid #232d41;border-radius:0 0 1vw 1vw;margin-top:.4vw;padding-top:1.2vw}
 #priv .prow.all.on .sw{background:#e5533c}
 .privmask{color:#9aa7c2;font-size:1.05vw;padding:.6vw .2vw}
+#home .devname{margin-top:1.4vw;font-size:1.05vw;font-weight:800;letter-spacing:.22em;text-transform:uppercase;color:#ffcc00;opacity:.85;margin-bottom:.5vw}
 #home .greet{font-size:3.6vw;font-weight:300;letter-spacing:-.01em;line-height:1.1;text-shadow:0 .2vw 1.4vw rgba(0,0,0,.5)}
 #home .greet b{font-weight:700}
 #home .date{font-size:2.3vw;font-weight:500;margin-top:.8vw;text-shadow:0 .1vw .8vw rgba(0,0,0,.6)}
@@ -204,9 +205,9 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
   <button id="goNative" class="focusable" title="Open the Hisense / Fire TV home screen">⌂ Hisense Home</button>
   <button id="goBack" class="focusable" style="display:none" title="Return to the app you were in">↩ Back</button>
   <button id="privBtn" class="focusable" title="Privacy: hide props, calendar or earnings">🔒 Privacy</button>
-  <div id="priv" role="dialog" aria-label="Privacy"><div class="pbox"><h2>🔒 Privacy</h2><div class="psub">Hide things from the screen when someone else is in the room. OK flips a switch · Back closes.</div><div id="privRows"></div></div></div>
+  <div id="priv" role="dialog" aria-label="Privacy"><div class="pbox"><h2>🔒 Privacy</h2><div class="psub">Hide things from the screen when someone else is in the room. OK flips a switch · Back closes.<br><b id="privDev"></b></div><div id="privRows"></div></div></div>
   <div class="top">
-    <div><div class="greet" id="greet"></div><div class="date" id="hdate"></div><div class="hdate" id="hheb"></div><div class="today" id="htoday"></div></div>
+    <div><div class="devname" id="devName"></div><div class="greet" id="greet"></div><div class="date" id="hdate"></div><div class="hdate" id="hheb"></div><div class="today" id="htoday"></div></div>
     <div><div class="clock" id="hclock"></div><div id="mt"><div class="hd"><span>🏆 My teams</span><span class="dots"><i class="on"></i><i></i></span></div><div id="mtRows"></div></div><div id="alertChip" class="focusable" tabindex="0" style="display:none;margin-top:.45vw;width:auto;box-sizing:border-box;padding:.22vw .7vw;border-radius:2vw;background:rgba(8,12,30,.76);border:.1vw solid rgba(255,255,255,.18);font-size:.72vw;cursor:pointer;outline:none;text-align:left" onfocus="this.style.borderColor='#fff'" onblur="this.style.borderColor='rgba(255,255,255,.18)'"></div></div>
   </div>
   <div class="cards">
@@ -217,6 +218,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
   </div>
   <div class="go"><button class="gobtn focusable" id="goWatch">🎬&nbsp; What to Watch</button><button class="gobtn focusable" id="goSp" style="background:#c62828;color:#fff">🏟️&nbsp; Sports</button><button class="gobtn focusable" id="goAmb" style="background:#ff8a3d;color:#2a1200">🌅&nbsp; Ambient</button><button class="gobtn focusable" id="goSleep" style="background:#b9a6ff;color:#16102e">🌙&nbsp; Sleep</button><button class="gobtn focusable" id="goGH" style="background:#fff;color:#1a3a8f">🏠&nbsp; Google Home</button></div>
 </div>
+<script src="device.js"></script>
 <script>
 // Personal settings (names, location, schedules) are NOT in this public file.
 // They live encrypted in config.json; only this TV holds the key.
@@ -259,10 +261,12 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
   var hebDate='', todayEv=[], usHol=[], jHol=[], candles=null, sunTimes=null, privateData=null;
   // ---------- privacy switches (shared with the overlays through localStorage) ----------
   var PRIV_ROWS=[['props','🎯 Props & parlays','Hides the tracker, the overlay card and prop pop-ups'],['calendar','📅 Calendar events','Hides the family calendar lines in Today at home'],['earnings','💵 Earnings','Hides the money in the Office card']];
+  try{ document.getElementById('devName').textContent=W2W_DEVICE.name; document.title=W2W_DEVICE.name; if(W2W_DEVICE.id!=='bedroom'){ var gn=document.getElementById('goNative'); gn.textContent='⌂ Fire TV Home'; gn.title='Open the Fire TV home screen'; } }catch(e){}
   function getPriv(){ try{ return JSON.parse(localStorage.getItem('w2w.privacy')||'{}')||{}; }catch(e){ return {}; } }
   function setPriv(o){ try{ localStorage.setItem('w2w.privacy', JSON.stringify(o)); }catch(e){} paintPriv(); }
   function privOn(k){ return !!getPriv()[k]; }
-  function paintPriv(){ var o=getPriv(), any=PRIV_ROWS.some(function(r){return o[r[0]];}), all=PRIV_ROWS.every(function(r){return o[r[0]];});
+  function paintPriv(){ try{ var pd=document.getElementById('privDev'); if(pd) pd.textContent='These switches are for this screen only ('+W2W_DEVICE.short+').'; }catch(e){}
+ var o=getPriv(), any=PRIV_ROWS.some(function(r){return o[r[0]];}), all=PRIV_ROWS.every(function(r){return o[r[0]];});
     var b=document.getElementById('privBtn'); if(b){ b.classList.toggle('active',any); b.textContent=any?'🔒 Privacy ON':'🔒 Privacy'; }
     var rows=document.getElementById('privRows'); if(rows){ rows.innerHTML=PRIV_ROWS.map(function(r){ return '<div class="prow focusable'+(o[r[0]]?' on':'')+'" tabindex="0" data-priv="'+r[0]+'"><div class="pt"><b>'+r[1]+'</b><span>'+r[2]+'</span></div><div class="sw"></div></div>'; }).join('')+'<div class="prow all focusable'+(all?' on':'')+'" tabindex="0" data-priv="*"><div class="pt"><b>👥 Guest mode · hide everything</b><span>All three at once</span></div><div class="sw"></div></div>'; }
     if(typeof house==='function') try{ house(); }catch(e){} }
