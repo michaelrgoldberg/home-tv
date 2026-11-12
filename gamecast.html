@@ -263,12 +263,14 @@ var PROP_MODES=[{m:'cycle',sec:10,label:'Cycle 10s'},{m:'cycle',sec:20,label:'Cy
 function propModeIdx(){ var c=lsGet('w2w.propMode',{}); for(var i=0;i<PROP_MODES.length;i++){ var P=PROP_MODES[i]; if(P.m===c.m&&(P.sec||0)===(c.sec||0)&&(P.n||0)===(c.n||0)) return i; } return 0; }
 function notifyGet(){ var o=lsGet('w2w.notify',{}); return {quiet:!!o.quiet, games:(o.games!==false)}; }
 var GC_CYCLES=[0,10,20,30], OPACS=[1,.8,.65];
+function syncNative(){ var nf=notifyGet(), b=lsGet('w2w.banners',true)!==false; try{ if(window.OV&&OV.setAlertPrefs) OV.setAlertPrefs(nf.games,b); }catch(e){} try{ if(window.TV&&TV.setAlertPrefs) TV.setAlertPrefs(nf.games,b); }catch(e){} }
 function settingsList(g){
-  var nf=notifyGet(); var lvl=g?starLevel(String(g.id)):0;
+  var nf=notifyGet(); var lvl=g?starLevel(String(g.id)):0; var ban=lsGet('w2w.banners',true)!==false;
   return [
     {k:'prop', t:'Prop card', v:PROP_MODES[propModeIdx()].label, next:function(){ lsSet('w2w.propMode', PROP_MODES[(propModeIdx()+1)%PROP_MODES.length]); }},
     {k:'quiet', t:'Quiet mode', v:nf.quiet?'ON · popups only':'off', next:function(){ nf.quiet=!nf.quiet; lsSet('w2w.notify',nf); }},
-    {k:'alerts', t:'Game alerts', v:nf.games?'ON':'off', next:function(){ nf.games=!nf.games; lsSet('w2w.notify',nf); }},
+    {k:'alerts', t:'Game alerts', v:nf.games?'ON':'off (all)', next:function(){ nf.games=!nf.games; lsSet('w2w.notify',nf); syncNative(); }},
+    {k:'banner', t:'Top banner', v:(nf.games&&ban)?'ON':'off', next:function(){ lsSet('w2w.banners',!ban); syncNative(); }},
     {k:'switch', t:'Switch games', v:GC_CYCLE?('Auto '+GC_CYCLE+'s'):'Manual', next:function(){ var i=GC_CYCLES.indexOf(GC_CYCLE); GC_CYCLE=GC_CYCLES[(i+1)%GC_CYCLES.length]; try{ localStorage.setItem('w2w.gcCycle',String(GC_CYCLE)); }catch(e){} resetCycle(); }},
     {k:'dim', t:'Dim', v:Math.round((parseFloat(lsGet('w2w.ovOpacity',1))||1)*100)+'%', next:function(){ var o=parseFloat(lsGet('w2w.ovOpacity',1))||1; var i=OPACS.indexOf(o); lsSet('w2w.ovOpacity', OPACS[(i+1)%OPACS.length]); applyOpacity(); }},
     {k:'game', t:'This game', v: lvl===2?'🔔 every score':'★ key moments', next:function(){ if(!g) return; var m=lsGet('w2w.starLevel',{}); if(lvl===2) delete m[String(g.id)]; else m[String(g.id)]=2; lsSet('w2w.starLevel',m); g.level=starLevel(String(g.id)); }},
@@ -492,6 +494,7 @@ try{ if(!GC_CYCLE) GC_CYCLE=parseInt(localStorage.getItem('w2w.gcCycle')||'0',10
 var cycleT=null;
 function resetCycle(){ clearTimeout(cycleT); if(GC_CYCLE>0){ cycleT=setTimeout(function tick(){ if(!expanded&&games.length>1){ idx=(idx+1)%games.length; cur=games[idx]; render(); } cycleT=setTimeout(tick, GC_CYCLE*1000); }, GC_CYCLE*1000); } }
 resetCycle();
+setTimeout(syncNative, 1500);
 // jump request from the prop card: show this game, open the box score on the player's team, open his card
 var jumpPending=null;
 function takeJump(){ var j=lsGet('w2w.gcJump',null); if(!j||!j.t||Date.now()-j.t>60000) return; try{ localStorage.removeItem('w2w.gcJump'); }catch(e){} jumpPending=j; applyJump(); }

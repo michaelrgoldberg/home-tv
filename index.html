@@ -1418,7 +1418,9 @@ else {
   function getNotify(){ try{ var o=JSON.parse(localStorage.getItem('w2w.notify')||'{}'); return {quiet:!!o.quiet, games:(o.games!==false)}; }catch(e){ return {quiet:false, games:true}; } }
   function setNotify(o){ try{ localStorage.setItem('w2w.notify', JSON.stringify(o)); }catch(e){} }
   function toggleQuiet(){ var n=getNotify(); n.quiet=!n.quiet; setNotify(n); }
-  function toggleGameAlerts(){ var n=getNotify(); n.games=!n.games; setNotify(n); }
+  function syncNative(){ var n=getNotify(), b=lsGet('w2w.banners',true)!==false; try{ if(window.TV&&TV.setAlertPrefs) TV.setAlertPrefs(n.games,b); }catch(e){} }
+  function toggleGameAlerts(){ var n=getNotify(); n.games=!n.games; setNotify(n); syncNative(); }
+  function toggleBanner(){ var b=lsGet('w2w.banners',true)!==false; lsSet('w2w.banners',!b); syncNative(); }
   // Gamecast auto-switch interval (0 = manual with ◂▸ only)
   var GC_CYCLES=[0,10,20,30];
   function getGcCycle(){ try{ return parseInt(localStorage.getItem('w2w.gcCycle')||'0',10)||0; }catch(e){ return 0; } }
@@ -1484,6 +1486,7 @@ else {
       '<button class="chipb focusable" data-propmode="1">🪧 Prop card: '+propModeLabel()+'</button>'+
       '<button class="chipb focusable'+(getNotify().quiet?' on':'')+'" data-quiet="1">🔕 Quiet mode'+(getNotify().quiet?': popups only':': off')+'</button>'+
       '<button class="chipb focusable'+(getNotify().games?' on':'')+'" data-gamealerts="1">📣 Game alerts'+(getNotify().games?': ON':': off')+'</button>'+
+      '<button class="chipb focusable'+((getNotify().games&&lsGet('w2w.banners',true)!==false)?' on':'')+'" data-banner="1">🏷 Top banner'+((getNotify().games&&lsGet('w2w.banners',true)!==false)?': ON':': off')+'</button>'+
       '<button class="chipb focusable" data-opac="1">🌗 Dim: '+opacLabel()+'</button>';
     var bn=$s('spBanner'); if(!bn){ bn=document.createElement('div'); bn.id='spBanner'; var dd=$s('spOv'); dd.parentNode.insertBefore(bn, dd.nextSibling); }
     bn.innerHTML='⭐ <b>Star mode:</b> press OK on a game to cycle <b>★ key moments → 🔔 every score → off</b>. Hold OK on any game to jump to its Gamecast. Press <b>⭐ Done picking</b> when finished. ('+getStars().length+' followed)';
@@ -1547,6 +1550,7 @@ else {
     if(e.target.closest('[data-quiet]')){ toggleQuiet(); bars(); var b4=document.querySelector('[data-quiet]'); if(b4) b4.focus(); return; }
     if(e.target.closest('[data-gamealerts]')){ toggleGameAlerts(); bars(); var b5=document.querySelector('[data-gamealerts]'); if(b5) b5.focus(); return; }
     if(e.target.closest('[data-ovmenu]')){ ovOpen=!ovOpen; bars(); var b6=document.querySelector(ovOpen?'[data-gccycle]':'[data-ovmenu]'); if(b6) b6.focus(); return; }
+    if(e.target.closest('[data-banner]')){ toggleBanner(); bars(); var b8=document.querySelector('[data-banner]'); if(b8) b8.focus(); return; }
     if(e.target.closest('[data-opac]')){ cycleOpac(); bars(); var b7=document.querySelector('[data-opac]'); if(b7) b7.focus(); return; }
     var g=e.target.closest('[data-g]'); if(g){ var gm=games.filter(function(x){return x.id===g.dataset.g;})[0];
       if(starMode){ if(gm){ var lv=toggleStar(gm); spToast(lv===1?'★ Following — key moments (end of quarter, halfway, close & late)':lv===2?'🔔 Following closely — every score':'☆ Removed'); render(); var again=document.querySelector('[data-g="'+gm.id+'"]'); if(again) again.focus(); } return; }
@@ -1554,6 +1558,7 @@ else {
       else if(gm&&isOTA(gm.nets)){ var onet=(gm.nets||[]).filter(function(n){return OTA.test(String(n).toLowerCase().trim());})[0]||'a local channel'; spToast('📡 This game is free over the air on <b>'+esc(onet)+'</b> — watch it with a TV antenna, no subscription. (Also on YouTube TV if you have it.)'); } }
   });
   // hold OK on a game: make sure it's followed, then open its Gamecast
+  setTimeout(syncNative, 2000);
   window.SPORTS={ longPress:function(el){ var gm=games.filter(function(x){return x.id===el.dataset.g;})[0]; if(!gm) return; if(!isStar(gm.id)) setStar(gm,1); spToast('🎮 Opening Gamecast…'); try{ history.replaceState(history.state,'','#sports'); }catch(x){} setTimeout(function(){ location.href='gamecast.html'; },250); } };
   window.W2W_SP={
     open:function(){ $s('sp').classList.add('show'); starMode=false; $s('sp').classList.remove('starmode'); try{history.pushState({s:1},'');}catch(e){} $s('sp').scrollTop=0;

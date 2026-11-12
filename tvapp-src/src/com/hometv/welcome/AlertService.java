@@ -60,7 +60,7 @@ public class AlertService extends Service {
 
   @Override public IBinder onBind(Intent i) { return null; }
 
-  @Override public int onStartCommand(Intent i, int flags, int id) {
+  @Override public int onStartCommand(Intent i, int flags, int id) { self = this;
     cur = this;
     wm = (WindowManager) getSystemService(WINDOW_SERVICE);
     Notification note;
@@ -86,7 +86,11 @@ public class AlertService extends Service {
 
   // ---- helpers ----
   int dp(float v) { return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, getResources().getDisplayMetrics()); }
+  static AlertService self;
   boolean muted() { return muteUntil > System.currentTimeMillis(); }
+  // persistent switches from the dashboard / Gamecast settings: alerts=all game alerts, banners=top banner + scorebug only
+  boolean bannersOn() { SharedPreferences sp = getSharedPreferences("cfg", MODE_PRIVATE); return sp.getBoolean("alerts", true) && sp.getBoolean("banners", true); }
+  void setAlertPrefs(boolean alerts, boolean banners) { getSharedPreferences("cfg", MODE_PRIVATE).edit().putBoolean("alerts", alerts).putBoolean("banners", banners).apply(); if (!(alerts && banners)) { clearBug(); h.post(new Runnable(){ public void run(){ dismissCard(); } }); } }
 
   GradientDrawable bgCard() { GradientDrawable g = new GradientDrawable(); g.setColor(0xF00B1020); g.setCornerRadius(dp(14)); g.setStroke(dp(2), 0xFFFFCC00); return g; }
 
@@ -101,7 +105,7 @@ public class AlertService extends Service {
   // ---------- persistent scorebug ----------
   void showBug(final String text, final String logo) {
     h.post(new Runnable() { public void run() {
-      if (muted()) return;
+      if (muted() || !bannersOn()) return;
       if (bug == null) {
         LinearLayout row = new LinearLayout(AlertService.this); row.setOrientation(LinearLayout.HORIZONTAL); row.setGravity(Gravity.CENTER_VERTICAL);
         GradientDrawable g = new GradientDrawable(); g.setColor(0xD9000000); g.setCornerRadius(dp(10)); g.setStroke(dp(2), 0xFFFFCC00);
@@ -175,6 +179,7 @@ public class AlertService extends Service {
     @android.webkit.JavascriptInterface public void hideGamecast() { h.post(new Runnable(){ public void run(){ AlertService.this.hideGamecast(); } }); }
     @android.webkit.JavascriptInterface public boolean propsShown() { return propCard != null; }
     @android.webkit.JavascriptInterface public boolean gamecastShown() { return gamecast != null; }
+    @android.webkit.JavascriptInterface public void setAlertPrefs(boolean alerts, boolean banners) { AlertService.this.setAlertPrefs(alerts, banners); }
   }
   WebView makeWeb(String url) {
     WebView wv = new WebView(this);
@@ -228,7 +233,7 @@ public class AlertService extends Service {
 
   void showCard(final JSONObject ev) {
     h.post(new Runnable() { public void run() {
-      if (muted()) return;
+      if (muted() || !bannersOn()) return;
       dismissCard();
       final String title = ev.optString("title", "Update");
       final String message = ev.optString("message", "");

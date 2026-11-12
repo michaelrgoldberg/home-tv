@@ -88,6 +88,7 @@ class Bridge {
   @android.webkit.JavascriptInterface public void nativeHome() { GcAccessibilityService.graceUntil = System.currentTimeMillis() + 90000L;
     try { Intent i = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).setPackage("com.amazon.tv.launcher").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK); a.startActivity(i); }
     catch (Exception e) { try { a.startActivity(new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)); } catch (Exception e2) {} } }
+  @android.webkit.JavascriptInterface public void setAlertPrefs(boolean alerts, boolean banners) { a.getSharedPreferences("cfg", android.content.Context.MODE_PRIVATE).edit().putBoolean("alerts", alerts).putBoolean("banners", banners).apply(); if (AlertService.self != null) AlertService.self.setAlertPrefs(alerts, banners); }
   @android.webkit.JavascriptInterface public void homeGuard(boolean on) { a.getSharedPreferences("cfg", android.content.Context.MODE_PRIVATE).edit().putBoolean("homeGuard", on).apply(); }
   @android.webkit.JavascriptInterface public boolean homeGuardOn() { return a.getSharedPreferences("cfg", android.content.Context.MODE_PRIVATE).getBoolean("homeGuard", true); }
   @android.webkit.JavascriptInterface public boolean setGameAlerts(final boolean on) { if (on) AlertService.muteUntil = 0; else AlertService.muteUntil = System.currentTimeMillis() + 60 * 60000L; try { Intent i = new Intent(a, AlertService.class); i.setAction("mute"); i.putExtra("min", on ? 0 : 60); a.startSvc(i); } catch (Exception e) {} return true; }
