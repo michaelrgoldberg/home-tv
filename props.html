@@ -289,6 +289,13 @@ function statusOf(p, v){
 }
 function ringColor(prog){ return 'hsl('+Math.round(prog*120)+',72%,48%)'; }
 function probColor(prob){ return 'hsl('+Math.round(prob*120)+',74%,47%)'; }
+// how far through the game a pick is: 0 at tip, 1 at the end (or once settled)
+function gameFrac(p){ if(p.state==='post'||settled(p)) return 1; if(p.state!=='in') return 0;
+  var el=elapGameMin(p.sport,p._period||1,p._clockSec||0), rem=remGameMin(p.sport,p._period||1,p._clockSec||0);
+  if(el==null||rem==null){ var per=p._period||1; return p.sport==='bb'?Math.min(1,per/9):Math.min(1,per/2); }
+  return Math.max(0,Math.min(1, el/(el+rem))); }
+// ring color: starts neutral orange, eases toward the likelihood color (red..green) as the game goes on
+function likeColor(prob, frac){ var N=36, h=prob*120, w=Math.max(0,Math.min(1,frac)); w=w*w*(3-2*w); return 'hsl('+Math.round(N+(h-N)*w)+',78%,'+(48-2*w)+'%)'; }
 function parseClock(s){ if(!s) return 0; var m=String(s).match(/(\d+):(\d+)/); if(m) return (+m[1])*60+(+m[2]); var n=parseFloat(s); return isNaN(n)?0:n; }
 var SPORT_PERIODS={ bk:{n:4,len:12}, fb:{n:4,len:15}, hk:{n:3,len:20} };
 function remGameMin(sp,per,cs){ var S=SPORT_PERIODS[sp]; if(!S) return null; if(per>S.n) return cs/60; return (S.n-per)*S.len + cs/60; }
@@ -362,7 +369,7 @@ function shortStatus(p){ // tip time before, clock during, Final after
 function chipHTML(p){
   var v=vals[p.id], st=statusOf(p,v), set=settled(p);
   var C=46, R=19, circ=2*Math.PI*R, off=circ*(1-(set?1:st.prog));
-  var color = set==='won'?'var(--green)':set==='lost'?'var(--red)':probColor(p._prob!=null?p._prob:likelihood(p));
+  var color = set==='won'?'var(--green)':set==='lost'?'var(--red)':likeColor(p._prob!=null?p._prob:likelihood(p), gameFrac(p));
   var ring='<div class="ring"><svg width="'+C+'" height="'+C+'" viewBox="0 0 '+C+' '+C+'"><circle cx="23" cy="23" r="'+R+'" fill="none" stroke="#1e283c" stroke-width="5"/><circle cx="23" cy="23" r="'+R+'" fill="none" stroke="'+color+'" stroke-width="5" stroke-linecap="round" stroke-dasharray="'+circ.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'"/></svg><div class="val" id="val-'+p.id+'">'+(v==null?'–':v)+'</div></div>';
   var remain = v==null?'' : (set==='won'?'HIT':set==='lost'?'MISS':over(p)?'+'+(needed(p)-v)+' to go':(v>p.line?'BUST':(Math.floor(p.line)-v)+' left'));
   var right = set==='won'?'<div class="trophy">🏆</div>':'<div class="need"><div class="big">'+esc(remain)+'</div></div>';
@@ -375,7 +382,7 @@ function chipHTML(p){
 function cornerChip(p){
   var v=vals[p.id], st=statusOf(p,v), set=settled(p), prob=(p._prob!=null?p._prob:likelihood(p));
   var C=38,R=15,circ=2*Math.PI*R, fill=set?1:st.prog, off=circ*(1-fill);
-  var color = set==='won'?'var(--green)':set==='lost'?'var(--red)':probColor(prob);
+  var color = set==='won'?'var(--green)':set==='lost'?'var(--red)':likeColor(prob, gameFrac(p));
   var ring='<div class="cring"><svg width="'+C+'" height="'+C+'" viewBox="0 0 '+C+' '+C+'" style="transform:rotate(-90deg)"><circle cx="19" cy="19" r="'+R+'" fill="none" stroke="#1e283c" stroke-width="4"/><circle cx="19" cy="19" r="'+R+'" fill="none" stroke="'+color+'" stroke-width="4" stroke-linecap="round" stroke-dasharray="'+circ.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'"/></svg><span class="cv" id="cv-'+esc(p.id)+'">'+(v==null?'–':v)+'</span></div>';
   var face=p._face?'<div class="cface" style="background-image:url(&quot;'+esc(p._face)+'&quot;)"></div>':'';
   var rem = v==null?'' : (set==='won'?'<b class="rem go">✓</b>':set==='lost'?'<b class="rem bust">✗</b>':over(p)?'<b class="rem go">+'+(needed(p)-v)+'</b>':'');
@@ -387,7 +394,7 @@ function cornerChip(p){
 
 // ---------- parlays ----------
 function legStat(l){ var v=vals[l.id], st=settled(l), prob=(l._prob!=null?l._prob:0.5);
-  return {v:v, st:st, color: st==='won'?'var(--green)':st==='lost'?'var(--red)':probColor(prob)}; }
+  return {v:v, st:st, color: st==='won'?'var(--green)':st==='lost'?'var(--red)':likeColor(prob, gameFrac(l))}; }
 // legs in progress first (closest to clearing on top), then upcoming by tip time, then settled
 function orderedLegs(pl){ var rank=function(l){ if(isPinned(l.id)) return -1; var s=settled(l); if(s) return 2; if(l._live) return 0; return 1; };
   return pl.legs.slice().sort(function(a,b){ var ra=rank(a), rb=rank(b); if(ra!==rb) return ra-rb;
@@ -396,7 +403,10 @@ function parlayHeader(pl){
   var set=pl._settled, prob=(pl._prob!=null?pl._prob:0.5), n=pl.legs.length;
   var anyStarted=pl.legs.some(function(l){ return l._live || l.state==='post'; });
   var C=40,R=16,circ=2*Math.PI*R, fill=set?1:(anyStarted?prob:0), off=circ*(1-fill);
-  var color=set==='won'?'var(--green)':set==='lost'?'var(--red)':probColor(prob);
+  // parlay ring color = typical leg's likelihood (geometric mean), eased by average game progress; % text stays the true combined chance
+  var gm=Math.exp(pl.legs.reduce(function(a,l){ return a+Math.log(Math.max(0.01,l._prob!=null?l._prob:0.5)); },0)/Math.max(1,pl.legs.length));
+  var gf=pl.legs.reduce(function(a,l){ return a+gameFrac(l); },0)/Math.max(1,pl.legs.length);
+  var color=set==='won'?'var(--green)':set==='lost'?'var(--red)':likeColor(gm, gf);
   var pct=set==='won'?'✓':set==='lost'?'✗':(anyStarted?Math.round(prob*100)+'%':n+'/'+n);
   var ring='<div class="pring"><svg width="'+C+'" height="'+C+'" viewBox="0 0 '+C+' '+C+'" style="transform:rotate(-90deg)"><circle cx="20" cy="20" r="'+R+'" fill="none" stroke="#1e283c" stroke-width="4"/><circle cx="20" cy="20" r="'+R+'" fill="none" stroke="'+color+'" stroke-width="4" stroke-linecap="round" stroke-dasharray="'+circ.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'"/></svg><span class="pv">'+pct+'</span></div>';
   var firstTip=''; pl.legs.forEach(function(l){ if(l._pre&&l._date){ if(!firstTip||new Date(l._date)<new Date(firstTip)) firstTip=l._date; } });
