@@ -712,15 +712,15 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
   // ---------- Games catalog: every playable TV game across Netflix and Prime, one menu ----------
   function esc(s){return String(s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
   var GAMES=[
-    {t:'LEGO Party!',svc:'nf',em:'🧱',type:'party',pl:'1–4',rating:'E',ctrl:'phone',d:'Mario-Party-style board romp with LEGO minigames. Great with the kids.'},
+    {t:'LEGO Party!',svc:'nf',em:'🎪',type:'party',pl:'1–4',rating:'E',ctrl:'phone',d:'Mario-Party-style board romp with LEGO minigames. Great with the kids.'},
     {t:'Pictionary: Game Night',svc:'nf',em:'🎨',type:'party',pl:'2–8 · teams',rating:'E',ctrl:'phone',d:'Draw on your phone, everyone guesses on the TV.'},
     {t:'Boggle Party',svc:'nf',em:'🔤',type:'word',pl:'1–8',rating:'E',ctrl:'phone',d:'Find words in the letter grid together — fast rounds.'},
-    {t:'Scrabble Shake-Up',svc:'nf',em:'🧩',type:'word',pl:'2–6',rating:'E',ctrl:'phone',soon:'arrives Nov 17',d:'Everyone plays at once; a new twist every turn.'},
+    {t:'Scrabble Shake-Up',svc:'nf',em:'🔠',type:'word',pl:'2–6',rating:'E',ctrl:'phone',soon:'arrives Nov 17',d:'Everyone plays at once; a new twist every turn.'},
     {t:'Scattergories Party',svc:'nf',em:'⏱️',type:'word',pl:'2–8 · teams',rating:'E',ctrl:'phone',soon:'arrives Nov 17',d:'Shout words that fit the category before the clock runs out.'},
     {t:'Codenames Party',svc:'nf',em:'🕵️',type:'board',pl:'4+ · teams',rating:'E10',ctrl:'phone',d:'The classic word-clue spy game, team vs team.'},
-    {t:'Tetris Time Warp',svc:'nf',em:'🟪',type:'puzzle',pl:'1–4',rating:'E',ctrl:'phone',d:'Tetris with eras — battle or co-op through Tetris history.'},
+    {t:'Tetris Time Warp',svc:'nf',em:'🕹️',type:'puzzle',pl:'1–4',rating:'E',ctrl:'phone',d:'Tetris with eras — battle or co-op through Tetris history.'},
     {t:'Overcooked! All You Can Eat',svc:'nf',em:'🍳',type:'coop',pl:'1–4',rating:'E',ctrl:'phone',d:'Chaotic co-op cooking. Loud, hilarious, family favorite.'},
-    {t:'The Jackbox Party Essentials',svc:'nf',em:'🤣',type:'party',pl:'3–8 + audience',rating:'T',ctrl:'phone',d:'Quiplash-style bluff and joke games. Teens and up.'},
+    {t:'The Jackbox Party Essentials',svc:'nf',em:'😂',type:'party',pl:'3–8 + audience',rating:'T',ctrl:'phone',d:'Quiplash-style bluff and joke games. Teens and up.'},
     {t:'Party Crashers: Fool Your Friends',svc:'nf',em:'🎭',type:'party',pl:'4–8',rating:'T',ctrl:'phone',d:'Social-deduction bluffing — find the impostor.'},
     {t:'GIFTED (Netflix is a Joke)',svc:'nf',em:'🎤',type:'trivia',pl:'2–8',rating:'T',ctrl:'phone',d:'Comedy quiz hosted by stand-ups. Adult humor.'},
     {t:'Clue',svc:'pv',em:'🔎',type:'board',pl:'2–6',rating:'E10',ctrl:'phone',d:'The murder-mystery board classic, phones as your detective pads.'},
@@ -750,7 +750,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
     if(gmF.ply==='kids'&&(g.rating==='T'||g.rating==='M')) return false;
     return true; }
   function gmCard(g,i){ return '<div class="gmc focusable" tabindex="0" data-gmi="'+i+'"><div class="top"><span class="em">'+g.em+'</span><span class="sv '+g.svc+'">'+(g.svc==='nf'?'NETFLIX':'PRIME')+'</span></div><b>'+esc(g.t)+'</b>'+
-    '<span class="meta">👥 '+esc(g.pl)+' · '+(g.ctrl==='phone'?'📱 phones':'🎮 gamepad')+' · '+g.rating+'</span>'+(g.soon?'<span class="soon">🗓 '+esc(g.soon)+'</span>':'')+'<span class="d">'+esc(g.d)+'</span></div>'; }
+    '<span class="meta">👥 '+esc(g.pl)+' · '+(g.ctrl==='phone'?'📱 phones':'🎮 gamepad')+' · '+g.rating+'</span>'+(g.soon?'<span class="soon">📅 '+esc(g.soon)+'</span>':'')+'<span class="d">'+esc(g.d)+'</span></div>'; }
   function gmRender(){
     gmChipRow(document.getElementById('gmSvc'),'WHERE',GSV,gmF.svc,'svc');
     gmChipRow(document.getElementById('gmPly'),'PLAYERS',GPL,gmF.ply,'ply');
@@ -767,7 +767,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
       '<div class="grow focusable" tabindex="0" data-game="'+(g.svc==='nf'?'netflix':'prime')+'"><b>▶ Open '+app+'</b></div>'+
       '<div class="psub" style="margin-top:.4vw">Back closes</div>';
     document.getElementById('gdet').classList.add('show'); var f=document.querySelector('#gdet .grow'); if(f) f.focus(); }
-  window.W2W_GM={ open:function(){ document.getElementById('gmPage').classList.add('show'); gmRender(); try{history.pushState({gm:1},'');}catch(e){} var f=document.querySelector('#gmGrid .gmc')||document.querySelector('.gmchip'); if(f) f.focus(); },
+  window.W2W_GM={ open:function(){ document.getElementById('gmPage').classList.add('show'); gmRender(); try{history.pushState({gm:1},'');}catch(e){} setTimeout(function(){ var f=document.querySelector('#gmGrid .gmc')||document.querySelector('.gmchip'); if(f) f.focus(); },60); },
     isOpen:function(){ return document.getElementById('gmPage').classList.contains('show'); },
     close:function(){ var d=document.getElementById('gdet'); if(d.classList.contains('show')){ d.classList.remove('show'); var f=document.querySelector('#gmGrid .gmc'); if(f) f.focus(); return true; }
       var pg=document.getElementById('gmPage'); if(!pg.classList.contains('show')) return false; pg.classList.remove('show'); var gb=document.getElementById('goGames'); if(gb) gb.focus(); return true; } };
@@ -1456,7 +1456,8 @@ function changed(){save(); limit=LIMIT; drawBars(); render(false);}
 
 // ---------- remote (D-pad) navigation ----------
 function candidates(){
-  var layer = (window.W2W_SLEEP&&W2W_SLEEP.running()) ? $('slpRun') : (window.W2W_SLEEP&&W2W_SLEEP.isOpen()) ? $('slp') : (window.W2W_SP&&W2W_SP.isOpen()) ? $('sp') : (window.W2W_AMB&&W2W_AMB.isOpen()) ? $('amb') : (window.W2W_HOME_OPEN&&W2W_HOME_OPEN()) ? $('home') : $('detail').classList.contains('show') ? $('detail') : $('picker').classList.contains('show') ? $('picker') : document;
+  var gdetEl=document.getElementById('gdet'), gmEl=document.getElementById('gmPage');
+  var layer = (window.W2W_SLEEP&&W2W_SLEEP.running()) ? $('slpRun') : (window.W2W_SLEEP&&W2W_SLEEP.isOpen()) ? $('slp') : (gdetEl&&gdetEl.classList.contains('show')) ? gdetEl : (gmEl&&gmEl.classList.contains('show')) ? gmEl : (window.W2W_SP&&W2W_SP.isOpen()) ? $('sp') : (window.W2W_AMB&&W2W_AMB.isOpen()) ? $('amb') : (window.W2W_HOME_OPEN&&W2W_HOME_OPEN()) ? $('home') : $('detail').classList.contains('show') ? $('detail') : $('picker').classList.contains('show') ? $('picker') : document;
   return Array.prototype.slice.call(layer.querySelectorAll('.focusable')).filter(function(el){
     if(layer===document && (el.closest('#detail')||el.closest('#picker')||el.closest('#home')||el.closest('#amb')||el.closest('#sp')||el.closest('#slp'))) return false;
     return el.offsetParent!==null;
@@ -1680,6 +1681,7 @@ else {
       rs.forEach(function(x){ if(x.l[2].indexOf('tennis/')===0) return; (x.j.events||[]).forEach(function(e){ if(seen[e.id]) return; seen[e.id]=1;
         var c=(e.competitions||[])[0]||{}, nets=[];
         (c.broadcasts||[]).forEach(function(b){(b.names||[]).forEach(function(n){ if(nets.indexOf(n)<0) nets.push(n);});});
+        (c.geoBroadcasts||[]).forEach(function(gb){ var n=((gb.media||{}).shortName)||((gb.media||{}).name)||''; if(n&&nets.indexOf(n)<0) nets.push(n); }); // streaming exclusives (TNF on Prime) live here
         (c.geoBroadcasts||[]).forEach(function(b){var n=b.media&&b.media.shortName; if(n&&nets.indexOf(n)<0) nets.push(n);});
         var apps=[]; nets.forEach(function(n){appsFor(n).forEach(function(a){if(apps.indexOf(a)<0) apps.push(a);});});
         if(!apps.length && x.l[0]==='mlb') apps.push('mlb');
@@ -1811,6 +1813,7 @@ else {
         if(tgt) tgt.focus(); } return; }
       if(gm&&gm.state==='post'&&!gm.tennis){ spToast('🎬 Condensed game — opening SmartTube; pick the official highlight reel'); location.href=recapIntent(gm); return; }
       if(gm&&gm.apps.length) launchApp(gm.apps[0],gm);
+      else if(gm&&!isOTA(gm.nets)){ spToast('📡 Not on your apps'+(gm.nets&&gm.nets.length?' — it\'s on <b>'+esc(gm.nets[0])+'</b>':'')+'. Hold OK to follow it in Gamecast.'); }
       else if(gm&&isOTA(gm.nets)){ var onet=(gm.nets||[]).filter(function(n){return OTA.test(String(n).toLowerCase().trim());})[0]||'a local channel'; spToast('📡 This game is free over the air on <b>'+esc(onet)+'</b> — watch it with a TV antenna, no subscription. (Also on YouTube TV if you have it.)'); } }
   });
   // hold OK on a game: make sure it's followed, then open its Gamecast
