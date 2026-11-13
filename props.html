@@ -831,15 +831,21 @@ function renderTicker(){
 function tkStyle(){ var s=lsGet('w2w.tkStyle',null); if(s==='page'||s==='scroll') return s;
   return (window.W2W_DEVICE&&W2W_DEVICE.id==='bedroom')?'page':'scroll'; }
 var tkOff=0, tkStepT=null;
-function tkDwell(){ return ({slow:10000, normal:7000, fast:4500})[lsGet('w2w.tkSpeed','normal')]||7000; }
+function tkDwell(){ return ({slow:8000, normal:6000, fast:4000})[lsGet('w2w.tkSpeed','normal')]||6000; }
 function tkStep(){ tkStepT=setTimeout(tkStep, tkDwell());
   if(tkStyle()!=='page'||!tkAnim) return;
   var tr=$('tktrack'); if(!tr||!tr.firstChild) return;
   if(tkPending){ var p=tkPending; tkPending=null; tkAnim=false; tkDraw(p[0],p[1]); return; }
-  var w=tr.firstChild.offsetWidth, L=tr.parentNode.clientWidth;
-  tkOff += Math.max(60, L-60);
-  if(tkOff>=w){ tkOff=0; tr.style.transition='none'; tr.style.transform='translateX(0)'; return; }
-  tr.style.transition='transform .6s ease'; tr.style.transform='translateX(-'+tkOff+'px)';
+  var seg=tr.firstChild, w=seg.offsetWidth, L=tr.parentNode.clientWidth-26;
+  if(tkOff>=w-L-4){ tkOff=0; tr.style.transition='none'; tr.style.transform='translateX(0)'; return; } // end reached: snap back to the start
+  // next page starts on a chip boundary: the first chip the current page cuts off
+  var edge=tkOff+L, kids=seg.children, st=edge;
+  for(var i=0;i<kids.length;i++){ var el=kids[i], lft=el.offsetLeft;
+    if(lft+el.offsetWidth>edge){ st=lft; break; } }
+  if(st<=tkOff+8) st=edge;                 // one chip wider than the whole lane: move a screenful
+  if(st>w-L) st=Math.max(0,w-L);           // last page: align flush to the end, no blank tail
+  if(st<=tkOff){ tkOff=0; tr.style.transition='none'; tr.style.transform='translateX(0)'; return; }
+  tkOff=st; tr.style.transition='transform .6s ease'; tr.style.transform='translateX(-'+st+'px)';
 }
 function tkApply(html, sig){
   var tr=$('tktrack'); if(!tr) return;
