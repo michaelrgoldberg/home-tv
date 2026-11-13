@@ -825,26 +825,44 @@ function renderTicker(){
   if(!html.length){ html=['<span class="msg">'+(m==='all'?'No games today.':'No games you follow tonight — star some in Sports, or tell Claude "track the Knicks".')+'</span>']; keys=['empty']; }
   tkApply(html.join(''), keys.join('|'));
 }
+// The bedroom TV's panel can't composite a constant crawl smoothly over 4K video, so it gets
+// "page" style: show a screenful, pause to read, slide one screen over (0.6s), repeat.
+// The projector keeps the continuous scroll. (Override per screen with w2w.tkStyle.)
+function tkStyle(){ var s=lsGet('w2w.tkStyle',null); if(s==='page'||s==='scroll') return s;
+  return (window.W2W_DEVICE&&W2W_DEVICE.id==='bedroom')?'page':'scroll'; }
+var tkOff=0, tkStepT=null;
+function tkDwell(){ return ({slow:10000, normal:7000, fast:4500})[lsGet('w2w.tkSpeed','normal')]||7000; }
+function tkStep(){ tkStepT=setTimeout(tkStep, tkDwell());
+  if(tkStyle()!=='page'||!tkAnim) return;
+  var tr=$('tktrack'); if(!tr||!tr.firstChild) return;
+  if(tkPending){ var p=tkPending; tkPending=null; tkAnim=false; tkDraw(p[0],p[1]); return; }
+  var w=tr.firstChild.offsetWidth, L=tr.parentNode.clientWidth;
+  tkOff += Math.max(60, L-60);
+  if(tkOff>=w){ tkOff=0; tr.style.transition='none'; tr.style.transform='translateX(0)'; return; }
+  tr.style.transition='transform .6s ease'; tr.style.transform='translateX(-'+tkOff+'px)';
+}
 function tkApply(html, sig){
   var tr=$('tktrack'); if(!tr) return;
   if(tkAnim && sig===tkSig){ // same games in the same order: patch scores in place so the scroll never jumps
     var tmp=document.createElement('div'); tmp.innerHTML=html;
     [].forEach.call(tmp.querySelectorAll('[data-k]'),function(n){ [].forEach.call(tr.querySelectorAll('[data-k="'+n.getAttribute('data-k')+'"]'),function(o){ if(o.innerHTML!==n.innerHTML){ o.innerHTML=n.innerHTML; o.className=n.className; } }); });
     return; }
-  if(tkAnim){ tkPending=[html,sig]; return; } // new lineup: swap in at the end of this lap
+  if(tkAnim){ tkPending=[html,sig]; return; } // new lineup: swap in between pages / at the end of this lap
   tkDraw(html, sig);
 }
 function tkDraw(html, sig){
   var tr=$('tktrack'), lane=tr.parentNode; tkSig=sig;
-  tr.style.animation='none'; tr.classList.remove('static'); tr.innerHTML='<span class="seg">'+html+'</span>';
+  tr.style.animation='none'; tr.style.transition='none'; tr.style.transform='translateX(0)'; tkOff=0;
+  tr.classList.remove('static'); tr.innerHTML='<span class="seg">'+html+'</span>';
   var w=tr.firstChild.offsetWidth, L=lane.clientWidth;
-  if(w>L-30){ tr.innerHTML+='<span class="seg">'+html+'</span>'; void tr.offsetWidth; tr.style.animation='tkmove '+Math.max(8,w/tkPx()).toFixed(1)+'s linear infinite'; tkAnim=true; }
-  else { tr.classList.add('static'); tkAnim=false; }
+  if(w<=L-30){ tr.classList.add('static'); tkAnim=false; return; }
+  if(tkStyle()==='page'){ tkAnim=true; return; } // stepped along by the page timer
+  tr.innerHTML+='<span class="seg">'+html+'</span>'; void tr.offsetWidth; tr.style.animation='tkmove '+Math.max(8,w/tkPx()).toFixed(1)+'s linear infinite'; tkAnim=true;
 }
 function tkBoot(){ document.body.classList.add('ticker'); renderTicker();
   $('tktrack').addEventListener('animationiteration',function(){ if(tkPending){ var p=tkPending; tkPending=null; tkAnim=false; tkDraw(p[0],p[1]); } });
-  window.addEventListener('storage',function(e){ if(!e.key || /^w2w\.(ticker|tkSpeed|starred|privacy|settingsRev|ovOpacity)$/.test(e.key)){ tkAnim=false; tkPending=null; tkSig=''; applyOpacity(); tkLoad(); } });
-  tkLoad(); }
+  window.addEventListener('storage',function(e){ if(!e.key || /^w2w\.(ticker|tkSpeed|tkStyle|starred|privacy|settingsRev|ovOpacity)$/.test(e.key)){ tkAnim=false; tkPending=null; tkSig=''; applyOpacity(); tkLoad(); } });
+  tkStep(); tkLoad(); }
 // boot: sync followed games (tell-Claude-to-track + prop/parlay games), then load
 if(TICKER) tkBoot();
 function boot(){ var p=(window.W2W_FOLLOW?W2W_FOLLOW.sync():Promise.resolve()); return p.catch(function(){}).then(reloadAll).then(function(){ clearTimeout(gPollT); pollGames(); }); }
