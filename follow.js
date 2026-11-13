@@ -44,7 +44,8 @@
     return loadData().then(function(data){
       if(!data) return {added:0};
       var want=wanted(data); if(!want.length) return {added:0};
-      return Promise.all(want.map(function(w){ return resolve(w.lg,w.team).then(function(r){ return r?{lg:w.lg,id:r.id,level:w.level,team:w.team}:null; }); })).then(function(res){
+      var explicit={}; (data.follow||[]).forEach(function(f){ explicit[(f.lg+'|'+String(f.team).toLowerCase())]=1; });
+      return Promise.all(want.map(function(w){ return resolve(w.lg,w.team).then(function(r){ return r?{lg:w.lg,id:r.id,level:w.level,team:w.team,exp:!!explicit[(w.lg+'|'+String(w.team).toLowerCase())]}:null; }); })).then(function(res){
         var stars=ls('w2w.starred',[]); if(!Array.isArray(stars)) stars=[];
         var auto=ls('w2w.autoStar',{}); var lvl=ls('w2w.starLevel',{}); var added=0;
         res.forEach(function(r){ if(!r) return;
@@ -52,6 +53,8 @@
           if(!has && !auto[r.id]){ stars.push({lg:r.lg,id:r.id}); added++; }
           auto[r.id]=1; if(r.level>1) lvl[r.id]=r.level;
         });
+        var fg=[]; res.forEach(function(r){ if(r&&r.exp&&fg.indexOf(r.id)<0) fg.push(r.id); });
+        st('w2w.followGames', fg);
         st('w2w.starred',stars); st('w2w.autoStar',auto); st('w2w.starLevel',lvl);
         return {added:added, data:data};
       });

@@ -799,9 +799,10 @@ function renderTicker(){
   var html=[], keys=[];
   var push=function(h){ html.push(h); var k=(h.match(/data-k="([^"]+)"/)||[])[1]; keys.push(k||h); };
   if(m==='props'){
-    var items=props.concat(allLegs()); var used={};
-    tkGames.forEach(function(g){ push(tkGameHTML(g)); items.forEach(function(p){ if(p._gid===g.id && !used[p.id]){ used[p.id]=1; push(tkPropHTML(p)); } }); });
-    items.forEach(function(p){ if(!used[p.id] && fresh(p)) push(tkPropHTML(p)); });
+    var fgl=lsGet('w2w.followGames',[]); if(!Array.isArray(fgl)) fgl=[];
+    tkGames.forEach(function(g){ if(fgl.indexOf(String(g.id))>=0) push(tkGameHTML(g)); });
+    var items=props.concat(allLegs());
+    items.forEach(function(p){ if(fresh(p)) push(tkPropHTML(p)); });
     parlays.forEach(function(pl){ push(tkParlayHTML(pl)); });
   } else {
     var lastLg=null;
