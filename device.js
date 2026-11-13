@@ -26,7 +26,7 @@
   var mideve = new Date('2026-11-13T00:00:00-05:00');
   var PUSH = {
     bedroom: (Date.now() < mideve.getTime())
-      ? { rev:'2026-11-12-nightmute', set:{ 'w2w.notify':{ quiet:true, games:false, props:false }, 'w2w.banners':false } }
+      ? { rev:'2026-11-12-tvbets', set:{ 'w2w.notify':{ quiet:true, games:false, props:false }, 'w2w.banners':false, 'w2w.privacy':{ props:false, money:true } } }
       : { rev:'2026-11-13-wakeup',    set:{ 'w2w.notify':{ quiet:false, games:true, props:true }, 'w2w.banners':true } },
     // game night on the projector: show props, parlays and pop-ups tonight; the hourly auto re-lock
     // puts it back in full guest mode on its own after the screen goes dark
