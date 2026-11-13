@@ -170,29 +170,29 @@
   /* ---- bottom ticker overlay (?ticker=1): full-width bar drawn over whatever app is playing ---- */
   body.ticker{margin:0;overflow:hidden;background:transparent}
   body.ticker #pp,body.ticker #rise,body.ticker #hist{display:none!important}
-  #tk{position:fixed;inset:0;display:flex;align-items:stretch;background:linear-gradient(180deg,rgba(9,14,26,.94),rgba(5,8,16,.97));border-top:2px solid var(--gold);color:#eef3fb;font:700 18px/1 'Segoe UI',Roboto,Arial,sans-serif;opacity:var(--ov,1)}
-  #tk .tab{flex:none;display:flex;align-items:center;gap:6px;padding:0 12px;background:var(--gold);color:#111;font-weight:900;font-size:14px;letter-spacing:.06em}
+  #tk{position:fixed;left:0;right:0;bottom:0;top:auto;height:30px;display:flex;align-items:stretch;background:linear-gradient(180deg,rgba(9,14,26,.82),rgba(5,8,16,.9));border-top:2px solid rgba(255,204,0,.75);color:#eef3fb;font:700 13px/1 'Segoe UI',Roboto,Arial,sans-serif;opacity:calc(var(--ov,1)*.88)}
+  #tk .tab{flex:none;display:flex;align-items:center;gap:5px;padding:0 9px;background:rgba(255,204,0,.92);color:#111;font-weight:900;font-size:10.5px;letter-spacing:.06em}
   #tk .lane{flex:1;min-width:0;overflow:hidden;position:relative;-webkit-mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 24px),transparent);mask-image:linear-gradient(90deg,transparent,#000 24px,#000 calc(100% - 24px),transparent)}
   #tk .track{position:absolute;top:0;bottom:0;left:0;display:flex;align-items:center;white-space:nowrap;will-change:transform}
   #tk .track.static{left:24px}
   #tk .seg{display:flex;align-items:center;gap:10px;padding-right:40px}
   @keyframes tkmove{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-  #tk .tl{font-size:12px;font-weight:900;color:#0a0f1a;background:#9fb0d6;border-radius:4px;padding:3px 6px;letter-spacing:.06em;margin-left:10px}
-  #tk .tg{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:8px;background:#121b2f;border:1px solid #232d41}
+  #tk .tl{font-size:9.5px;font-weight:900;color:#0a0f1a;background:#9fb0d6;border-radius:3px;padding:2px 5px;letter-spacing:.06em;margin-left:8px}
+  #tk .tg{display:flex;align-items:center;gap:5px;padding:2px 7px;border-radius:6px;background:rgba(18,27,47,.85);border:1px solid #232d41}
   #tk .tg.mine{border-color:var(--gold);background:rgba(255,204,0,.10)}
   #tk .tg.close{border-color:var(--amber);box-shadow:inset 3px 0 0 var(--amber)}
-  #tk .tg img{width:24px;height:24px;object-fit:contain}
+  #tk .tg img{width:16px;height:16px;object-fit:contain}
   #tk .tg .lose{opacity:.5}
-  #tk .tg em{font-style:normal;font-size:14px;color:#9fb0d6;margin-left:4px}
+  #tk .tg em{font-style:normal;font-size:10.5px;color:#9fb0d6;margin-left:3px}
   #tk .tg em.live{color:#ff6b57}
-  #tk .tp{display:flex;align-items:center;gap:6px;padding:3px 10px 3px 4px;border-radius:999px;background:#0f1a2c;border:1px solid #2a3756;font-size:16px}
-  #tk .tp .fc{width:28px;height:28px;border-radius:50%;background:#1a2540 center/cover;flex:none}
-  #tk .tp small{font-size:12px;color:#9fb0d6}
-  #tk .tp .ct b{font-size:19px}
-  #tk .tp .dt{width:12px;height:12px;border-radius:50%;flex:none}
+  #tk .tp{display:flex;align-items:center;gap:5px;padding:2px 8px 2px 3px;border-radius:999px;background:rgba(15,26,44,.85);border:1px solid #2a3756;font-size:12px}
+  #tk .tp .fc{width:19px;height:19px;border-radius:50%;background:#1a2540 center/cover;flex:none}
+  #tk .tp small{font-size:9.5px;color:#9fb0d6}
+  #tk .tp .ct b{font-size:14px}
+  #tk .tp .dt{width:9px;height:9px;border-radius:50%;flex:none}
   #tk .tp.won{border-color:var(--green)}#tk .tp.lost{border-color:var(--red);opacity:.7}
   #tk .tp.pl{padding-left:10px;border-color:#5b4a12}
-  #tk .msg{padding-left:24px;font-weight:600;font-size:16px;color:#cdd7ee;display:flex;align-items:center;height:100%}
+  #tk .msg{padding-left:20px;font-weight:600;font-size:12px;color:#cdd7ee;display:flex;align-items:center;height:100%}
   .mny{color:#9fe0b8;font-weight:700;white-space:nowrap}.mny.won{color:var(--green)}.mny.lost{color:var(--red)}
   .money{margin:2px 0 8px;padding:7px 10px;border-radius:10px;background:rgba(46,196,122,.08);border:1px solid rgba(46,196,122,.3);font-size:.9em;color:#dfe7f6}
 </style></head>
