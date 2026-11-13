@@ -231,9 +231,9 @@ var STAT_MAP={ points:['PTS'], pts:['PTS'], rebounds:['REB','TOT'], reb:['REB'],
   steals:['STL'], blocks:['BLK'], turnovers:['TO'], threes:['3PT'], '3pm':['3PT'],
   goals:['G'], assists_nhl:['A'], shots:['SOG','S','SH'], saves:['SV'], points_nhl:['PTS','P'],
   hits:['H'], runs:['R'], rbis:['RBI'], rbi:['RBI'], 'home runs':['HR'], hr:['HR'], strikeouts:['K','SO'], 'total bases':['TB'],
-  'passing yards':['YDS'], 'rushing yards':['YDS'], 'receiving yards':['YDS'], receptions:['REC'], rec:['REC'],
+  'passing yards':['YDS'], 'rushing yards':['YDS'], 'receiving yards':['YDS'], receptions:['REC'], rec:['REC'], 'pass attempts':['C/ATT'], completions:['C/ATT'],
   'pass tds':['TD'], 'rush tds':['TD'], 'rec tds':['TD'], tackles:['TOT','TCKL'] };
-var GROUP_HINT={ 'passing yards':'passing','pass tds':'passing','rushing yards':'rushing','rush tds':'rushing','receiving yards':'receiving','rec tds':'receiving','receptions':'receiving','rec':'receiving' };
+var GROUP_HINT={ 'passing yards':'passing','pass tds':'passing','pass attempts':'passing',completions:'passing','rushing yards':'rushing','rush tds':'rushing','receiving yards':'receiving','rec tds':'receiving','receptions':'receiving','rec':'receiving' };
 function num(v){ if(v==null) return null; v=String(v); if(v.indexOf('-')>0 && /^\d+-\d+$/.test(v)) return parseInt(v.split('-')[0],10); var n=parseFloat(v.replace(/[^0-9.\-]/g,'')); return isNaN(n)?null:n; }
 function multiStat(d, players, stat){ var names=String(players||'').split(/\s+\+\s+/); if(names.length<2) return statFromBox(d,players,stat);
   var sum=0, any=false; names.forEach(function(n){ var v=statFromBox(d,n,stat); if(v!=null){ sum+=v; any=true; } }); return any?sum:(d&&d.boxscore&&(d.boxscore.players||[]).length?0:null); }
@@ -251,7 +251,10 @@ function singleStat(d, playerName, stat){
     if(groupHint && String(grp.name||grp.type||'').toLowerCase().indexOf(groupHint)<0) return;
     var labels=grp.labels||grp.names||[];
     (grp.athletes||[]).forEach(function(a){ var nm=((a.athlete||{}).displayName||(a.athlete||{}).shortName||'').toLowerCase(); if(!nameHit(nm,lname)) return;
-      for(var i=0;i<labelsWanted.length;i++){ var li=labels.indexOf(labelsWanted[i]); if(li>=0){ var v=num((a.stats||[])[li]); if(v!=null){ found=v; return; } } } });
+      for(var i=0;i<labelsWanted.length;i++){ var li=labels.indexOf(labelsWanted[i]); if(li>=0){ var raw=(a.stats||[])[li], v;
+        if(/\//.test(String(raw))){ var pr=String(raw).split('/'); v=num(want.indexOf('attempt')>=0?pr[1]:pr[0]); } // "18/29" C/ATT columns
+        else v=num(raw);
+        if(v!=null){ found=v; return; } } } });
   }); });
   return found;
 }
