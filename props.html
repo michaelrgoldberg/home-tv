@@ -394,15 +394,25 @@ function evalLine(l){
     l._score=(mine.team||{}).abbreviation+' '+ms+' – '+(opp.team||{}).abbreviation+' '+os;
     var rem=remGameMin(l.sport,l._period||1,l._clockSec||0); if(rem==null){ var S=l.sport==='bb'?9:2; rem=Math.max(0,(S-(l._period||0)))*(l.sport==='bb'?1:45); }
     var sig=LINE_SIG[l.sport]||LINE_SIG.bk; var edge, sd, prob;
-    if(l.kind==='total'){ var ov=(l.dir||'o')==='o'; edge=ov?(total-l.line):(l.line-total); vals[l.id]=total; sd=sig.t*Math.sqrt(Math.max(rem,0)+0.25);
-      // expected remaining scoring pushes the total up: use current pace for the rest of the game
-      var el=elapGameMin(l.sport,l._period||1,l._clockSec||0); var drift=(el&&el>1)?(total/el)*rem:0; edge+= ov?drift:-drift; }
+    if(l.kind==='total'){ var ov=(l.dir||'o')==='o'; var tgt=total, remT=rem, hDone=false;
+      if(l.half){ // 1st-half total: sum Q1+Q2 from the line score; locked once the 3rd quarter starts
+        var hs=0, hn=false; (g.cs||[]).forEach(function(c){ ((c.linescores)||[]).slice(0,2).forEach(function(q){ var n=+(q&&(q.value!=null?q.value:q&&q.displayValue)); if(!isNaN(n)){ hs+=n; hn=true; } }); });
+        if(hn) tgt=hs;
+        var elH=elapGameMin(l.sport,l._period||1,l._clockSec||0)||0; var halfMin=(l.sport==='bk'?24:30);
+        remT=Math.max(0, halfMin-elH);
+        hDone=((l._period||0)>2)||g.state==='post'; if(hDone) remT=0;
+      }
+      edge=ov?(tgt-l.line):(l.line-tgt); vals[l.id]=tgt; sd=sig.t*Math.sqrt(Math.max(remT,0)+0.25);
+      var el=elapGameMin(l.sport,l._period||1,l._clockSec||0); var drift=(el&&el>1&&remT>0)?(tgt/el)*remT:0; edge+= ov?drift:-drift;
+      l._halfDone=hDone; }
     else { var ln=(l.kind==='ml')?0:(+l.line||0); edge=margin+ln; vals[l.id]=margin; sd=sig.m*Math.sqrt(Math.max(rem,0)+0.25); }
     l._lineEdge=edge; l._remMin=rem;
     if(g.state==='pre'){ prob=0.5; }
     else if(g.state==='post'){ prob= edge>0?1:(edge<0?0:0.5); l._lineSettled= edge>0?'won':(edge<0?'lost':'push'); }
     else { prob=normCdf(edge/sd); if(rem<=0.05) l._lineSettled=edge>0?'won':'lost';
-      if(l.kind==='total'){ var ovr=(l.dir||'o')==='o'; if(ovr&&total>l.line){ prob=1; l._lineSettled='won'; } if(!ovr&&total>l.line){ prob=0; l._lineSettled='lost'; } } }
+      if(l.kind==='total'){ var ovr=(l.dir||'o')==='o'; var tv=vals[l.id];
+        if(ovr&&tv>l.line){ prob=1; l._lineSettled='won'; } if(!ovr&&tv>l.line){ prob=0; l._lineSettled='lost'; }
+        if(l.half&&l._halfDone&&!l._lineSettled){ var e2=ovr?(tv-l.line):(l.line-tv); prob=e2>0?1:(e2<0?0:0.5); l._lineSettled=e2>0?'won':(e2<0?'lost':'push'); } } }
     var old=l._prevVal; var cur=vals[l.id]; if(old!=null&&cur!==old&&g.state==='in'){ l._delta=cur-old; l._newVal=cur; l._play=(((g.cs||[])[0]||{}).team||{}).abbreviation?'':''; } l._prevVal=cur;
     l._prob=prob; l._lineProb=prob;
   });
