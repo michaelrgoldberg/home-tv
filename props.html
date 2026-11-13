@@ -192,6 +192,9 @@
   #tk .tp .dt{width:9px;height:9px;border-radius:50%;flex:none}
   #tk .tp.won{border-color:var(--green)}#tk .tp.lost{border-color:var(--red);opacity:.7}
   #tk .tp.pl{padding-left:10px;border-color:#5b4a12}
+  #tk .tpl{display:inline-flex;align-items:center;gap:5px;padding:2px 7px 2px 5px;border:1px dashed rgba(255,204,0,.55);border-radius:9px;background:rgba(40,33,10,.35)}
+  #tk .tpl .plbl{font-style:normal;font-size:10px;font-weight:900;color:#ffcc00;white-space:nowrap;letter-spacing:.03em}
+  #tk .tpl.won{border-color:var(--green)}#tk .tpl.lost{border-color:var(--red);opacity:.65}
   #tk .msg{padding-left:20px;font-weight:600;font-size:12px;color:#cdd7ee;display:flex;align-items:center;height:100%}
   .mny{color:#9fe0b8;font-weight:700;white-space:nowrap}.mny.won{color:var(--green)}.mny.lost{color:var(--red)}
   .money{margin:2px 0 8px;padding:7px 10px;border-radius:10px;background:rgba(46,196,122,.08);border:1px solid rgba(46,196,122,.3);font-size:.9em;color:#dfe7f6}
@@ -758,7 +761,7 @@ var TK_ALL=['football/nfl','basketball/nba','hockey/nhl','baseball/mlb','basketb
 var TK_NAME={'football/nfl':'NFL','basketball/nba':'NBA','hockey/nhl':'NHL','football/college-football':'NCAAF','basketball/mens-college-basketball':'NCAAM','baseball/mlb':'MLB','basketball/wnba':'WNBA','soccer/usa.1':'MLS'};
 var tkGames=[], tkT=null, tkAnim=false, tkPending=null, tkSig='';
 function tkMode(){ var m=lsGet('w2w.ticker','off'); if(m==='props'&&privProps()) m='mine'; return m; }
-function tkPx(){ return {slow:45, normal:75, fast:115}[lsGet('w2w.tkSpeed','normal')]||75; }
+function tkPx(){ return {slow:24, normal:40, fast:70}[lsGet('w2w.tkSpeed','normal')]||40; }
 function tkLoad(){
   clearTimeout(tkT); var m=tkMode(); if(m==='off'){ tkGames=[]; renderTicker(); tkT=setTimeout(tkLoad,30000); return; }
   var st=getStarred(), mine={}; st.forEach(function(x){ mine[String(x.id)]=1; });
@@ -801,9 +804,15 @@ function renderTicker(){
   if(m==='props'){
     var fgl=lsGet('w2w.followGames',[]); if(!Array.isArray(fgl)) fgl=[];
     tkGames.forEach(function(g){ if(fgl.indexOf(String(g.id))>=0) push(tkGameHTML(g)); });
-    var items=props.concat(allLegs());
-    items.forEach(function(p){ if(fresh(p)) push(tkPropHTML(p)); });
-    parlays.forEach(function(pl){ push(tkParlayHTML(pl)); });
+    props.forEach(function(p){ if(fresh(p)) push(tkPropHTML(p)); });
+    // each parlay rides as one bracketed group: its tag, then every leg as its own chip
+    parlays.forEach(function(pl){
+      var inner=(pl.legs||[]).map(function(l){ return tkPropHTML(l); }).join('');
+      var won=pl._wonCount||0, n=(pl.legs||[]).length, pct=Math.round((pl._prob||0)*100);
+      var lab='🎟 '+esc(pl.odds||'')+' · '+won+'/'+n+(pl._settled==='won'?' 🏆':pl._settled==='lost'?' ✗':(pl._prob!=null?' · '+pct+'%':''));
+      html.push('<span class="tpl'+(pl._settled?' '+pl._settled:'')+'"><i class="plbl">'+lab+'</i>'+inner+'</span>');
+      keys.push('pl'+pl.id+':'+won+':'+n);
+    });
   } else {
     var lastLg=null;
     tkGames.forEach(function(g){ if(m==='all' && !g.mine && g.lg!==lastLg){ push('<span class="tl" data-k="l'+g.lg+'">'+TK_NAME[g.lg]+'</span>'); lastLg=g.lg; } push(tkGameHTML(g)); });

@@ -31,7 +31,7 @@
     // game night on the projector: show props, parlays and pop-ups tonight; the hourly auto re-lock
     // puts it back in full guest mode on its own after the screen goes dark
     projector: (Date.now() < mideve.getTime())
-      ? { rev:'2026-11-12-gamenight2', set:{ 'w2w.privacy':{ props:false, calendar:true, earnings:true, money:false }, 'w2w.notify':{ quiet:true, games:false, props:true }, 'w2w.banners':false, 'w2w.ticker':'props' } }
+      ? { rev:'2026-11-12-gamenight3', set:{ 'w2w.privacy':{ props:false, calendar:true, earnings:true, money:false }, 'w2w.notify':{ quiet:true, games:false, props:true }, 'w2w.banners':false, 'w2w.ticker':'props', 'w2w.tkSpeed':'slow' } }
       : null
   };
   if(!PUSH[id]) delete PUSH[id];
