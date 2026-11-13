@@ -163,6 +163,7 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
 #mt .v.off{opacity:0;transform:translateY(.5vw)}
 #mt .v img{width:1.98vw;height:1.98vw;object-fit:contain;background:#fff;border-radius:50%;padding:.14vw;box-sizing:border-box}
 #tk{position:absolute;left:0;right:0;bottom:0;height:3vw;background:rgba(5,8,20,.78);display:flex;align-items:center;font-size:1.3vw;z-index:2}
+#tk:focus{outline:none;box-shadow:inset 0 0 0 .18vw #ffcc00;background:rgba(5,8,20,.95)}
 #tk .lab{flex:none;padding:0 1vw;font-weight:700;letter-spacing:.12em;font-size:1vw;color:#ffcc00}
 #tk .win{flex:1;overflow:hidden;white-space:nowrap;-webkit-mask-image:linear-gradient(90deg,transparent,#000 3%,#000 97%,transparent)}
 #tk .run{display:inline-block;white-space:nowrap;animation:tkm linear infinite;will-change:transform;transform:translateZ(0)}
@@ -340,7 +341,10 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
   // ↩ Back to <last app> (app v2.6+): label refreshes whenever the welcome screen comes back into view
   function paintBack(){ var b=document.getElementById('goBack'); if(!b) return; var lab=''; try{ if(window.TV&&TV.lastAppLabel) lab=TV.lastAppLabel()||''; }catch(e){} b.style.display=lab?'':'none'; if(lab) b.textContent='↩ Back to '+lab; }
   document.addEventListener('visibilitychange',function(){ if(!document.hidden) paintBack(); }); setTimeout(paintBack, 600);
-  var TK_SPEED=1; try{ TK_SPEED=parseFloat(localStorage.getItem('w2w.tkSpeed'))||1; }catch(e){} if(!(TK_SPEED>=0.4&&TK_SPEED<=3)) TK_SPEED=1;
+  // One speed setting for every ticker (home strip + the bottom ticker over live TV): slow / normal / fast
+  var SPD_ORD=['slow','normal','fast'], SPD_MUL={slow:.55,normal:1,fast:1.8};
+  function tkSpdName(){ try{ var v=JSON.parse(localStorage.getItem('w2w.tkSpeed')); if(SPD_ORD.indexOf(v)>=0) return v; }catch(e){} return 'normal'; }
+  var TK_SPEED=SPD_MUL[tkSpdName()];
   function pad(n){return ('0'+n).slice(-2);}
   function iso(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
   function sod(d){return new Date(d.getFullYear(),d.getMonth(),d.getDate());}
@@ -797,21 +801,27 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
     var tip;
     function toast(){
       if(!tip){ tip=document.createElement('div'); tip.style.cssText='position:absolute;right:1.2vw;bottom:3.4vw;background:rgba(8,12,30,.96);border:.1vw solid #ffcc00;color:#fff;font-size:1vw;padding:.3vw .85vw;border-radius:1vw;z-index:5'; document.getElementById('home').appendChild(tip); }
-      tip.textContent='Ticker speed '+(Math.round(TK_SPEED*100)/100)+'×'; tip.style.display='block';
-      clearTimeout(tip._t); tip._t=setTimeout(function(){ tip.style.display='none'; },1600);
+      var nm=tkSpdName(); tip.textContent='Ticker speed: '+nm.charAt(0).toUpperCase()+nm.slice(1)+' — ◂ slower · faster ▸'; tip.style.display='block';
+      clearTimeout(tip._t); tip._t=setTimeout(function(){ tip.style.display='none'; },2200);
     }
-    function apply(){ var b=run._base||40; run.style.animationDuration=(b/TK_SPEED).toFixed(1)+'s'; try{ localStorage.setItem('w2w.tkSpeed',String(TK_SPEED)); }catch(e){} toast(); }
+    // The bottom ticker over live TV runs in its own window (hidden while this screen is up)
+    // and reads the saved speed fresh the moment it reappears — so this change lands there too.
+    function apply(){ TK_SPEED=SPD_MUL[tkSpdName()]; var b=run._base||40; run.style.animationDuration=(b/TK_SPEED).toFixed(1)+'s'; toast(); }
+    function step(d){ var i=SPD_ORD.indexOf(tkSpdName())+d; if(i<0||i>=SPD_ORD.length){ apply(); return; }
+      try{ localStorage.setItem('w2w.tkSpeed', JSON.stringify(SPD_ORD[i])); localStorage.setItem('w2w.settingsRev', String(Date.now())); }catch(e){}
+      apply(); }
     tk.addEventListener('keydown',function(e){
       var k=e.keyCode||e.which;
-      if(k===39){ TK_SPEED=Math.min(3,Math.round(TK_SPEED*1.25*100)/100); apply(); e.preventDefault(); }
-      else if(k===37){ TK_SPEED=Math.max(0.4,Math.round(TK_SPEED/1.25*100)/100); apply(); e.preventDefault(); }
+      if(k===39){ step(1); e.preventDefault(); e.stopPropagation(); }
+      else if(k===37){ step(-1); e.preventDefault(); e.stopPropagation(); }
     });
-    tk.addEventListener('focus',function(){ if(tip){tip.textContent='Scores ticker — ◂ slower · faster ▸';tip.style.display='block';clearTimeout(tip._t);tip._t=setTimeout(function(){tip.style.display='none';},2600);} else toast(); });
+    tk.addEventListener('focus',function(){ toast(); });
     // Make the bottom ticker reachable with the D-pad: Down from a button lands on it; Up leaves it.
     document.addEventListener('keydown',function(e){
       if(!(window.W2W_HOME_OPEN&&W2W_HOME_OPEN())) return;
       var k=e.keyCode||e.which, ae=document.activeElement;
       if(k===40 && ae && ae.classList && ae.classList.contains('gobtn')){ tk.focus(); e.preventDefault(); e.stopPropagation(); }
+      else if(k===40 && ae===tk){ e.preventDefault(); e.stopPropagation(); }
       else if(k===38 && ae===tk){ var b=document.getElementById('goSp')||document.querySelector('.gobtn'); if(b){ b.focus(); e.preventDefault(); e.stopPropagation(); } }
     },true);
   })();
