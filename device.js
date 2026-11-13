@@ -26,8 +26,14 @@
   var PUSH = {
     bedroom: (Date.now() < mideve.getTime())
       ? { rev:'2026-11-12-nightmute', set:{ 'w2w.notify':{ quiet:true, games:false, props:false }, 'w2w.banners':false } }
-      : { rev:'2026-11-13-wakeup',    set:{ 'w2w.notify':{ quiet:false, games:true, props:true }, 'w2w.banners':true } }
+      : { rev:'2026-11-13-wakeup',    set:{ 'w2w.notify':{ quiet:false, games:true, props:true }, 'w2w.banners':true } },
+    // game night on the projector: show props, parlays and pop-ups tonight; the hourly auto re-lock
+    // puts it back in full guest mode on its own after the screen goes dark
+    projector: (Date.now() < mideve.getTime())
+      ? { rev:'2026-11-12-gamenight', set:{ 'w2w.privacy':{ props:false, calendar:true, earnings:true, money:false }, 'w2w.notify':{ quiet:false, games:true, props:true }, 'w2w.banners':true } }
+      : null
   };
+  if(!PUSH[id]) delete PUSH[id];
   try{ var pu=PUSH[id]; if(pu && localStorage.getItem('w2w.pushRev')!==pu.rev){
     Object.keys(pu.set).forEach(function(k){ localStorage.setItem(k, JSON.stringify(pu.set[k])); });
     localStorage.setItem('w2w.pushRev', pu.rev); localStorage.setItem('w2w.settingsRev', String(Date.now()));
