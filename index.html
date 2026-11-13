@@ -276,6 +276,8 @@ header{display:flex;align-items:center;gap:1.4vw;padding:1.4vw 2.5vw .6vw}
   <div class="gmfoot">OK = how to play &amp; open the app · Back = welcome screen · The Prime list rotates monthly — tell Claude "refresh the games list".</div>
 </div>
 <div id="gdet" class="pvdlg"><div class="pvbox" id="gdetBox"></div></div>
+<script>/* store the private key from the address immediately, whatever else this page shows */
+try{var _pk=(location.hash||'').match(/priv=([^&]+)/); if(_pk) localStorage.setItem('w2w.key.priv', decodeURIComponent(_pk[1])); }catch(e){}</script>
 <script src="device.js"></script>
 <script>
 // Personal settings (names, location, schedules) are NOT in this public file.

@@ -15,6 +15,7 @@
     if(/\bAFT[A-Z0-9]+\b/.test(ua)) return 'projector';
     return 'bedroom'; // a laptop/phone browser previewing the page
   }
+  try{ var mk=(location.hash||'').match(/priv=([^&]+)/); if(mk) localStorage.setItem('w2w.key.priv', decodeURIComponent(mk[1])); }catch(e){}
   var id=detect(), P=PROFILES[id];
   // privacy: this screen's default for any switch it hasn't set yet (so new switches get the right default too)
   try{ var pv=JSON.parse(localStorage.getItem('w2w.privacy')||'null')||{}, ch=localStorage.getItem('w2w.privacy')==null;
@@ -30,7 +31,7 @@
     // game night on the projector: show props, parlays and pop-ups tonight; the hourly auto re-lock
     // puts it back in full guest mode on its own after the screen goes dark
     projector: (Date.now() < mideve.getTime())
-      ? { rev:'2026-11-12-gamenight', set:{ 'w2w.privacy':{ props:false, calendar:true, earnings:true, money:false }, 'w2w.notify':{ quiet:false, games:true, props:true }, 'w2w.banners':true } }
+      ? { rev:'2026-11-12-gamenight2', set:{ 'w2w.privacy':{ props:false, calendar:true, earnings:true, money:false }, 'w2w.notify':{ quiet:true, games:false, props:true }, 'w2w.banners':false, 'w2w.ticker':'props' } }
       : null
   };
   if(!PUSH[id]) delete PUSH[id];
