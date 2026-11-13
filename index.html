@@ -785,7 +785,10 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
   window.W2W_GOHOME=function(){ home.classList.remove('hide'); tick(); var b=document.getElementById('goWatch'); if(b) b.focus(); };
   if(location.hash.indexOf('watch')>=0) home.classList.add('hide');
   // when the TV wakes and this page comes back into view, show the welcome screen again
-  document.addEventListener('visibilitychange',function(){ if(!document.hidden){ home.classList.remove('hide'); tick(); weather(); } });
+  // pick up site updates by itself: when the screen comes back and this page is >6h old, reload it fresh
+  var LOADED_AT=Date.now();
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden){ home.classList.remove('hide'); tick(); weather();
+    if(Date.now()-LOADED_AT>6*3600*1000 && (!window.W2W_SP||!W2W_SP.isOpen()) && (!window.W2W_GM||!W2W_GM.isOpen())){ try{ var u=new URL(location.href); u.searchParams.set('t', String(Math.floor(Date.now()/300000))); location.replace(u.href); }catch(e){} } } });
   tick(); chips(); setInterval(tick,15000); setInterval(chips,3600000);
   (function tickerNav(){
     var tk=document.getElementById('tk'), run=document.getElementById('tkRun'); if(!tk||!run) return;
