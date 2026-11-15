@@ -1464,8 +1464,6 @@ function playTrailer(key){
 }
 function closeOverlays(){
   if(window.W2W_PRIV&&W2W_PRIV.isOpen()){ W2W_PRIV.close(); return true; }
-  if(window.W2W_SLEEP&&W2W_SLEEP.isOpen()){ history.back(); return true; }
-  if(window.W2W_SP&&W2W_SP.isOpen()){ history.back(); return true; }
   var tr=document.getElementById('trailer'); if(tr){ tr.remove(); var tb=$('trailerBtn'); if(tb) tb.focus(); return true; }
   function backFocus(){ // where focus should land after closing the top layer
     if($('detail').classList.contains('show')){ var sb=document.getElementById('saveBtn')||$('detail').querySelector('.focusable'); if(sb) sb.focus(); return; }
@@ -1475,11 +1473,15 @@ function closeOverlays(){
   if($('detail').classList.contains('show')){ $('detail').classList.remove('show'); backFocus(); return true; }
   if(histOpen()){ closeHist(); return true; }
   if(listsOpen()){ closeLists(); return true; }
+  if(window.W2W_SLEEP&&W2W_SLEEP.isOpen()){ W2W_SLEEP.close(); return true; }
+  if(window.W2W_SP&&W2W_SP.isOpen()){ W2W_SP.close(); var sb2=document.getElementById('goSp'); if(sb2) sb2.focus(); return true; }
   return false;
 }
 window.addEventListener('popstate',function(){closeOverlays();});
 window.W2W_BACK=function(){
   if(window.W2W_PRIV&&W2W_PRIV.isOpen()){ W2W_PRIV.close(); var pb=document.getElementById('privBtn'); if(pb) pb.focus(); return true; } // Back closes the privacy panel, never the app
+  // whatever is drawn on top answers first — a stale flag on a hidden layer must never eat Back
+  if($('picker').classList.contains('show')||$('detail').classList.contains('show')||histOpen()||listsOpen()){ if(closeOverlays()) return true; }
   if(window.W2W_GM&&W2W_GM.close()) return true;
   if(window.W2W_SLEEP&&W2W_SLEEP.isOpen()){ var wasRun=W2W_SLEEP.running(); W2W_SLEEP.close(); if(!wasRun){ var z=document.getElementById('goSleep'); if(z) z.focus(); } return true; }
   if(window.W2W_SP&&W2W_SP.isOpen()){ W2W_SP.close(); var s=document.getElementById('goSp'); if(s) s.focus(); return true; }
