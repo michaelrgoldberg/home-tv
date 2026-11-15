@@ -27,8 +27,10 @@
     cycleMulti:function(){ var v=MU[(idx(MU,V.multi())+1)%MU.length][0]; s('w2w.gcMulti',v); return v; },
     // does the installed TV app know how to draw the ticker / resize Gamecast? (app 2.7+)
     nativeOk:function(){ try{ if(window.TV&&TV.version) return TV.version()>=8; if(window.OV) return !!OV.setTicker; }catch(e){} return false; },
-    // push the saved choices to the TV app (on page load, in case they were changed elsewhere)
-    sync:function(){ nat('setTicker',V.ticker()); nat('setGamecastSize',V.size()); }
+    // On page load only the Gamecast size is pushed. The app itself is the keeper of whether the
+    // ticker is on screen: re-pushing the saved mode here kept resurrecting a ticker that had just
+    // been turned off remotely. An explicit press (cycleTicker) still pushes.
+    sync:function(){ nat('setGamecastSize',V.size()); }
   };
   window.W2W_VIEW=V;
 })();

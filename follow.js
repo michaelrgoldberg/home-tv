@@ -31,19 +31,22 @@
       if(cs.some(function(x){ return teamMatch(x.team||{}, team); })){ var s=((e.status||{}).type||{}).state||'pre'; if(!best||rank[s]<rank[best.s]) best={id:String(e.id), s:s}; } });
     return best; }); }
 
-  function wanted(data){ // -> [{lg, team, level}]
-    var out=[], seen={};
-    function add(lg,team,level){ if(!lg||!team) return; var k=lg+'|'+String(team).toLowerCase(); if(seen[k]) return; seen[k]=1; out.push({lg:lg,team:team,level:level||1}); }
-    (data.follow||[]).forEach(function(f){ add(f.lg,f.team,f.level); });
-    (data.props||[]).forEach(function(p){ add(p.lg,p.team,1); });
-    (data.parlays||[]).forEach(function(pl){ (pl.legs||[]).forEach(function(l){ add(l.lg,l.team,1); }); });
+  function etToday(){ try{ return new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York'}).format(new Date()); }
+    catch(e){ var d=new Date(); return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); } }
+  function wanted(data){ // -> [{lg, team, level}] — a dated entry counts only on its own day, so old game nights never linger
+    var out=[], seen={}, today=etToday();
+    function add(lg,team,level,date){ if(!lg||!team) return; if(date&&date!==today) return;
+      var k=lg+'|'+String(team).toLowerCase(); if(seen[k]) return; seen[k]=1; out.push({lg:lg,team:team,level:level||1}); }
+    (data.follow||[]).forEach(function(f){ add(f.lg,f.team,f.level,f.date); });
+    (data.props||[]).forEach(function(p){ add(p.lg,p.team,1,p.date); });
+    (data.parlays||[]).forEach(function(pl){ (pl.legs||[]).forEach(function(l){ add(l.lg,l.team,1,l.date||pl.date); }); });
     return out;
   }
 
   function sync(){
     return loadData().then(function(data){
       if(!data) return {added:0};
-      var want=wanted(data); if(!want.length) return {added:0};
+      var want=wanted(data); // even when empty, carry on so yesterday's auto-stars get swept out
       var explicit={}; (data.follow||[]).forEach(function(f){ explicit[(f.lg+'|'+String(f.team).toLowerCase())]=1; });
       return Promise.all(want.map(function(w){ return resolve(w.lg,w.team).then(function(r){ return r?{lg:w.lg,id:r.id,level:w.level,team:w.team,exp:!!explicit[(w.lg+'|'+String(w.team).toLowerCase())]}:null; }); })).then(function(res){
         var stars=ls('w2w.starred',[]); if(!Array.isArray(stars)) stars=[];
@@ -53,6 +56,10 @@
           if(!has && !auto[r.id]){ stars.push({lg:r.lg,id:r.id}); added++; }
           auto[r.id]=1; if(r.level>1) lvl[r.id]=r.level;
         });
+        // sweep: an auto-starred game that no current pick or follow points at is yesterday's — unstar it
+        var cur={}; res.forEach(function(r){ if(r) cur[r.id]=1; });
+        stars=stars.filter(function(s){ return !auto[String(s.id)] || cur[String(s.id)]; });
+        Object.keys(auto).forEach(function(id){ if(!cur[id]) delete auto[id]; });
         var fg=[]; res.forEach(function(r){ if(r&&r.exp&&fg.indexOf(r.id)<0) fg.push(r.id); });
         st('w2w.followGames', fg);
         st('w2w.starred',stars); st('w2w.autoStar',auto); st('w2w.starLevel',lvl);

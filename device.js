@@ -38,8 +38,9 @@
   try{ var pu=PUSH[id]; if(pu && localStorage.getItem('w2w.pushRev')!==pu.rev){
     Object.keys(pu.set).forEach(function(k){ localStorage.setItem(k, JSON.stringify(pu.set[k])); });
     localStorage.setItem('w2w.pushRev', pu.rev); localStorage.setItem('w2w.settingsRev', String(Date.now()));
-    var n=pu.set['w2w.notify'], b=pu.set['w2w.banners'];
+    var n=pu.set['w2w.notify'], b=pu.set['w2w.banners'], tk=pu.set['w2w.ticker'];
     if(n) setTimeout(function(){ ['TV','OV'].forEach(function(o){ try{ if(window[o]&&window[o].setAlertPrefs) window[o].setAlertPrefs(n.games!==false, b!==false); }catch(e){} }); }, 1500);
+    if(tk!==undefined) setTimeout(function(){ ['TV','OV'].forEach(function(o){ try{ if(window[o]&&window[o].setTicker) window[o].setTicker(tk); }catch(e){} }); }, 1600); // a push is explicit, so it may turn the ticker on or off
   } }catch(e){}
   // Auto re-lock: once no page on this screen has been open for ~an hour (done watching, TV asleep),
   // the next wake flips this screen's private switches back on. Unlocking stays manual in 🔒 Privacy.
