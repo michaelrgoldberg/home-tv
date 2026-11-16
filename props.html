@@ -766,7 +766,7 @@ var TK_ALL=['football/nfl','basketball/nba','hockey/nhl','baseball/mlb','basketb
 var TK_NAME={'football/nfl':'NFL','basketball/nba':'NBA','hockey/nhl':'NHL','football/college-football':'NCAAF','basketball/mens-college-basketball':'NCAAM','baseball/mlb':'MLB','basketball/wnba':'WNBA','soccer/usa.1':'MLS'};
 var tkGames=[], tkT=null, tkAnim=false, tkPending=null, tkSig='';
 function tkMode(){ var m=lsGet('w2w.ticker','off'); if(m==='props'&&privProps()) m='mine'; return m; }
-function tkPx(){ return {slow:24, normal:40, fast:70}[lsGet('w2w.tkSpeed','normal')]||40; }
+function tkPx(){ return {slow:16, normal:34, fast:60}[lsGet('w2w.tkSpeed','normal')]||40; }
 function tkLoad(){
   clearTimeout(tkT); var m=tkMode(); if(m==='off'){ tkGames=[]; renderTicker(); tkT=setTimeout(tkLoad,30000); return; }
   var st=getStarred(), mine={}; st.forEach(function(x){ mine[String(x.id)]=1; });
