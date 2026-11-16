@@ -55,6 +55,13 @@ public class AlertService extends Service {
   WebView propCard;     // non-focusable persistent prop-tracker card (bottom-left)
   WebView gamecast;     // focusable gamecast panel (left), D-pad switches games
   WebView ticker;       // non-focusable full-width score ticker along the bottom (off / all / mine / props)
+  // Native ticker: the page keeps doing the thinking (decrypt, live stats) and hands finished
+  // chips over OV.setTickerItems; we draw them in real views and slide them on the GPU, which
+  // stays smooth where a WebView CSS crawl judders (Hisense panel over 4K video).
+  FrameLayout tickerWrap; LinearLayout tickerStrip; FrameLayout tickerClip;
+  volatile int tickerSpeed = 24; float tickerX = 0; long tickerLastT = 0; int tickerCopyW = 0;
+  android.view.Choreographer.FrameCallback tickerCb;
+  final java.util.HashMap<String, Bitmap> faceCache = new java.util.HashMap<String, Bitmap>();
   // Big-moment "jump": a short banner over whatever's playing; one tap of MENU switches to that game's app.
   static volatile String jumpUri = null; static volatile long jumpUntil = 0;
   View jumpBar;
@@ -204,15 +211,120 @@ public class AlertService extends Service {
     String base = baseUrl(); if (base.length() == 0) return;
     try {
       WebView wv = makeWeb(base + "props.html?ticker=1&t=" + (System.currentTimeMillis() / 300000L));
+      wv.addJavascriptInterface(new OverlayBridge(), "OV");
       wv.setFocusable(false);
+      FrameLayout wrap = new FrameLayout(this);
+      wrap.addView(wv, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+      // native strip (hidden until the page hands us chips; the WebView stays as fallback)
+      LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL); col.setVisibility(View.GONE);
+      View line = new View(this); line.setBackgroundColor(0xCCFFCC00);
+      col.addView(line, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(2)));
+      tickerClip = new FrameLayout(this); tickerClip.setBackgroundColor(0xC00A101F); tickerClip.setClipChildren(true);
+      tickerStrip = new LinearLayout(this); tickerStrip.setOrientation(LinearLayout.HORIZONTAL); tickerStrip.setGravity(Gravity.CENTER_VERTICAL);
+      tickerStrip.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+      tickerClip.addView(tickerStrip, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
+      col.addView(tickerClip, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
+      FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+      cp.gravity = Gravity.BOTTOM; wrap.addView(col, cp);
       WindowManager.LayoutParams p = overlayParams(false);
       p.flags |= WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
       p.gravity = Gravity.BOTTOM | Gravity.START; p.x = 0; p.y = 0;
       p.width = ViewGroup.LayoutParams.MATCH_PARENT; p.height = tickerH();
-      ticker = wv; wm.addView(ticker, p);
-    } catch (Exception e) { android.util.Log.e("HOMETV", "ticker fail", e); ticker = null; }
+      ticker = wv; tickerWrap = wrap; wm.addView(tickerWrap, p);
+    } catch (Exception e) { android.util.Log.e("HOMETV", "ticker fail", e); ticker = null; tickerWrap = null; tickerStrip = null; tickerClip = null; }
   }
-  void hideTicker() { if (ticker != null) { try { wm.removeView(ticker); } catch (Exception e) {} try { ticker.destroy(); } catch (Exception e) {} ticker = null; } }
+  void hideTicker() {
+    tickerAnimStop();
+    if (tickerWrap != null) { try { wm.removeView(tickerWrap); } catch (Exception e) {} }
+    if (ticker != null) { try { ticker.destroy(); } catch (Exception e) {} }
+    ticker = null; tickerWrap = null; tickerStrip = null; tickerClip = null; tickerCopyW = 0; tickerX = 0;
+  }
+  // ----- native ticker drawing -----
+  void tickerAnimStart() {
+    if (tickerCb != null) return; tickerLastT = 0;
+    tickerCb = new android.view.Choreographer.FrameCallback() { public void doFrame(long t) {
+      if (tickerStrip == null || tickerCb == null) return;
+      if (tickerLastT != 0 && tickerCopyW > 0) {
+        float dt = (t - tickerLastT) / 1e9f; if (dt > 0.2f) dt = 0.2f;
+        tickerX -= tickerSpeed * dp(1) * dt;
+        if (-tickerX >= tickerCopyW) tickerX += tickerCopyW;
+        tickerStrip.setTranslationX(tickerX);
+      }
+      tickerLastT = t;
+      android.view.Choreographer.getInstance().postFrameCallback(this);
+    } };
+    android.view.Choreographer.getInstance().postFrameCallback(tickerCb);
+  }
+  void tickerAnimStop() { tickerCb = null; }
+  void tickerApply(String json) {
+    if (tickerStrip == null || tickerClip == null) return;
+    try {
+      JSONObject o = new JSONObject(json);
+      tickerSpeed = Math.max(6, o.optInt("speed", 24));
+      JSONArray a = o.getJSONArray("items");
+      if (ticker != null) ticker.setVisibility(View.INVISIBLE);           // page keeps running, stops drawing
+      ((View) tickerClip.getParent()).setVisibility(View.VISIBLE);        // the native column
+      tickerStrip.removeAllViews();
+      for (int copy = 0; copy < 2; copy++) {
+        for (int i = 0; i < a.length(); i++) addChip(a.getJSONObject(i));
+        View gap = new View(this); tickerStrip.addView(gap, new LinearLayout.LayoutParams(dp(28), 1));
+      }
+      final int n = tickerStrip.getChildCount() / 2;
+      tickerStrip.post(new Runnable() { public void run() {
+        if (tickerStrip == null) return;
+        int w = 0; for (int i = 0; i < n && i < tickerStrip.getChildCount(); i++) {
+          View c = tickerStrip.getChildAt(i);
+          ViewGroup.MarginLayoutParams mp = (ViewGroup.MarginLayoutParams) c.getLayoutParams();
+          w += c.getWidth() + mp.leftMargin + mp.rightMargin;
+        }
+        tickerCopyW = w;
+        int lane = tickerClip.getWidth();
+        if (w <= lane - dp(10)) { // fits: park it, remove the duplicate copy
+          while (tickerStrip.getChildCount() > n) tickerStrip.removeViewAt(n);
+          tickerAnimStop(); tickerX = 0; tickerStrip.setTranslationX(0); tickerCopyW = 0;
+        } else {
+          if (-tickerX >= w) tickerX = 0;
+          tickerAnimStart();
+        }
+      } });
+    } catch (Exception e) { android.util.Log.e("HOMETV", "tickerApply", e); }
+  }
+  void addChip(JSONObject it) {
+    String txt = it.optString("t", "").trim(); if (txt.length() == 0) return;
+    boolean lab = it.optInt("lab", 0) == 1, tab = it.optInt("tab", 0) == 1, grouped = it.optInt("g", 0) == 1;
+    LinearLayout chip = new LinearLayout(this); chip.setOrientation(LinearLayout.HORIZONTAL); chip.setGravity(Gravity.CENTER_VERTICAL);
+    GradientDrawable bg = new GradientDrawable(); bg.setCornerRadius(dp(12));
+    if (tab || lab) { bg.setColor(0xFFFFCC00); } else { bg.setColor(0xE0121C36); if (grouped) bg.setStroke(dp(1), 0x88FFCC00); }
+    chip.setBackground(bg); chip.setPadding(dp(8), 0, dp(8), 0);
+    String img = it.optString("i", "");
+    if (img.length() > 4) {
+      final ImageView iv = new ImageView(this); iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+      LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(18), dp(18)); ip.rightMargin = dp(4);
+      chip.addView(iv, ip); loadFace(iv, img);
+    }
+    TextView tv = new TextView(this); tv.setText(txt); tv.setTypeface(Typeface.DEFAULT_BOLD);
+    tv.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12.5f); tv.setSingleLine(true);
+    tv.setTextColor((tab || lab) ? 0xFF141414 : 0xFFF2F6FF);
+    chip.addView(tv);
+    String d = it.optString("d", "");
+    if (d.length() > 3) { View dot = new View(this); GradientDrawable db = new GradientDrawable(); db.setShape(GradientDrawable.OVAL);
+      int c = 0xFFF1C40F; try { c = Color.parseColor(d); } catch (Exception e) {}
+      db.setColor(c); dot.setBackground(db);
+      LinearLayout.LayoutParams dpm = new LinearLayout.LayoutParams(dp(8), dp(8)); dpm.leftMargin = dp(5); chip.addView(dot, dpm); }
+    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(24));
+    lp.leftMargin = dp(3); lp.rightMargin = dp(3);
+    tickerStrip.addView(chip, lp);
+  }
+  void loadFace(final ImageView iv, final String url) {
+    Bitmap c; synchronized (faceCache) { c = faceCache.get(url); }
+    if (c != null) { iv.setImageBitmap(c); return; }
+    new Thread(new Runnable() { public void run() {
+      try { InputStream is = new URL(url).openStream(); final Bitmap bm = BitmapFactory.decodeStream(is); is.close();
+        if (bm != null) { synchronized (faceCache) { if (faceCache.size() > 60) faceCache.clear(); faceCache.put(url, bm); }
+          h.post(new Runnable(){ public void run(){ iv.setImageBitmap(bm); } }); }
+      } catch (Exception e) {}
+    } }).start();
+  }
   int propY() { return dp(14) + (ticker != null ? tickerH() + dp(4) : 0); }
   void placePropCard() { if (propCard == null) return; try { WindowManager.LayoutParams p = (WindowManager.LayoutParams) propCard.getLayoutParams(); if (p.y != propY()) { p.y = propY(); wm.updateViewLayout(propCard, p); } } catch (Exception e) {} }
 
@@ -305,6 +417,7 @@ public class AlertService extends Service {
     @android.webkit.JavascriptInterface public boolean gamecastShown() { return gamecast != null; }
     @android.webkit.JavascriptInterface public void setAlertPrefs(boolean alerts, boolean banners) { AlertService.this.setAlertPrefs(alerts, banners); }
     @android.webkit.JavascriptInterface public void setTicker(String m) { AlertService.this.setTicker(m); }
+    @android.webkit.JavascriptInterface public void setTickerItems(final String json) { h.post(new Runnable(){ public void run(){ tickerApply(json); } }); }
     @android.webkit.JavascriptInterface public void setGamecastSize(String s) { AlertService.this.setGamecastSize(s); }
     @android.webkit.JavascriptInterface public void showJump(String title, String uri) { AlertService.this.showJump(title, uri); }
     @android.webkit.JavascriptInterface public boolean canJump() { return true; }

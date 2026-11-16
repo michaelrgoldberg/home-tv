@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.hometv.welcome" android:versionCode="22" android:versionName="2.9">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.hometv.welcome" android:versionCode="23" android:versionName="2.10">
   <uses-sdk android:minSdkVersion="22" android:targetSdkVersion="30"/>
   <uses-permission android:name="android.permission.INTERNET"/>
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
@@ -25,7 +25,7 @@
       <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LEANBACK_LAUNCHER"/></intent-filter>
     </activity-alias>
     <service android:name=".SleepService" android:exported="false"/>
-    <service android:name=".AlertService" android:exported="false" android:foregroundServiceType="specialUse"/>
+    <service android:name=".AlertService" android:exported="true" android:foregroundServiceType="specialUse"/>
     <service android:name=".GcAccessibilityService" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true">
       <intent-filter><action android:name="android.accessibilityservice.AccessibilityService"/></intent-filter>
       <meta-data android:name="android.accessibilityservice" android:resource="@xml/gc_accessibility"/>
