@@ -246,12 +246,14 @@ function num(v){ if(v==null) return null; v=String(v); if(v.indexOf('-')>0 && /^
 function multiStat(d, players, stat){ var names=String(players||'').split(/\s+\+\s+/); if(names.length<2) return statFromBox(d,players,stat);
   var sum=0, any=false; names.forEach(function(n){ var v=statFromBox(d,n,stat); if(v!=null){ sum+=v; any=true; } }); return any?sum:(d&&d.boxscore&&(d.boxscore.players||[]).length?0:null); }
 function statFromBox(d, playerName, stat){ // combo props ("points+rebounds") sum the parts
+  if(!playerName || !String(playerName).trim()) return null; // a leg with no player (team total, exotics) just shows "–"
   var parts=String(stat||'').toLowerCase().split('+').map(function(s){return s.trim();}).filter(Boolean);
   if(parts.length>1){ var sum=0, any=false; for(var i=0;i<parts.length;i++){ var vv=singleStat(d,playerName,parts[i]); if(vv!=null){ sum+=vv; any=true; } } return any?sum:null; }
   return singleStat(d,playerName,stat);
 }
 function nameHit(nm,lname){ return nm && (nm.indexOf(lname)>=0 || lname.indexOf(nm)>=0); }
 function singleStat(d, playerName, stat){
+  if(!playerName || !String(playerName).trim()) return null;
   var bs=d.boxscore||{}; var want=String(stat||'').toLowerCase().trim();
   var labelsWanted=STAT_MAP[want]||[want.toUpperCase()]; var groupHint=GROUP_HINT[want];
   var found=null, lname=playerName.toLowerCase();
@@ -267,15 +269,15 @@ function singleStat(d, playerName, stat){
   return found;
 }
 var CDN_LG={'basketball/nba':'nba','football/nfl':'nfl','hockey/nhl':'nhl','baseball/mlb':'mlb','basketball/mens-college-basketball':'mens-college-basketball'};
-function headshotFrom(d, playerName){ var lname=playerName.toLowerCase(), hs='', aid='';
+function headshotFrom(d, playerName){ if(!playerName) return {hs:'',id:''}; var lname=String(playerName).toLowerCase(), hs='', aid='';
   (((d.boxscore||{}).players)||[]).forEach(function(tm){ (tm.statistics||[]).forEach(function(grp){ (grp.athletes||[]).forEach(function(a){
     var at=a.athlete||{}, nm=(at.displayName||at.shortName||'').toLowerCase(); if(!nameHit(nm,lname)) return;
     if(at.headshot){ hs=(typeof at.headshot==='string')?at.headshot:at.headshot.href||''; } if(at.id) aid=at.id; }); }); });
   return {hs:hs, id:aid};
 }
-function lastPlayFor(d, playerName){ var parts=playerName.toLowerCase().split(' '); var last=parts[parts.length-1];
+function lastPlayFor(d, playerName){ if(!playerName) return null; var parts=String(playerName).toLowerCase().split(' '); var last=parts[parts.length-1];
   var plays=d.plays||[]; for(var i=plays.length-1;i>=0;i--){ var t=plays[i].text||''; if(t.toLowerCase().indexOf(last)>=0) return t; } return ''; }
-function playerMeta(d, playerName){ var lname=playerName.toLowerCase(), min=0, pf=0;
+function playerMeta(d, playerName){ if(!playerName) return {min:0,pf:0}; var lname=String(playerName).toLowerCase(), min=0, pf=0;
   (((d.boxscore||{}).players)||[]).forEach(function(tm){ (tm.statistics||[]).forEach(function(grp){
     var labels=grp.labels||grp.names||[]; var mi=labels.indexOf('MIN'), fi=labels.indexOf('PF');
     (grp.athletes||[]).forEach(function(a){ var nm=((a.athlete||{}).displayName||(a.athlete||{}).shortName||'').toLowerCase(); if(!nameHit(nm,lname)) return;
