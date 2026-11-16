@@ -25,8 +25,9 @@
   // Tonight (Nov 12): everything sports-quiet on the bedroom TV until midnight, then back on by itself.
   var mideve = new Date('2026-11-13T00:00:00-05:00');
   var PUSH = {
-    // bedroom TV (Nov 15): earnings stay behind the privacy switch; the calendar card shows
-    bedroom: { rev:'2026-11-15-calonly', set:{ 'w2w.privacy':{ props:true, calendar:false, earnings:true, money:true } } },
+    // bedroom TV (Nov 15 evening): game night — props visible for the ticker and pop-ups;
+    // earnings and wager amounts stay behind the privacy switch
+    bedroom: { rev:'2026-11-15-snf', set:{ 'w2w.privacy':{ props:false, calendar:false, earnings:true, money:true }, 'w2w.ticker':'props' } },
     projector: null
   };
   if(!PUSH[id]) delete PUSH[id];
