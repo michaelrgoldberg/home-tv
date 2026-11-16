@@ -239,23 +239,34 @@ public class AlertService extends Service {
     if (ticker != null) { try { ticker.destroy(); } catch (Exception e) {} }
     ticker = null; tickerWrap = null; tickerStrip = null; tickerClip = null; tickerCopyW = 0; tickerX = 0;
   }
-  // ----- native ticker drawing -----
-  void tickerAnimStart() {
-    if (tickerCb != null) return; tickerLastT = 0;
-    tickerCb = new android.view.Choreographer.FrameCallback() { public void doFrame(long t) {
-      if (tickerStrip == null || tickerCb == null) return;
-      if (tickerLastT != 0 && tickerCopyW > 0) {
-        float dt = (t - tickerLastT) / 1e9f; if (dt > 0.2f) dt = 0.2f;
-        tickerX -= tickerSpeed * dp(1) * dt;
-        if (-tickerX >= tickerCopyW) tickerX += tickerCopyW;
-        tickerStrip.setTranslationX(tickerX);
+  // ----- native ticker: NO continuous motion -----
+  // This panel judders on any per-frame scroll over 4K video (CSS or GPU layer, both tried).
+  // So the strip holds perfectly still, then jumps to the next page of chips every few seconds.
+  // A still image cannot stutter; the only motion is one instant cut on each page turn.
+  Runnable tickerStepR; int tickerTotalW = 0;
+  long tickerDwell() { return Math.max(4500L, 9500L - tickerSpeed * 80L); }  // slower speed = longer hold
+  void tickerAnimStop() { if (tickerStepR != null) { h.removeCallbacks(tickerStepR); tickerStepR = null; } tickerCb = null; }
+  void tickerRotateStart() {
+    if (tickerStepR != null) return;
+    tickerStepR = new Runnable() { public void run() {
+      if (tickerStrip == null || tickerClip == null || tickerStepR == null) return;
+      int lane = tickerClip.getWidth();
+      if (tickerTotalW > lane + dp(10)) {
+        int cur = (int) (-tickerX), edge = cur + lane, next = 0, cum = 0;
+        for (int i = 0; i < tickerStrip.getChildCount(); i++) {       // next page starts at the first chip the current page cuts off
+          View c = tickerStrip.getChildAt(i);
+          ViewGroup.MarginLayoutParams mp = (ViewGroup.MarginLayoutParams) c.getLayoutParams();
+          int left = cum + mp.leftMargin;
+          if (left + c.getWidth() > edge) { next = left; break; }
+          cum += c.getWidth() + mp.leftMargin + mp.rightMargin;
+        }
+        if (next <= cur + dp(4) || next > tickerTotalW - lane) next = 0; // no progress, or last page -> back to the start
+        tickerX = -next; tickerStrip.setTranslationX(tickerX);
       }
-      tickerLastT = t;
-      android.view.Choreographer.getInstance().postFrameCallback(this);
+      h.postDelayed(this, tickerDwell());
     } };
-    android.view.Choreographer.getInstance().postFrameCallback(tickerCb);
+    h.postDelayed(tickerStepR, tickerDwell());
   }
-  void tickerAnimStop() { tickerCb = null; }
   void tickerApply(String json) {
     if (tickerStrip == null || tickerClip == null) return;
     try {
@@ -265,27 +276,20 @@ public class AlertService extends Service {
       if (ticker != null) ticker.setVisibility(View.INVISIBLE);           // page keeps running, stops drawing
       ((View) tickerClip.getParent()).setVisibility(View.VISIBLE);        // the native column
       tickerStrip.removeAllViews();
-      for (int copy = 0; copy < 2; copy++) {
-        for (int i = 0; i < a.length(); i++) addChip(a.getJSONObject(i));
-        View gap = new View(this); tickerStrip.addView(gap, new LinearLayout.LayoutParams(dp(28), 1));
-      }
-      final int n = tickerStrip.getChildCount() / 2;
+      for (int i = 0; i < a.length(); i++) addChip(a.getJSONObject(i));
       tickerStrip.post(new Runnable() { public void run() {
         if (tickerStrip == null) return;
-        int w = 0; for (int i = 0; i < n && i < tickerStrip.getChildCount(); i++) {
+        int w = 0; for (int i = 0; i < tickerStrip.getChildCount(); i++) {
           View c = tickerStrip.getChildAt(i);
           ViewGroup.MarginLayoutParams mp = (ViewGroup.MarginLayoutParams) c.getLayoutParams();
           w += c.getWidth() + mp.leftMargin + mp.rightMargin;
         }
-        tickerCopyW = w;
+        tickerTotalW = w;
         int lane = tickerClip.getWidth();
-        if (w <= lane - dp(10)) { // fits: park it, remove the duplicate copy
-          while (tickerStrip.getChildCount() > n) tickerStrip.removeViewAt(n);
-          tickerAnimStop(); tickerX = 0; tickerStrip.setTranslationX(0); tickerCopyW = 0;
-        } else {
-          if (-tickerX >= w) tickerX = 0;
-          tickerAnimStart();
-        }
+        if (-tickerX >= w) tickerX = 0;
+        tickerStrip.setTranslationX(tickerX);
+        if (w <= lane - dp(10)) { tickerAnimStop(); tickerX = 0; tickerStrip.setTranslationX(0); }  // everything fits: hold, no rotation
+        else tickerRotateStart();
       } });
     } catch (Exception e) { android.util.Log.e("HOMETV", "tickerApply", e); }
   }
