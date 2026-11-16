@@ -25,14 +25,9 @@
   // Tonight (Nov 12): everything sports-quiet on the bedroom TV until midnight, then back on by itself.
   var mideve = new Date('2026-11-13T00:00:00-05:00');
   var PUSH = {
-    bedroom: (Date.now() < mideve.getTime())
-      ? { rev:'2026-11-12-tvbets2', set:{ 'w2w.notify':{ quiet:true, games:false, props:false }, 'w2w.banners':false, 'w2w.privacy':{ props:false, money:true }, 'w2w.ticker':'props', 'w2w.tkSpeed':'slow' } }
-      : { rev:'2026-11-13-wakeup',    set:{ 'w2w.notify':{ quiet:false, games:true, props:true }, 'w2w.banners':true } },
-    // game night on the projector: show props, parlays and pop-ups tonight; the hourly auto re-lock
-    // puts it back in full guest mode on its own after the screen goes dark
-    projector: (Date.now() < mideve.getTime())
-      ? { rev:'2026-11-12-gamenight3', set:{ 'w2w.privacy':{ props:false, calendar:true, earnings:true, money:false }, 'w2w.notify':{ quiet:true, games:false, props:true }, 'w2w.banners':false, 'w2w.ticker':'props', 'w2w.tkSpeed':'slow' } }
-      : null
+    // bedroom TV (Nov 15): earnings stay behind the privacy switch; the calendar card shows
+    bedroom: { rev:'2026-11-15-calonly', set:{ 'w2w.privacy':{ props:true, calendar:false, earnings:true, money:true } } },
+    projector: null
   };
   if(!PUSH[id]) delete PUSH[id];
   try{ var pu=PUSH[id]; if(pu && localStorage.getItem('w2w.pushRev')!==pu.rev){
