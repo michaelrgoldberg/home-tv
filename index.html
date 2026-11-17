@@ -920,6 +920,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
   <button class="btn focusable" id="wQx" style="display:none">✕ Clear</button>
   <button class="btn focusable" id="wHist">🕑 History</button>
   <button class="btn focusable" id="wLists">📑 Lists</button>
+  <button class="btn focusable" id="goStrip" style="display:none" title="Float the live bets strip over whatever you're watching (B)">🎫 Bets strip</button>
   <span class="sep"></span>
   <span class="lbl">Show</span>
   <button class="btn focusable" data-kind="all">Both</button>
@@ -1051,7 +1052,7 @@ function renderRails(){ var r=document.getElementById('rails'); if(!r) return; v
   if(rec.length) html+='<div class="rail"><h4>🕑 Recently watched <span class="hint">press OK to watch again or remove</span></h4><div class="strip">'+rec.map(function(e){return railCard(e,'recent');}).join('')+'</div></div>';
   r.innerHTML=html; }
 window.renderRails=renderRails;
-function relaunch(e){ var t=titles[e.k]; var dl=t&&t.links&&e.svc&&t.links[e.svc]; if(dl){ location.href=dl; } else if(e.svc){ launch(e.svc); } else if(t){ openDetail(t); } }
+function relaunch(e){ var t=titles[e.k]; var dl=t&&t.links&&e.svc&&t.links[e.svc]; if(!DESK && dl){ location.href=dl; } else if(e.svc){ launch(e.svc, e.title); } else if(t){ openDetail(t); } }
 function railMenu(list,k){ var e=sget(list,[]).filter(function(x){return x.k===k;})[0]; if(!e) return;
   var opts=[{v:'play',l:'▶ '+(list==='recent'?'Watch it again':'Resume watching')}];
   if(list==='watching') opts.push({v:'done',l:'✓ Mark as finished'});
@@ -1491,10 +1492,44 @@ window.W2W_BACK=function(){
   W2W_GOHOME(); return true;
 };
 var lastCard=null;
-function launch(svc){
+var DESK = !!(window.W2W_DEVICE && W2W_DEVICE.id==='desktop');
+// On a computer, "open" means the service's website, landed on a search for the title
+var WEB = {
+  netflix:  function(q){ return 'https://www.netflix.com/search?q='+encodeURIComponent(q); },
+  prime:    function(q){ return 'https://www.amazon.com/s?k='+encodeURIComponent(q)+'&i=instant-video'; },
+  yttv:     function(q){ return 'https://tv.youtube.com/'; },
+  youtube:  function(q){ return 'https://www.youtube.com/results?search_query='+encodeURIComponent(q); },
+  tubi:     function(q){ return 'https://tubitv.com/search/'+encodeURIComponent(q); },
+  peacock:  function(q){ return 'https://www.peacocktv.com/'; }
+};
+function launch(svc, title){
+  if(DESK){ var f=WEB[svc]; if(f){ window.open(f(title||''), '_blank'); } return; }
   var s=SERVICES.filter(function(x){return x.key===svc;})[0]; if(!s) return;
   location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package='+s.pkg+';end';
 }
+// ---------- floating bets strip (computers): an always-on-top mini window, press B ----------
+var pipWin=null;
+function stripToggle(){
+  if(pipWin){ try{ pipWin.close(); }catch(e){} pipWin=null; var b0=document.getElementById('goStrip'); if(b0) b0.classList.remove('on'); return; }
+  var url=new URL('props.html?ticker=1&dm=1&t='+Date.now(), location.href).href;
+  function fallback(){ pipWin=window.open(url,'w2wstrip','width=1200,height=140'); }
+  if(window.documentPictureInPicture && documentPictureInPicture.requestWindow){
+    documentPictureInPicture.requestWindow({width:1150,height:168}).then(function(w){
+      pipWin=w; w.document.title='Live bets';
+      w.document.body.style.cssText='margin:0;background:#06090f;overflow:hidden';
+      var f=w.document.createElement('iframe'); f.src=url; f.style.cssText='border:0;width:100%;height:100%';
+      w.document.body.appendChild(f);
+      w.addEventListener('pagehide',function(){ pipWin=null; var b=document.getElementById('goStrip'); if(b) b.classList.remove('on'); });
+      var b=document.getElementById('goStrip'); if(b) b.classList.add('on');
+    }).catch(fallback);
+  } else fallback();
+}
+document.addEventListener('keydown',function(e){
+  if(!DESK) return; var a=document.activeElement;
+  if(a && (a.tagName==='INPUT'||a.tagName==='TEXTAREA')) return;
+  if(e.key==='b'||e.key==='B'){ stripToggle(); e.preventDefault(); }
+});
+try{ if(DESK){ var gsb=document.getElementById('goStrip'); if(gsb) gsb.style.display=''; } }catch(e){}
 
 // ---------- picker ----------
 function pick(options, cur, onPick, title){
@@ -1542,6 +1577,7 @@ document.addEventListener('click',function(e){
   }
   if(b.id==='wHist'){ openHist(); return; }
   if(b.id==='wLists'){ openLists(); return; }
+  if(b.id==='goStrip'){ stripToggle(); return; }
   if(b.id==='saveBtn'){ savePicker(); return; }
   if(b.id==='wlNew'){ newListFlow(); return; }
   if(b.id==='wlDel'){ (function(){ var a0=getLists(), nm=a0[wlpCur]?a0[wlpCur].n:'';
@@ -1554,7 +1590,7 @@ document.addEventListener('click',function(e){
   if(b.classList.contains('card')){var t=titles[b.dataset.k]; lastCard=b.dataset.k; if(t) openDetail(t); return;}
   if(b.dataset.close){history.back(); return;}
   if(b.id==='trailerBtn'&&b.dataset.yt){playTrailer(b.dataset.yt); return;}
-  if(b.dataset.open){ recordWatch(curDetail, b.dataset.open); if(b.dataset.link){ location.href=b.dataset.link; } else launch(b.dataset.open); return;}
+  if(b.dataset.open){ recordWatch(curDetail, b.dataset.open); if(!DESK && b.dataset.link){ location.href=b.dataset.link; } else launch(b.dataset.open, curDetail&&curDetail.title); return;}
 });
 function changed(){save(); limit=LIMIT; drawBars(); render(false);}
 

@@ -224,8 +224,9 @@ function lsGet(k,d){ try{ var v=localStorage.getItem(k); return v==null?d:JSON.p
 function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 
 // overlay opacity (shared setting with Gamecast): 1 / .8 / .65
+var DM=/[?&]dm=1/.test(location.search); // desktop mini-window: pops pinned to the top, strip at the bottom
 function applyOpacity(){ var o=parseFloat(lsGet('w2w.ovOpacity',1))||1; document.documentElement.style.setProperty('--ov', o);
-  try{ document.body.classList.toggle('popTop', lsGet('w2w.popPos','bottom')==='top'); }catch(e){} }
+  try{ document.body.classList.toggle('popTop', DM || lsGet('w2w.popPos','bottom')==='top'); }catch(e){} }
 applyOpacity();
 
 // --- decrypt props.json with the on-device key ---

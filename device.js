@@ -4,7 +4,8 @@
 (function(){
   var PROFILES = {
     bedroom:   { name:'Goldberg Master Bedroom TV', short:'Master Bedroom TV', privacy:{} },
-    projector: { name:'Goldberg Projector',         short:'Projector',         privacy:{ props:true, calendar:true, earnings:true, money:true } }
+    projector: { name:'Goldberg Projector',         short:'Projector',         privacy:{ props:true, calendar:true, earnings:true, money:true } },
+    desktop:   { name:'Goldberg Desktop',           short:'Desktop',           privacy:{} }  // a computer browser: keys unlock it, the hourly re-lock closes it
   };
   // Hisense 43" QD6QF reports model AFTOLCBC82; any other Fire TV device is the projector stick.
   function detect(){
@@ -13,7 +14,7 @@
     var ua=navigator.userAgent||'';
     if(/AFTOLCBC82/i.test(ua)) return 'bedroom';
     if(/\bAFT[A-Z0-9]+\b/.test(ua)) return 'projector';
-    return 'bedroom'; // a laptop/phone browser previewing the page
+    return 'desktop'; // a laptop/phone browser
   }
   try{ var mk=(location.hash||'').match(/priv=([^&]+)/); if(mk) localStorage.setItem('w2w.key.priv', decodeURIComponent(mk[1])); }catch(e){}
   var id=detect(), P=PROFILES[id];
@@ -40,7 +41,8 @@
   } }catch(e){}
   // Auto re-lock: once no page on this screen has been open for ~an hour (done watching, TV asleep),
   // the next wake flips this screen's private switches back on. Unlocking stays manual in 🔒 Privacy.
-  var RELOCK = { bedroom:{ props:true, money:true }, projector:{ props:true, calendar:true, earnings:true, money:true } };
+  var RELOCK = { bedroom:{ props:true, money:true }, projector:{ props:true, calendar:true, earnings:true, money:true },
+                 desktop:{ props:true, calendar:true, earnings:true, money:true } };
   try{
     var now=Date.now(), last=+localStorage.getItem('w2w.lastSeen')||0;
     if(last && now-last>60*60000){ var rl=RELOCK[id]||{}, pv2=JSON.parse(localStorage.getItem('w2w.privacy')||'{}')||{}, ch2=false;
