@@ -803,7 +803,7 @@ window.PROPS={ reload:reloadAll, history:showHistory, next:function(){}, prev:fu
 
 if(CORNER){ document.body.classList.add('corner'); summonUntil=Date.now()+25000; setTimeout(render, 25500); // opening the card is itself a summons
   try{ console.log('corner boot rev='+(localStorage.getItem('w2w.pushRev')||'?')+' quiet='+JSON.stringify(lsGet('w2w.notify',{}))+' key='+(getKey()?'yes':'NO')+' priv='+(localStorage.getItem('w2w.privacy')||'?')); }catch(e){}
-  setTimeout(function(){ try{ console.log('corner t+8s items='+cornerItems().length+' props='+(window.props||[]).length+' parlays='+(window.parlays||[]).length+' bodyText='+document.body.innerText.replace(/\s+/g,' ').slice(0,60)); }catch(e){ console.log('corner t+8s ERR '+e.message); } }, 8000);
+  setTimeout(function(){ try{ console.log('corner t+8s items='+cornerItems().length+' ids='+(window.props||[]).map(function(p){return p.id+(isSnoozed(p.id)?'/SNOOZED':'');}).join(',')+' snooze='+(localStorage.getItem('w2w.snooze')||'{}')+' day='+bettingDay()+' bodyText='+document.body.innerText.replace(/\s+/g,' ').slice(0,50)); }catch(e){ console.log('corner t+8s ERR '+e.message); } }, 8000);
   (function cyc(){ var pm=getPropMode(); var vc=visCount(); var n=cornerItems().length; focusTick++;
     if(!focused && pm.m!=='all' && n>vc){ rotI=(rotI+vc)%n; } render();
     setTimeout(cyc, Math.max(4, pm.sec)*1000);
