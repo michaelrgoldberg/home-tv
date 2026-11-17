@@ -401,7 +401,42 @@ function paceTxt(p){ if(p.kind&&p.kind!=='prop') return ''; var pj=projection(p)
 // per-sport std-dev of the FINAL margin (or total) per sqrt(remaining minute), from pre-game spreads of ~12.5 (NBA) / 13.5 (NFL) / 1.8 goals (NHL)
 var LINE_SIG={ bk:{m:1.8,t:2.6}, fb:{m:1.75,t:1.7}, hk:{m:0.23,t:0.25}, sc:{m:0.17,t:0.2}, bb:{m:1.3,t:1.5} };
 function normCdf(z){ var t=1/(1+0.2316419*Math.abs(z)); var d=0.3989423*Math.exp(-z*z/2); var pr=d*t*(0.319381530+t*(-0.356563782+t*(1.781477937+t*(-1.821255978+t*1.330274429)))); return z>0?1-pr:pr; }
+// ---- tennis (#34): a moneyline on a player, matched by name on the ATP/WTA board ----
+var tnCache={};
+function tennisBoard(lg){ var now=Date.now(), c=tnCache[lg];
+  if(c && now-c.t<30000) return Promise.resolve(c.data);
+  return fetch('https://site.api.espn.com/apis/site/v2/sports/'+lg+'/scoreboard?x='+Math.floor(now/30000)).then(function(r){return r.json();})
+    .then(function(d){ var out=[]; (d.events||[]).forEach(function(ev){
+        (ev.groupings||[]).forEach(function(g){ (g.competitions||[]).forEach(function(x){ out.push(x); }); });
+        (ev.competitions||[]).forEach(function(x){ if(x.competitors) out.push(x); }); });
+      tnCache[lg]={t:now,data:out}; return out; })
+    .catch(function(){ return (tnCache[lg]||{}).data||[]; });
+}
+function evalTennis(l){
+  return tennisBoard(l.lg).then(function(list){
+    var name=String(l.team||l.player||'').toLowerCase(), best=null, bestLive=false;
+    list.forEach(function(c){ var hit=(c.competitors||[]).some(function(x){ return (((x.athlete||{}).displayName)||'').toLowerCase().indexOf(name)>=0; });
+      if(!hit) return; var live=(((c.status||{}).type||{}).state)==='in';
+      if(!best || (live&&!bestLive) || (!bestLive && new Date(c.date||0)>new Date(best.date||0))){ best=c; bestLive=live; } });
+    if(!best){ l._status='No match today'; l._score=''; l._live=false; l._pre=true; return; }
+    var st=((best.status||{}).type||{}), me=null, opp=null;
+    (best.competitors||[]).forEach(function(x){ if((((x.athlete||{}).displayName)||'').toLowerCase().indexOf(name)>=0) me=x; else opp=x; });
+    function sets(x){ return ((x||{}).linescores||[]).map(function(s){ return +s.value||0; }); }
+    var ms=sets(me), os=sets(opp), mw=0, ow=0;
+    for(var i=0;i<Math.max(ms.length,os.length);i++){ var a=ms[i]||0,b=os[i]||0;
+      if((a>=6||b>=6)&&(Math.abs(a-b)>=2||a===7||b===7)){ if(a>b) mw++; else if(b>a) ow++; } }
+    l.sport='tn'; l._live=(st.state==='in'); l._pre=(st.state==='pre'); l.state=st.state; l._period=mw+ow+1;
+    l._score=ms.length?ms.map(function(v,i){ return v+'-'+(os[i]!=null?os[i]:0); }).join(' '):'';
+    l._status=st.state==='post'?'Final':st.state==='in'?('Set '+(mw+ow+1)):'Scheduled';
+    vals[l.id]=mw-ow; l._lineEdge=null;
+    if(st.state==='post'){ var won=!!(me&&me.winner); l._lineSettled=won?'won':'lost'; l._prob=won?1:0; }
+    else if(st.state==='in'){ var cur=((ms[ms.length-1]||0)-(os[os.length-1]||0));
+      var pr=0.5+0.2*(mw-ow)+0.08*(cur>1?1:cur<-1?-1:0); l._prob=Math.max(0.08,Math.min(0.92,pr)); }
+    else l._prob=0.5;
+  });
+}
 function evalLine(l){
+  if(/^tennis/.test(String(l.lg||''))) return evalTennis(l);
   return findGame(l.lg,l.team).then(function(g){
     if(!g){ l._status='No game today'; l._score=''; l._live=false; return; }
     l._live=(g.state==='in'); l.state=g.state; l._date=g.date; l._status=g.status||(g.state==='post'?'Final':''); l._period=g.period||0; l._clockSec=parseClock(g.clock); l._pre=(g.state==='pre');
@@ -633,7 +668,7 @@ function pumpRise(){ if(riseBusy) return; if(CORNER && typeof focused!=='undefin
 }
 function showRise(p){ if(TICKER||!propPops()) return;
   if(isMuted(p.id)||privProps()) return;
-  if(p.kind&&p.kind!=='prop'){ var tg=(p.kind==='total'?'Total':p.kind==='ml'?'Moneyline':'Spread')+' · '+(p._status||''); enqueueRise('<div class="gface">'+({bk:'🏀',fb:'🏈',hk:'🏒',bb:'⚾',sc:'⚽'}[p.sport]||'📣')+'</div><div class="rb"><div class="tag">'+esc(tg)+'</div><div class="top"><span class="nm">'+esc(p.disp||p.label||'')+'</span><span class="delta" style="color:'+(p._lineEdge>0?'var(--green)':'var(--red)')+'">'+esc(lineValTxt(p))+'</span></div><div class="tot">'+esc(p._score||'')+' · '+esc(lineEdgeTxt(p))+'</div></div>','game',5500,(p.disp||p.label)+' '+lineValTxt(p)+' · '+lineEdgeTxt(p)); return; }
+  if(p.kind&&p.kind!=='prop'){ var tg=(p.kind==='total'?'Total':p.kind==='ml'?'Moneyline':'Spread')+' · '+(p._status||''); enqueueRise('<div class="gface">'+({bk:'🏀',fb:'🏈',hk:'🏒',bb:'⚾',sc:'⚽',tn:'🎾'}[p.sport]||'📣')+'</div><div class="rb"><div class="tag">'+esc(tg)+'</div><div class="top"><span class="nm">'+esc(p.disp||p.label||'')+'</span><span class="delta" style="color:'+(p._lineEdge>0?'var(--green)':'var(--red)')+'">'+esc(lineValTxt(p))+'</span></div><div class="tot">'+esc(p._score||'')+' · '+esc(lineEdgeTxt(p))+'</div></div>','game',5500,(p.disp||p.label)+' '+lineValTxt(p)+' · '+lineEdgeTxt(p)); return; }
   var isProp=props.indexOf(p)>=0;
   if(CORNER && !isQuiet() && !isProp){ // parlay leg: flash its row / dot, bring its parlay forward, log it — no pop-up over the list
     p._flashUntil=Date.now()+4500;

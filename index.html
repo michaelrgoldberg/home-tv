@@ -289,6 +289,12 @@ try{var _pk=(location.hash||'').match(/priv=([^&]+)/); if(_pk) localStorage.setI
 <script>
 // Personal settings (names, location, schedules) are NOT in this public file.
 // They live encrypted in config.json; only this TV holds the key.
+// Launch an app by package. Prime Video's launcher entry won't resolve from an implicit intent
+// on these sets, so it gets its explicit front door; everything else launches the normal way.
+window.appIntent=function(pk){
+  if(pk==='com.amazon.firebat') return 'intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LEANBACK_LAUNCHER;component=com.amazon.firebat/com.amazon.pyrocore.IgnitionActivity;launchFlags=0x10008000;end';
+  return 'intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package='+pk+';launchFlags=0x10008000;end';
+};
 window.W2W_KEY=function(){var m=(location.hash||'').match(/priv=([^&]+)/);try{if(m)localStorage.setItem('w2w.key.priv',decodeURIComponent(m[1]));}catch(e){if(m)return decodeURIComponent(m[1]);}return window.W2W_KEYV?W2W_KEYV():(function(){try{return localStorage.getItem('w2w.key.priv')||'';}catch(e){return '';}})();};
 window.W2W_DECRYPT=function(url){var key=W2W_KEY(); if(!key||!window.crypto||!crypto.subtle) return Promise.reject('nokey');
   return fetch(url+'?'+Date.now()).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(p){
@@ -789,7 +795,7 @@ W2W_CFG.then(function(c){var f=document.getElementById('famName'); if(f&&c.famil
     var card=e.target.closest('[data-gmi]'); if(card){ gmDetail(+card.dataset.gmi); return; } });
   document.getElementById('gdet').addEventListener('click',function(e){ e.stopPropagation();
     var gr=e.target.closest('[data-game]'); if(gr){ var pk=gr.dataset.game==='netflix'?'com.netflix.ninja':'com.amazon.firebat';
-      location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LEANBACK_LAUNCHER;package='+pk+';launchFlags=0x10008000;end'; } });
+      location.href=appIntent(pk); } });
   home.addEventListener('click',function(e){e.stopPropagation(); if(e.target.closest&&e.target.closest('#priv')){ return; }
   if(e.target.closest&&e.target.closest('#goGames')){ W2W_GM.open(); return; } if(e.target.closest&&e.target.closest('#goBack')){ try{ if(window.TV&&TV.returnToApp) TV.returnToApp(); }catch(x){} return; } if(e.target.closest&&e.target.closest('#privBtn')){ openPriv(); return; } if(e.target.closest&&e.target.closest('#goNative')){ try{ if(window.TV&&TV.nativeHome){ TV.nativeHome(); return; } }catch(x){} location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.HOME;package=com.amazon.tv.launcher;launchFlags=0x10000000;end'; return; } if(e.target.closest&&e.target.closest('#goGH')){ location.href='intent://home.google.com/u/0/home#Intent;scheme=https;package=com.amazon.cloud9;S.browser_fallback_url=https%3A%2F%2Fhome.google.com%2Fu%2F0%2Fhome;end'; return; } if(e.target.closest&&e.target.closest('#goAmb')){ W2W_AMB.open(); return; } if(e.target.closest&&e.target.closest('#goSp')){ W2W_SP.open(); return; } if(e.target.closest&&e.target.closest('#goSleep')){ W2W_SLEEP.open(); return; } openWatch();});
   window.addEventListener('popstate',function(ev){ if(ev.state&&ev.state.w) return; if(!document.getElementById('detail').classList.contains('show') && !document.getElementById('picker').classList.contains('show')) home.classList.remove('hide'); });
@@ -1505,7 +1511,7 @@ var WEB = {
 function launch(svc, title){
   if(DESK){ var f=WEB[svc]; if(f){ window.open(f(title||''), '_blank'); } return; }
   var s=SERVICES.filter(function(x){return x.key===svc;})[0]; if(!s) return;
-  location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package='+s.pkg+';end';
+  location.href=appIntent(s.pkg);
 }
 // ---------- floating bets strip (computers): an always-on-top mini window, press B ----------
 var pipWin=null;
@@ -1983,7 +1989,7 @@ else {
   function launchApp(a,g){ var p=APPS[a]; if(!p) return;
     if(a==='yttv'&&g){ var q=g.tennis?g.q:g.tms.map(function(c){return (c.team||{}).displayName||'';}).join(' vs ');
       location.href='intent://tv.youtube.com/search?q='+encodeURIComponent(q)+'#Intent;scheme=https;package='+p[1]+';launchFlags=0x10008000;end'; return; }
-    location.href='intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package='+p[1]+';launchFlags=0x10008000;end'; }
+    location.href=appIntent(p[1]); }
   function spToast(html){ var t=document.getElementById('spToast'); if(!t){ t=document.createElement('div'); t.id='spToast'; t.style.cssText='position:fixed;left:50%;bottom:4vw;transform:translateX(-50%);background:rgba(8,12,30,.97);border:.12vw solid #2ec47a;color:#eaf2ff;padding:1vw 1.7vw;border-radius:1vw;font-size:1.2vw;line-height:1.5;z-index:99;max-width:58vw;text-align:center;box-shadow:0 .6vw 2vw rgba(0,0,0,.55)'; $s('sp').appendChild(t); } t.innerHTML=html; t.style.display='block'; clearTimeout(t._t); t._t=setTimeout(function(){t.style.display='none';},6000); }
   $s('sp').addEventListener('click',function(e){ e.stopPropagation();
     if(e.target.closest('#spHome')){ history.back(); setTimeout(function(){ if(window.W2W_GOHOME) W2W_GOHOME(); },120); return; }
