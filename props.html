@@ -42,6 +42,9 @@
   /* rise-up popup card (bottom-left) */
   #rise{position:fixed;left:14px;bottom:14px;width:min(70vw,340px);background:linear-gradient(180deg,rgba(22,32,58,.88),rgba(14,21,38,.92));border:1px solid rgba(255,204,0,.8);border-radius:14px;box-shadow:0 10px 28px -12px rgba(0,0,0,.55);display:flex;align-items:center;gap:12px;padding:11px 13px;transform:translateY(160%);opacity:0;transition:transform .5s cubic-bezier(.2,1.1,.3,1),opacity .4s;z-index:50}
   #rise.show{transform:translateY(0);opacity:calc(var(--ov)*0.85)}
+  /* popPos top: cards drop from the top-left instead, clear of the broadcast's own score bar */
+  body.popTop #rise{bottom:auto;top:14px;transform:translateY(-180%)}
+  body.popTop #rise.show{transform:translateY(0)}
   #rise.top{top:8px;bottom:auto;transform:translateY(-170%)}
   /* readable pop-ups: headshot floats top-left, ring top-right, text wraps under them at full width */
   #rise{display:block;padding:9px 10px 10px;gap:0}
@@ -221,7 +224,8 @@ function lsGet(k,d){ try{ var v=localStorage.getItem(k); return v==null?d:JSON.p
 function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 
 // overlay opacity (shared setting with Gamecast): 1 / .8 / .65
-function applyOpacity(){ var o=parseFloat(lsGet('w2w.ovOpacity',1))||1; document.documentElement.style.setProperty('--ov', o); }
+function applyOpacity(){ var o=parseFloat(lsGet('w2w.ovOpacity',1))||1; document.documentElement.style.setProperty('--ov', o);
+  try{ document.body.classList.toggle('popTop', lsGet('w2w.popPos','bottom')==='top'); }catch(e){} }
 applyOpacity();
 
 // --- decrypt props.json with the on-device key ---
@@ -240,8 +244,9 @@ var STAT_MAP={ points:['PTS'], pts:['PTS'], rebounds:['REB','TOT'], reb:['REB'],
   goals:['G'], assists_nhl:['A'], shots:['SOG','S','SH'], saves:['SV'], points_nhl:['PTS','P'],
   hits:['H'], runs:['R'], rbis:['RBI'], rbi:['RBI'], 'home runs':['HR'], hr:['HR'], strikeouts:['K','SO'], 'total bases':['TB'],
   'passing yards':['YDS'], 'rushing yards':['YDS'], 'receiving yards':['YDS'], receptions:['REC'], rec:['REC'], 'pass attempts':['C/ATT'], completions:['C/ATT'],
-  'pass tds':['TD'], 'rush tds':['TD'], 'rec tds':['TD'], tackles:['TOT','TCKL'] };
-var GROUP_HINT={ 'passing yards':'passing','pass tds':'passing','pass attempts':'passing',completions:'passing','rushing yards':'rushing','rush tds':'rushing','receiving yards':'receiving','rec tds':'receiving','receptions':'receiving','rec':'receiving' };
+  'pass tds':['TD'], 'rush tds':['TD'], 'rec tds':['TD'], tackles:['TOT','TCKL'],
+  interceptions:['INT'], 'long rec':['LONG','LNG'], 'long rush':['LONG','LNG'] };
+var GROUP_HINT={ 'passing yards':'passing','pass tds':'passing','pass attempts':'passing',completions:'passing','rushing yards':'rushing','rush tds':'rushing','receiving yards':'receiving','rec tds':'receiving','receptions':'receiving','rec':'receiving',interceptions:'passing','long rec':'receiving','long rush':'rushing' };
 function num(v){ if(v==null) return null; v=String(v); if(v.indexOf('-')>0 && /^\d+-\d+$/.test(v)) return parseInt(v.split('-')[0],10); var n=parseFloat(v.replace(/[^0-9.\-]/g,'')); return isNaN(n)?null:n; }
 function multiStat(d, players, stat){ var names=String(players||'').split(/\s+\+\s+/); if(names.length<2) return statFromBox(d,players,stat);
   var sum=0, any=false; names.forEach(function(n){ var v=statFromBox(d,n,stat); if(v!=null){ sum+=v; any=true; } }); return any?sum:(d&&d.boxscore&&(d.boxscore.players||[]).length?0:null); }
@@ -415,19 +420,23 @@ function evalLine(l){
       edge=ov?(tgt-l.line):(l.line-tgt); vals[l.id]=tgt; sd=sig.t*Math.sqrt(Math.max(remT,0)+0.25);
       var el=elapGameMin(l.sport,l._period||1,l._clockSec||0); var drift=(el&&el>1&&remT>0)?(tgt/el)*remT:0; edge+= ov?drift:-drift;
       l._halfDone=hDone; }
+    else if(l.kind==='tt'){ // one team's own total
+      var ovT=(l.dir||'o')==='o'; vals[l.id]=ms; edge=ovT?(ms-l.line):(l.line-ms);
+      sd=sig.t*0.6*Math.sqrt(Math.max(rem,0)+0.25);
+      var elT=elapGameMin(l.sport,l._period||1,l._clockSec||0); var driftT=(elT&&elT>1&&rem>0)?(ms/elT)*rem:0; edge+= ovT?driftT:-driftT; }
     else { var ln=(l.kind==='ml')?0:(+l.line||0); edge=margin+ln; vals[l.id]=margin; sd=sig.m*Math.sqrt(Math.max(rem,0)+0.25); }
     l._lineEdge=edge; l._remMin=rem;
     if(g.state==='pre'){ prob=0.5; }
     else if(g.state==='post'){ prob= edge>0?1:(edge<0?0:0.5); l._lineSettled= edge>0?'won':(edge<0?'lost':'push'); }
     else { prob=normCdf(edge/sd); if(rem<=0.05) l._lineSettled=edge>0?'won':'lost';
-      if(l.kind==='total'){ var ovr=(l.dir||'o')==='o'; var tv=vals[l.id];
+      if(l.kind==='total'||l.kind==='tt'){ var ovr=(l.dir||'o')==='o'; var tv=vals[l.id];
         if(ovr&&tv>l.line){ prob=1; l._lineSettled='won'; } if(!ovr&&tv>l.line){ prob=0; l._lineSettled='lost'; }
         if(l.half&&l._halfDone&&!l._lineSettled){ var e2=ovr?(tv-l.line):(l.line-tv); prob=e2>0?1:(e2<0?0:0.5); l._lineSettled=e2>0?'won':(e2<0?'lost':'push'); } } }
     var old=l._prevVal; var cur=vals[l.id]; if(old!=null&&cur!==old&&g.state==='in'){ l._delta=cur-old; l._newVal=cur; l._play=(((g.cs||[])[0]||{}).team||{}).abbreviation?'':''; } l._prevVal=cur;
     l._prob=prob; l._lineProb=prob;
   });
 }
-function lineValTxt(l){ var v=vals[l.id]; if(v==null) return '–'; if(l.kind==='total') return String(v); return (v>0?'+':'')+v; }
+function lineValTxt(l){ var v=vals[l.id]; if(v==null) return '–'; if(l.kind==='total'||l.kind==='tt') return String(v); return (v>0?'+':'')+v; }
 function lineEdgeTxt(l){ if(l._lineSettled==='won') return '✓'; if(l._lineSettled==='lost') return '✗'; if(l._lineSettled==='push') return 'push'; var e=l._lineEdge; if(e==null||l._pre) return ''; var r=Math.round(e*10)/10; return (r>=0?'covering by ':'needs ')+Math.abs(r); }
 function shortStatus(p){ // tip time before, clock during, Final after
   if(p._pre) return p._date?tipTime(p._date):String(p._status||'').replace(/^.*- /,'').replace(/ E[SD]T$/,'');
