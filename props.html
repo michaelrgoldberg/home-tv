@@ -230,7 +230,7 @@ function applyOpacity(){ var o=parseFloat(lsGet('w2w.ovOpacity',1))||1; document
 applyOpacity();
 
 // --- decrypt props.json with the on-device key ---
-function getKey(){ try{ return localStorage.getItem('w2w.key.priv')||''; }catch(e){ return ''; } }
+function getKey(){ try{ if(window.W2W_KEYV) return W2W_KEYV(); return localStorage.getItem('w2w.key.priv')||''; }catch(e){ return ''; } }
 function loadProps(){
   var key=getKey(); if(!key||!window.crypto||!crypto.subtle) return Promise.resolve({props:[],parlays:[]});
   var b=function(s){return Uint8Array.from(atob(s),function(c){return c.charCodeAt(0);});};

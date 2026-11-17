@@ -289,7 +289,7 @@ try{var _pk=(location.hash||'').match(/priv=([^&]+)/); if(_pk) localStorage.setI
 <script>
 // Personal settings (names, location, schedules) are NOT in this public file.
 // They live encrypted in config.json; only this TV holds the key.
-window.W2W_KEY=function(){var key='',m=(location.hash||'').match(/priv=([^&]+)/);try{if(m)localStorage.setItem('w2w.key.priv',decodeURIComponent(m[1]));key=localStorage.getItem('w2w.key.priv')||'';}catch(e){if(m)key=decodeURIComponent(m[1]);}return key;};
+window.W2W_KEY=function(){var m=(location.hash||'').match(/priv=([^&]+)/);try{if(m)localStorage.setItem('w2w.key.priv',decodeURIComponent(m[1]));}catch(e){if(m)return decodeURIComponent(m[1]);}return window.W2W_KEYV?W2W_KEYV():(function(){try{return localStorage.getItem('w2w.key.priv')||'';}catch(e){return '';}})();};
 window.W2W_DECRYPT=function(url){var key=W2W_KEY(); if(!key||!window.crypto||!crypto.subtle) return Promise.reject('nokey');
   return fetch(url+'?'+Date.now()).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(p){
     var b=function(s){return Uint8Array.from(atob(s),function(c){return c.charCodeAt(0);});};
@@ -1511,7 +1511,8 @@ function launch(svc, title){
 var pipWin=null;
 function stripToggle(){
   if(pipWin){ try{ pipWin.close(); }catch(e){} pipWin=null; var b0=document.getElementById('goStrip'); if(b0) b0.classList.remove('on'); return; }
-  var url=new URL('props.html?ticker=1&dm=1&t='+Date.now(), location.href).href;
+  var sk0=''; try{ sk0=sessionStorage.getItem('w2w.key.sess')||''; }catch(e){}
+  var url=new URL('props.html?ticker=1&dm=1&t='+Date.now()+(sk0?'#sk='+encodeURIComponent(sk0):''), location.href).href;
   function fallback(){ pipWin=window.open(url,'w2wstrip','width=1200,height=140'); }
   if(window.documentPictureInPicture && documentPictureInPicture.requestWindow){
     documentPictureInPicture.requestWindow({width:1150,height:168}).then(function(w){
@@ -1530,6 +1531,83 @@ document.addEventListener('keydown',function(e){
   if(e.key==='b'||e.key==='B'){ stripToggle(); e.preventDefault(); }
 });
 try{ if(DESK){ var gsb=document.getElementById('goStrip'); if(gsb) gsb.style.display=''; } }catch(e){}
+// ---------- PIN lock for computers: the key is stored sealed under a PIN, opened per tab ----------
+if(DESK && window.crypto && crypto.subtle) (function(){
+  function b64(u){ var s=''; u=new Uint8Array(u); for(var i=0;i<u.length;i++) s+=String.fromCharCode(u[i]); return btoa(s); }
+  function ub64(s){ return Uint8Array.from(atob(s),function(c){return c.charCodeAt(0);}); }
+  function rawKey(){ try{ return localStorage.getItem('w2w.key.priv')||''; }catch(e){ return ''; } }
+  function wrapRec(){ try{ return JSON.parse(localStorage.getItem('w2w.key.wrap')||'null'); }catch(e){ return null; } }
+  function sessKey(){ try{ return sessionStorage.getItem('w2w.key.sess')||''; }catch(e){ return ''; } }
+  function derive(pin,salt,iters){ return crypto.subtle.importKey('raw',new TextEncoder().encode('w2w|'+pin),'PBKDF2',false,['deriveKey'])
+    .then(function(ko){ return crypto.subtle.deriveKey({name:'PBKDF2',salt:salt,iterations:iters,hash:'SHA-256'},ko,{name:'AES-GCM',length:256},false,['encrypt','decrypt']); }); }
+  function sealKey(pin,raw){ var salt=crypto.getRandomValues(new Uint8Array(16)), iv=crypto.getRandomValues(new Uint8Array(12));
+    return derive(pin,salt,310000).then(function(k){ return crypto.subtle.encrypt({name:'AES-GCM',iv:iv},k,new TextEncoder().encode(raw)); })
+      .then(function(ct){ localStorage.setItem('w2w.key.wrap', JSON.stringify({s:b64(salt),i:310000,iv:b64(iv),ct:b64(ct)}));
+        localStorage.removeItem('w2w.key.priv'); }); }
+  function openKey(pin){ var w=wrapRec(); if(!w) return Promise.reject('nowrap');
+    return derive(pin,ub64(w.s),w.i||310000).then(function(k){ return crypto.subtle.decrypt({name:'AES-GCM',iv:ub64(w.iv)},k,ub64(w.ct)); })
+      .then(function(pt){ return new TextDecoder().decode(pt); }); }
+  var pinBuf='', pinStage=null, pinFirst='';
+  function pinUI(mode){ // mode: 'setup' | 'unlock'
+    var el=document.getElementById('pinModal');
+    if(!el){ el=document.createElement('div'); el.id='pinModal';
+      el.innerHTML='<div class="pinbox"><div id="pinTitle"></div><div id="pinDots"></div><div id="pinMsg"></div><div id="pinPad"></div><button class="btn" id="pinSkip">Not now</button></div>';
+      var st=document.createElement('style'); st.textContent=
+        '#pinModal{position:fixed;inset:0;background:rgba(4,7,14,.9);z-index:200;display:flex;align-items:center;justify-content:center}'+
+        '#pinModal .pinbox{background:#10182e;border:1px solid #2a355c;border-radius:14px;padding:26px 30px;text-align:center;min-width:270px}'+
+        '#pinTitle{font-size:19px;font-weight:700;margin-bottom:10px}'+
+        '#pinDots{font-size:26px;letter-spacing:8px;min-height:34px;color:#ffcc00}'+
+        '#pinMsg{color:#8d9bc0;font-size:13px;min-height:18px;margin-bottom:8px}'+
+        '#pinPad{display:grid;grid-template-columns:repeat(3,64px);gap:8px;justify-content:center;margin-bottom:12px}'+
+        '#pinPad button{font:700 18px inherit;background:#1a2440;border:1px solid #2a355c;color:#eef3fb;border-radius:10px;padding:12px 0;cursor:pointer}'+
+        '#pinPad button:hover{border-color:#ffcc00}'+
+        '#pinModal .pinbox .btn{background:none;border:none;color:#7f8db0;cursor:pointer;font:inherit}';
+      document.head.appendChild(st); document.body.appendChild(el);
+      var pad=el.querySelector('#pinPad');
+      '1 2 3 4 5 6 7 8 9 ⌫ 0 OK'.split(' ').forEach(function(ch){
+        var b=document.createElement('button'); b.textContent=ch; b.onclick=function(){ pinKeyIn(ch); }; pad.appendChild(b); });
+      el.querySelector('#pinSkip').onclick=function(){ pinClose(); };
+      document.addEventListener('keydown',function(ev){ if(!document.getElementById('pinModal')||el.style.display==='none') return;
+        if(/^[0-9]$/.test(ev.key)) pinKeyIn(ev.key); else if(ev.key==='Backspace') pinKeyIn('⌫'); else if(ev.key==='Enter') pinKeyIn('OK'); else if(ev.key==='Escape') pinClose();
+        ev.stopPropagation(); }, true);
+    }
+    pinStage=mode; pinBuf=''; pinFirst=''; el.style.display='flex';
+    el.querySelector('#pinSkip').style.display = (mode==='unlock') ? '' : 'none';
+    pinPaint(mode==='setup'?'Choose a PIN for this computer (4–6 digits)':'Enter your PIN','');
+  }
+  function pinPaint(title,msg){ var el=document.getElementById('pinModal'); if(!el) return;
+    el.querySelector('#pinTitle').textContent=title;
+    el.querySelector('#pinDots').textContent=new Array(pinBuf.length+1).join('●');
+    el.querySelector('#pinMsg').textContent=msg||''; }
+  function pinClose(){ var el=document.getElementById('pinModal'); if(el) el.style.display='none'; pinBuf=''; }
+  function pinKeyIn(ch){
+    if(ch==='⌫'){ pinBuf=pinBuf.slice(0,-1); pinPaint(document.getElementById('pinTitle').textContent); return; }
+    if(ch==='OK'){ pinSubmit(); return; }
+    if(pinBuf.length<6){ pinBuf+=ch; pinPaint(document.getElementById('pinTitle').textContent); }
+    if(pinBuf.length>=4 && pinStage==='unlock') return; // wait for OK so 5/6-digit PINs work
+  }
+  function pinSubmit(){
+    if(pinBuf.length<4){ pinPaint(document.getElementById('pinTitle').textContent,'At least 4 digits'); return; }
+    if(pinStage==='setup'){ pinFirst=pinBuf; pinBuf=''; pinStage='confirm'; pinPaint('Enter it once more',''); return; }
+    if(pinStage==='confirm'){
+      if(pinBuf!==pinFirst){ pinStage='setup'; pinBuf=''; pinFirst=''; pinPaint('Choose a PIN for this computer (4–6 digits)','They didn’t match — start again'); return; }
+      var raw=rawKey(); pinPaint('Enter it once more','Sealing…');
+      sealKey(pinBuf,raw).then(function(){ try{ sessionStorage.setItem('w2w.key.sess',raw); }catch(e){}
+        pinClose(); try{ if(history.replaceState) history.replaceState(null,'',location.pathname+location.search); }catch(e){}
+        location.reload(); }).catch(function(){ pinPaint('Enter it once more','This browser can’t seal the key'); });
+      return; }
+    // unlock
+    var el=document.getElementById('pinModal'); pinPaint('Enter your PIN','Checking…');
+    openKey(pinBuf).then(function(raw){ try{ sessionStorage.setItem('w2w.key.sess',raw); }catch(e){}
+      pinClose(); location.reload();
+    }).catch(function(){ pinBuf=''; pinPaint('Enter your PIN','Wrong PIN'); });
+  }
+  // boot: a fresh raw key on a computer gets sealed right away; a sealed key with no open session asks
+  try{
+    if(rawKey()){ pinUI('setup'); }
+    else if(wrapRec() && !sessKey()){ pinUI('unlock'); }
+  }catch(e){}
+})();
 
 // ---------- picker ----------
 function pick(options, cur, onPick, title){

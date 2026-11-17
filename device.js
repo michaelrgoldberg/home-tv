@@ -17,6 +17,14 @@
     return 'desktop'; // a laptop/phone browser
   }
   try{ var mk=(location.hash||'').match(/priv=([^&]+)/); if(mk) localStorage.setItem('w2w.key.priv', decodeURIComponent(mk[1])); }catch(e){}
+  // One place every page asks for the data key. Order: this tab's unlocked key (PIN flow on
+  // computers), a key handed to a child window (#sk=), then the device's own stored key (TVs).
+  window.W2W_KEYV=function(){
+    try{ var sk=sessionStorage.getItem('w2w.key.sess'); if(sk) return sk; }catch(e){}
+    try{ var m=(location.hash||'').match(/[#&]sk=([^&]+)/); if(m) return decodeURIComponent(m[1]); }catch(e){}
+    try{ return localStorage.getItem('w2w.key.priv')||''; }catch(e){}
+    return '';
+  };
   var id=detect(), P=PROFILES[id];
   // privacy: this screen's default for any switch it hasn't set yet (so new switches get the right default too)
   try{ var pv=JSON.parse(localStorage.getItem('w2w.privacy')||'null')||{}, ch=localStorage.getItem('w2w.privacy')==null;
@@ -46,6 +54,7 @@
   try{
     var now=Date.now(), last=+localStorage.getItem('w2w.lastSeen')||0;
     if(last && now-last>60*60000){ var rl=RELOCK[id]||{}, pv2=JSON.parse(localStorage.getItem('w2w.privacy')||'{}')||{}, ch2=false;
+      try{ sessionStorage.removeItem('w2w.key.sess'); }catch(e){}  // a PIN-opened key closes with the relock
       Object.keys(rl).forEach(function(k){ if(!pv2[k]){ pv2[k]=true; ch2=true; } });
       if(ch2){ localStorage.setItem('w2w.privacy', JSON.stringify(pv2)); localStorage.setItem('w2w.settingsRev', String(Date.now())); } }
     localStorage.setItem('w2w.lastSeen', String(now));

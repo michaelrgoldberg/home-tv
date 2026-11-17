@@ -12,7 +12,7 @@
   function b64(s){ return Uint8Array.from(atob(s),function(c){return c.charCodeAt(0);}); }
 
   function loadData(){
-    var key=''; try{ key=localStorage.getItem('w2w.key.priv')||''; }catch(e){}
+    var key=''; try{ key=(window.W2W_KEYV?W2W_KEYV():localStorage.getItem('w2w.key.priv'))||''; }catch(e){}
     if(!key||!window.crypto||!crypto.subtle) return Promise.resolve(null);
     return fetch('props.json?'+Date.now()).then(function(r){ if(!r.ok) throw 0; return r.json(); }).then(function(p){
       return crypto.subtle.importKey('raw',b64(key),'AES-GCM',false,['decrypt']).then(function(k){ return crypto.subtle.decrypt({name:'AES-GCM',iv:b64(p.iv)},k,b64(p.ct)); });
