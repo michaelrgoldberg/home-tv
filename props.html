@@ -414,10 +414,11 @@ function tennisBoard(lg){ var now=Date.now(), c=tnCache[lg];
 }
 function evalTennis(l){
   return tennisBoard(l.lg).then(function(list){
-    var name=String(l.team||l.player||'').toLowerCase(), best=null, bestLive=false;
+    var name=String(l.team||l.player||'').toLowerCase(), best=null, bestScore=Infinity;
+    function matchScore(c){ var st=(((c.status||{}).type||{}).state); if(st==='in') return -1; // live always wins
+      return Math.abs(new Date(c.date||0).getTime()-Date.now()); }                             // else the match nearest to now
     list.forEach(function(c){ var hit=(c.competitors||[]).some(function(x){ return (((x.athlete||{}).displayName)||'').toLowerCase().indexOf(name)>=0; });
-      if(!hit) return; var live=(((c.status||{}).type||{}).state)==='in';
-      if(!best || (live&&!bestLive) || (!bestLive && new Date(c.date||0)>new Date(best.date||0))){ best=c; bestLive=live; } });
+      if(!hit) return; var sc=matchScore(c); if(sc<bestScore){ best=c; bestScore=sc; } });
     if(!best){ l._status='No match today'; l._score=''; l._live=false; l._pre=true; return; }
     var st=((best.status||{}).type||{}), me=null, opp=null;
     (best.competitors||[]).forEach(function(x){ if((((x.athlete||{}).displayName)||'').toLowerCase().indexOf(name)>=0) me=x; else opp=x; });
@@ -802,8 +803,6 @@ window.PROPS={ reload:reloadAll, history:showHistory, next:function(){}, prev:fu
   focus:function(on){ focused=!!on; document.body.classList.toggle('focused',focused); if(!focused) setTimeout(pumpRise, 400); if(focused){ summonUntil=Date.now()+600000; } else { openId=null; summonUntil=Date.now()+25000; setTimeout(render,25500); } render(); } };
 
 if(CORNER){ document.body.classList.add('corner'); summonUntil=Date.now()+25000; setTimeout(render, 25500); // opening the card is itself a summons
-  try{ console.log('corner boot rev='+(localStorage.getItem('w2w.pushRev')||'?')+' quiet='+JSON.stringify(lsGet('w2w.notify',{}))+' key='+(getKey()?'yes':'NO')+' priv='+(localStorage.getItem('w2w.privacy')||'?')); }catch(e){}
-  setTimeout(function(){ try{ console.log('corner t+8s items='+cornerItems().length+' ids='+(window.props||[]).map(function(p){return p.id+(isSnoozed(p.id)?'/SNOOZED':'');}).join(',')+' snooze='+(localStorage.getItem('w2w.snooze')||'{}')+' day='+bettingDay()+' bodyText='+document.body.innerText.replace(/\s+/g,' ').slice(0,50)); }catch(e){ console.log('corner t+8s ERR '+e.message); } }, 8000);
   (function cyc(){ var pm=getPropMode(); var vc=visCount(); var n=cornerItems().length; focusTick++;
     if(!focused && pm.m!=='all' && n>vc){ rotI=(rotI+vc)%n; } render();
     setTimeout(cyc, Math.max(4, pm.sec)*1000);
