@@ -216,19 +216,25 @@ public class AlertService extends Service {
       FrameLayout wrap = new FrameLayout(this);
       wrap.addView(wv, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
       // native strip (hidden until the page hands us chips; the WebView stays as fallback)
+      boolean top = getSharedPreferences("cfg", MODE_PRIVATE).getBoolean("tickerTop", false); // top keeps the broadcast's own score bar visible
       LinearLayout col = new LinearLayout(this); col.setOrientation(LinearLayout.VERTICAL); col.setVisibility(View.GONE);
       View line = new View(this); line.setBackgroundColor(0xCCFFCC00);
-      col.addView(line, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(2)));
       tickerClip = new FrameLayout(this); tickerClip.setBackgroundColor(0xC00A101F); tickerClip.setClipChildren(true);
       tickerStrip = new LinearLayout(this); tickerStrip.setOrientation(LinearLayout.HORIZONTAL); tickerStrip.setGravity(Gravity.CENTER_VERTICAL);
       tickerStrip.setLayerType(View.LAYER_TYPE_HARDWARE, null);
       tickerClip.addView(tickerStrip, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
-      col.addView(tickerClip, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
+      if (top) { // strip first, gold line underneath it
+        col.addView(tickerClip, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
+        col.addView(line, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(2)));
+      } else {
+        col.addView(line, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(2)));
+        col.addView(tickerClip, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(30)));
+      }
       FrameLayout.LayoutParams cp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-      cp.gravity = Gravity.BOTTOM; wrap.addView(col, cp);
+      cp.gravity = top ? Gravity.TOP : Gravity.BOTTOM; wrap.addView(col, cp);
       WindowManager.LayoutParams p = overlayParams(false);
       p.flags |= WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE;
-      p.gravity = Gravity.BOTTOM | Gravity.START; p.x = 0; p.y = 0;
+      p.gravity = (top ? Gravity.TOP : Gravity.BOTTOM) | Gravity.START; p.x = 0; p.y = 0;
       p.width = ViewGroup.LayoutParams.MATCH_PARENT; p.height = tickerH();
       ticker = wv; tickerWrap = wrap; wm.addView(tickerWrap, p);
     } catch (Exception e) { android.util.Log.e("HOMETV", "ticker fail", e); ticker = null; tickerWrap = null; tickerStrip = null; tickerClip = null; }
@@ -248,6 +254,7 @@ public class AlertService extends Service {
         float dt = (t - tickerLastT) / 1e9f; if (dt > 0.2f) dt = 0.2f;
         tickerX -= tickerSpeed * dp(1) * dt;
         if (-tickerX >= tickerCopyW) tickerX += tickerCopyW;
+        if (-tickerX >= tickerCopyW) tickerX = 0;   // self-heal: never let the offset outrun the content
         tickerStrip.setTranslationX(tickerX);
       }
       tickerLastT = t;
@@ -262,6 +269,9 @@ public class AlertService extends Service {
       JSONObject o = new JSONObject(json);
       tickerSpeed = Math.max(6, o.optInt("speed", 24));
       JSONArray a = o.getJSONArray("items");
+      int real = 0; for (int i = 0; i < a.length(); i++) if (a.getJSONObject(i).optString("t", "").trim().length() > 0) real++;
+      android.util.Log.i("HOMETV", "tickerApply items=" + a.length() + " real=" + real + " x=" + (int) tickerX + " copyW=" + tickerCopyW);
+      if (real == 0 && tickerStrip.getChildCount() > 0) return;           // a blank update never wipes a strip that has content
       if (ticker != null) ticker.setVisibility(View.INVISIBLE);           // page keeps running, stops drawing
       ((View) tickerClip.getParent()).setVisibility(View.VISIBLE);        // the native column
       tickerStrip.removeAllViews();
@@ -271,15 +281,20 @@ public class AlertService extends Service {
       }
       // measure synchronously: waiting for layout races the next rebuild and can read 0,
       // which parked the strip as "fits on one screen" when it didn't
-      int n = tickerStrip.getChildCount() / 2, w = 0;
-      for (int i = 0; i < n; i++) {
+      int n = tickerStrip.getChildCount() / 2, w = 0, wAll = 0;
+      for (int i = 0; i < tickerStrip.getChildCount(); i++) {
         View c = tickerStrip.getChildAt(i);
         c.measure(View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
                   View.MeasureSpec.makeMeasureSpec(dp(24), View.MeasureSpec.AT_MOST));
         ViewGroup.MarginLayoutParams mp = (ViewGroup.MarginLayoutParams) c.getLayoutParams();
-        w += c.getMeasuredWidth() + mp.leftMargin + mp.rightMargin;
+        int cw = c.getMeasuredWidth() + mp.leftMargin + mp.rightMargin;
+        wAll += cw; if (i < n) w += cw;
       }
       tickerCopyW = w;
+      // CRITICAL: a wrap-content row gets capped at screen width, which silently clipped every
+      // chip past the first screenful. Give the row its real width so all chips exist.
+      tickerStrip.setLayoutParams(new FrameLayout.LayoutParams(Math.max(wAll, 1), ViewGroup.LayoutParams.MATCH_PARENT));
+      tickerStrip.setClipChildren(false);
       int lane = tickerClip.getWidth(); if (lane <= 0) lane = getResources().getDisplayMetrics().widthPixels;
       if (w <= lane - dp(10)) { // fits on one screen: park it, drop the duplicate copy
         while (tickerStrip.getChildCount() > n) tickerStrip.removeViewAt(n);
@@ -584,6 +599,9 @@ public class AlertService extends Service {
         else if (path.startsWith("/gamecast/toggle")) h.post(new Runnable(){ public void run(){ toggleGamecast(); } });
         else if (path.startsWith("/gamecast/show")) h.post(new Runnable(){ public void run(){ showGamecast(); } });
         else if (path.startsWith("/gamecast/hide")) h.post(new Runnable(){ public void run(){ hideGamecast(); } });
+        else if (path.startsWith("/ticker/pos/")) { boolean top = path.substring(12).startsWith("top");
+          getSharedPreferences("cfg", MODE_PRIVATE).edit().putBoolean("tickerTop", top).apply();
+          h.post(new Runnable(){ public void run(){ if (ticker != null) { hideTicker(); showTicker(); } } }); }
         else if (path.startsWith("/ticker/")) { final String m = path.substring(8).replaceAll("[^a-z]", ""); setTicker(m.length() > 0 ? m : "off"); }
         else if (path.startsWith("/jump/clear")) hideJump();
         else if (path.startsWith("/jump")) { try { JSONObject o = new JSONObject(b); showJump(o.optString("title"), o.optString("uri")); } catch (Exception e) {} }
