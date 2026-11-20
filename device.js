@@ -36,7 +36,7 @@
   var PUSH = {
     // bedroom TV (Nov 15 evening): game night — props visible for the ticker and pop-ups;
     // earnings and wager amounts stay behind the privacy switch
-    bedroom: { rev:'2026-11-19-tnf2', set:{ 'w2w.ticker':'mine', 'w2w.snooze':{}, 'w2w.privacy':{ props:false, calendar:false, earnings:true, money:true }, 'w2w.popPos':'bottom', 'w2w.notify':{ quiet:false, games:true, props:true }, 'w2w.banners':false } },
+    bedroom: { rev:'2026-11-19-quiet', set:{ 'w2w.ticker':'off', 'w2w.snooze':{}, 'w2w.privacy':{ props:false, calendar:false, earnings:true, money:true }, 'w2w.popPos':'bottom', 'w2w.notify':{ quiet:true, games:false, props:false }, 'w2w.banners':false } },
     projector: null
   };
   if(!PUSH[id]) delete PUSH[id];
