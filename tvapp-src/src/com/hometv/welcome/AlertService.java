@@ -313,6 +313,25 @@ public class AlertService extends Service {
     GradientDrawable bg = new GradientDrawable(); bg.setCornerRadius(dp(12));
     if (tab || lab) { bg.setColor(0xFFFFCC00); } else { bg.setColor(0xE0121C36); if (grouped) bg.setStroke(dp(1), 0x88FFCC00); }
     chip.setBackground(bg); chip.setPadding(dp(8), 0, dp(8), 0);
+    org.json.JSONArray parts = it.optJSONArray("p");
+    if (parts != null) {
+      // game chip: logo, ABBR score, logo, ABBR score, status — each part laid out with real spacing
+      for (int k = 0; k < parts.length(); k++) {
+        JSONObject pt = parts.optJSONObject(k); if (pt == null) continue;
+        String pi = pt.optString("i", ""), pt2 = pt.optString("t", "");
+        if (pi.length() > 4) { ImageView iv = new ImageView(this); iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
+          LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(dp(24), dp(24)); ip.rightMargin = dp(4); if (k > 0) ip.leftMargin = dp(8);
+          chip.addView(iv, ip); loadFace(iv, pi); }
+        if (pt2.length() > 0) { TextView t2 = new TextView(this); t2.setText(pt2); t2.setTypeface(Typeface.DEFAULT_BOLD); t2.setSingleLine(true);
+          int kind = pt.optInt("k", 0); // 0 normal, 1 loser (dim), 2 status
+          t2.setTextSize(TypedValue.COMPLEX_UNIT_DIP, kind == 2 ? 11.5f : 13.5f);
+          t2.setTextColor(kind == 1 ? 0xFF8F9BB8 : kind == 2 ? (pt.optInt("live", 0) == 1 ? 0xFFFFCC00 : 0xFFB5C0DA) : 0xFFFFFFFF);
+          LinearLayout.LayoutParams tp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+          if (kind == 2) tp.leftMargin = dp(10); chip.addView(t2, tp); }
+      }
+      LinearLayout.LayoutParams lpg = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(32));
+      lpg.leftMargin = dp(4); lpg.rightMargin = dp(4); tickerStrip.addView(chip, lpg); return;
+    }
     String img = it.optString("i", "");
     if (img.length() > 4) {
       final ImageView iv = new ImageView(this); iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
@@ -400,6 +419,8 @@ public class AlertService extends Service {
       try { s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW); } catch (Exception e) {}
       s.setMediaPlaybackRequiresUserGesture(false);
       wv.setWebViewClient(new WebViewClient());
+      wv.setWebChromeClient(new android.webkit.WebChromeClient(){ @Override public boolean onConsoleMessage(android.webkit.ConsoleMessage m){ android.util.Log.i("HOMETV", "js["+m.lineNumber()+"] "+m.message()); return true; } });
+
       wv.loadUrl(base + "props.html?corner=1&t=" + (System.currentTimeMillis() / 300000L));
       wv.addJavascriptInterface(new OverlayBridge(), "OV");
       wv.setOnKeyListener(new android.view.View.OnKeyListener() {
@@ -446,6 +467,8 @@ public class AlertService extends Service {
     try { s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW); } catch (Exception e) {}
     s.setMediaPlaybackRequiresUserGesture(false);
     wv.setWebViewClient(new WebViewClient());
+      wv.setWebChromeClient(new android.webkit.WebChromeClient(){ @Override public boolean onConsoleMessage(android.webkit.ConsoleMessage m){ android.util.Log.i("HOMETV", "js["+m.lineNumber()+"] "+m.message()); return true; } });
+
     wv.loadUrl(url);
     return wv;
   }
