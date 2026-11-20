@@ -94,7 +94,7 @@ public class AlertService extends Service {
     else if ("jump.go".equals(act)) { final String u = jumpUri; if (jumpActive() && u != null) { h.post(new Runnable(){ public void run(){ hideJump(); } }); openWatch(u); } }
     else if ("gamecast.show".equals(act)) h.post(new Runnable(){ public void run(){ showGamecast(); } });
     else if ("gamecast.hide".equals(act)) h.post(new Runnable(){ public void run(){ hideGamecast(); } });
-    if (!running) { running = true; new Thread(new Server()).start(); h.postDelayed(new Runnable(){ public void run(){ syncTicker(); } }, 3000); h.postDelayed(homeWatch, 4000); }
+    if (!running) { running = true; new Thread(new Server()).start(); h.postDelayed(new Runnable(){ public void run(){ syncTicker(); } }, 3000); h.postDelayed(homeWatch, 4000); h.postDelayed(sbPoll, 5000); }
     return START_STICKY;
   }
 
@@ -391,6 +391,60 @@ public class AlertService extends Service {
       bugText.setText(text); loadLogo(bugLogo, logo);
     } });
   }
+  // ---------- corner score bug for one followed team (polls ESPN itself, no page needed) ----------
+  LinearLayout sbView; ImageView sbL1, sbL2; TextView sbT1, sbT2, sbSt; String sbU1 = "", sbU2 = "";
+  final Runnable sbPoll = new Runnable() { public void run() { sbTick(); } };
+  void sbTick() {
+    final SharedPreferences p = getSharedPreferences("cfg", MODE_PRIVATE);
+    final String lg = p.getString("sbLg", ""), team = p.getString("sbTeam", "");
+    long fin = p.getLong("sbFinal", 0), now = System.currentTimeMillis();
+    if (lg.length() == 0 || now > p.getLong("sbUntil", 0) || (fin > 0 && now - fin > 10 * 60000L)) { sbHide(); return; }
+    new Thread(new Runnable() { public void run() {
+      try {
+        InputStream is = new URL("https://site.api.espn.com/apis/site/v2/sports/" + lg + "/scoreboard").openStream();
+        java.io.ByteArrayOutputStream bo = new java.io.ByteArrayOutputStream(); byte[] buf = new byte[8192]; int n;
+        while ((n = is.read(buf)) > 0) bo.write(buf, 0, n); is.close();
+        JSONArray ev = new JSONObject(bo.toString("UTF-8")).optJSONArray("events");
+        JSONObject hit = null; String want = team.toLowerCase();
+        for (int i = 0; ev != null && i < ev.length() && hit == null; i++) {
+          JSONObject c = ev.getJSONObject(i).getJSONArray("competitions").getJSONObject(0); JSONArray cs = c.getJSONArray("competitors");
+          for (int k = 0; k < cs.length(); k++) { JSONObject t = cs.getJSONObject(k).optJSONObject("team"); if (t == null) continue;
+            if (want.equals(t.optString("abbreviation").toLowerCase()) || t.optString("displayName").toLowerCase().contains(want)) { hit = ev.getJSONObject(i); break; } } }
+        if (hit != null) {
+          JSONObject c = hit.getJSONArray("competitions").getJSONObject(0); JSONArray cs = c.getJSONArray("competitors");
+          JSONObject a = cs.getJSONObject(0), b = cs.getJSONObject(1);
+          if ("home".equals(a.optString("homeAway"))) { JSONObject t = a; a = b; b = t; } // away first, home second
+          JSONObject st = hit.optJSONObject("status"); JSONObject ty = st != null ? st.optJSONObject("type") : null;
+          final String state = ty != null ? ty.optString("state") : "pre";
+          final String det = ty != null ? ty.optString("shortDetail") : "";
+          final String t1 = a.getJSONObject("team").optString("abbreviation") + (state.equals("pre") ? "" : "  " + a.optString("score"));
+          final String t2 = b.getJSONObject("team").optString("abbreviation") + (state.equals("pre") ? "" : "  " + b.optString("score"));
+          final String u1 = a.getJSONObject("team").optString("logo"), u2 = b.getJSONObject("team").optString("logo");
+          if ("post".equals(state) && p.getLong("sbFinal", 0) == 0) p.edit().putLong("sbFinal", System.currentTimeMillis()).apply();
+          h.post(new Runnable() { public void run() { sbShow(u1, t1, u2, t2, det, "in".equals(state)); } });
+        }
+      } catch (Exception e) { android.util.Log.e("HOMETV", "sb", e); }
+      h.postDelayed(sbPoll, 20000);
+    } }).start();
+  }
+  void sbShow(String u1, String t1, String u2, String t2, String det, boolean live) {
+    if (muted()) { sbHide(); return; }
+    if (sbView == null) {
+      LinearLayout row = new LinearLayout(this); row.setOrientation(LinearLayout.HORIZONTAL); row.setGravity(Gravity.CENTER_VERTICAL);
+      GradientDrawable g = new GradientDrawable(); g.setColor(0xD90B1020); g.setCornerRadius(dp(10)); g.setStroke(dp(1), 0x99FFCC00);
+      row.setBackground(g); row.setPadding(dp(10), dp(5), dp(12), dp(5));
+      sbL1 = new ImageView(this); sbT1 = sbText(14); sbL2 = new ImageView(this); sbT2 = sbText(14); sbSt = sbText(11);
+      LinearLayout.LayoutParams l1 = new LinearLayout.LayoutParams(dp(24), dp(24)); l1.rightMargin = dp(5); row.addView(sbL1, l1); row.addView(sbT1);
+      LinearLayout.LayoutParams l2 = new LinearLayout.LayoutParams(dp(24), dp(24)); l2.leftMargin = dp(12); l2.rightMargin = dp(5); row.addView(sbL2, l2); row.addView(sbT2);
+      LinearLayout.LayoutParams ls = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT); ls.leftMargin = dp(12); row.addView(sbSt, ls);
+      WindowManager.LayoutParams wp = overlayParams(false); wp.gravity = Gravity.TOP | Gravity.START; wp.x = dp(16); wp.y = dp(12);
+      try { wm.addView(row, wp); sbView = row; } catch (Exception e) { android.util.Log.e("HOMETV", "sbShow", e); return; }
+    }
+    sbT1.setText(t1); sbT2.setText(t2); sbSt.setText(det); sbSt.setTextColor(live ? 0xFFFFCC00 : 0xFFB5C0DA);
+    if (!u1.equals(sbU1)) { sbU1 = u1; loadFace(sbL1, u1); } if (!u2.equals(sbU2)) { sbU2 = u2; loadFace(sbL2, u2); }
+  }
+  TextView sbText(float sz) { TextView t = new TextView(this); t.setTextColor(Color.WHITE); t.setTypeface(Typeface.DEFAULT_BOLD); t.setTextSize(TypedValue.COMPLEX_UNIT_DIP, sz); t.setSingleLine(true); return t; }
+  void sbHide() { h.post(new Runnable() { public void run() { if (sbView != null) { try { wm.removeView(sbView); } catch (Exception e) {} sbView = null; sbU1 = ""; sbU2 = ""; } } }); }
   void clearBug() { h.post(new Runnable(){ public void run(){ if (bug != null) { try { wm.removeView(bug); } catch (Exception e) {} bug = null; } } }); }
 
   // ---------- floating prop-tracker card (bottom-left, non-focusable so it never steals the remote) ----------
@@ -628,6 +682,12 @@ public class AlertService extends Service {
         else if (path.startsWith("/ticker/")) { final String m = path.substring(8).replaceAll("[^a-z]", ""); setTicker(m.length() > 0 ? m : "off"); }
         else if (path.startsWith("/jump/clear")) hideJump();
         else if (path.startsWith("/jump")) { try { JSONObject o = new JSONObject(b); showJump(o.optString("title"), o.optString("uri")); } catch (Exception e) {} }
+        else if (path.startsWith("/sb/off")) { getSharedPreferences("cfg", MODE_PRIVATE).edit().putString("sbLg", "").apply(); sbHide(); }
+        else if (path.startsWith("/sb/")) { // /sb/basketball/nba/NY  -> follow that team in the corner bug for 6 hours
+          String[] q = path.substring(4).split("/");
+          if (q.length >= 3) { getSharedPreferences("cfg", MODE_PRIVATE).edit().putString("sbLg", q[0] + "/" + q[1]).putString("sbTeam", Uri.decode(q[2]))
+              .putLong("sbUntil", System.currentTimeMillis() + 6 * 3600000L).putLong("sbFinal", 0).apply();
+            h.removeCallbacks(sbPoll); h.post(sbPoll); } }
         else if (path.startsWith("/bug/clear")) clearBug();
         else if (path.startsWith("/bug")) { try { JSONObject o = new JSONObject(b); showBug(o.optString("text"), o.optString("logo")); } catch (Exception e) {} }
         OutputStream o = s.getOutputStream();
@@ -638,5 +698,5 @@ public class AlertService extends Service {
     }
   }
 
-  @Override public void onDestroy() { running = false; h.removeCallbacks(homeWatch); try { if (server != null) server.close(); } catch (Exception e) {} dismissCard(); clearBug(); hidePropCard(); hideGamecast(); hideTicker(); hideJump2(); if (cur == this) cur = null; super.onDestroy(); }
+  @Override public void onDestroy() { running = false; h.removeCallbacks(homeWatch); try { if (server != null) server.close(); } catch (Exception e) {} dismissCard(); clearBug(); hidePropCard(); hideGamecast(); hideTicker(); hideJump2(); h.removeCallbacks(sbPoll); sbHide(); if (cur == this) cur = null; super.onDestroy(); }
 }
